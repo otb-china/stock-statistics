@@ -25,5 +25,6 @@ class LStorageConstructor {
 export const LStorage = {
   token: new LStorageConstructor("token"),
   data: new LStorageConstructor("data"),
+  orderData: new LStorageConstructor("orderData"),
   new: (key: string) => new LStorageConstructor(key)
 }
