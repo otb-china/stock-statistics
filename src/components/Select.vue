@@ -37,7 +37,7 @@ const onConfirm = () => {
 // props 默认值
 export interface FormProps {
   props?: { text?: string, value?: string, children?: string },
-  option: RSA[] | string[];
+  option: RSA[];
   label?: string;
   placeholder?: string;
   valueType?: 'Object' | 'String';

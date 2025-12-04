@@ -39,13 +39,14 @@
 
   <van-popup v-model:show="addOrderShow" position="bottom" destroy-on-close>
     <div class="P24">
-      <Select
-        class-name="MB15"
-        :option="['2.0','2.1','2.2','3.0','3.1']"
-        @confirm="setOrderType"
-        placeholder="版本"
-      />
-      <el-input placeholder="收入" size="large" v-model.number="orderForm.value"/>
+      <el-radio-group v-model="orderForm.title" class="MB15">
+        <el-radio-button label="2.0" value="2.0"/>
+        <el-radio-button label="2.1" value="2.1"/>
+        <el-radio-button label="2.2" value="2.2"/>
+        <el-radio-button label="3.0" value="3.0"/>
+        <el-radio-button label="3.1" value="3.1"/>
+      </el-radio-group>
+      <van-field v-model="orderForm.value" type="digit" placeholder="收入"/>
       <el-switch v-model="calculation" active-text="计算备料" class="MT15"/>
 
       <el-button type="primary" size="large" style="width: 100%" @click="add" class="MT50">添加</el-button>
@@ -57,7 +58,6 @@
 import {computed, ref} from "vue";
 import type {RSA} from "otb-toolkit/src/types";
 import {LStorage} from "@/utils/localStorage.ts";
-import Select from "@/components/Select.vue";
 
 // 是否编辑备料
 const save = ref(false);
@@ -80,10 +80,6 @@ const Style = computed(() => {
 const saveData = () => {
   if (save.value) LStorage.data.setter(data.value);
   save.value = !save.value;
-};
-// setOrderType
-const setOrderType = (s: string) => {
-  orderForm.value.title = s;
 };
 // 是否计算备料
 const calculation = ref(true);
@@ -116,6 +112,7 @@ const add = () => {
   addOrderShow.value = false;
   LStorage.orderData.setter(orderData.value);
   LStorage.data.setter(data.value);
+  orderForm.value = {};
 }
 // 删除
 const del = (index: number) => {
@@ -141,3 +138,10 @@ const init = () => {
 };
 init();
 </script>
+
+<style lang="scss" scoped>
+.van-field {
+  background: #f7f8fa;
+  border-radius: 8px;
+}
+</style>
