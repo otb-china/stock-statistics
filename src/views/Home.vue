@@ -19,37 +19,54 @@
 
     <div class="shadow" style="margin: 1%">
       <van-cell-group inset>
-        <van-cell :value="`合计 ${orderData.reduce((total, item) => total + item.value, 0)}`">
+        <van-cell :value="`合计 ${SumMoney}`">
           <template #title>
-            <el-button size="small" type="primary" plain @click="addOrderShow = true">新增</el-button>
+            <el-button size="small" type="primary" plain @click="orderInfo.show = true">新增</el-button>
           </template>
         </van-cell>
 
-        <van-swipe-cell v-for="(item,index) in orderData" :key="index">
-          <van-cell :title="`${orderData.length-index}: 版本 ${item.title}`" :value="`收入 ${item.value}`"/>
-          <template #right>
-            <van-button square type="danger" text="删除" @click="del(index)"/>
-          </template>
-        </van-swipe-cell>
+        <div style="max-height:525px;overflow-x: auto">
+          <van-swipe-cell v-for="(item,index) in orderInfo.data" :key="index">
+            <van-cell
+              :title="`${orderInfo.data.length-index}: 版本 ${item.title}`"
+              :label="item.orderDate"
+              :value="`收入 ${item.value}`"
+            />
+            <template #right>
+              <van-button square type="primary" text="编辑" @click="beforeUpd(item,index)"/>
+              <van-button square type="danger" text="删除" @click="del(index)"/>
+            </template>
+          </van-swipe-cell>
+        </div>
       </van-cell-group>
     </div>
   </div>
 
   <div style="height: 25vh"/>
 
-  <van-popup v-model:show="addOrderShow" position="bottom" destroy-on-close>
+  <van-popup v-model:show="orderInfo.show" position="bottom" destroy-on-close>
     <div class="P24">
-      <el-radio-group v-model="orderForm.title" class="MB15">
+      <el-radio-group v-model="orderInfo.form.title" class="MB15">
         <el-radio-button label="2.0" value="2.0"/>
         <el-radio-button label="2.1" value="2.1"/>
         <el-radio-button label="2.2" value="2.2"/>
         <el-radio-button label="3.0" value="3.0"/>
         <el-radio-button label="3.1" value="3.1"/>
       </el-radio-group>
-      <van-field v-model="orderForm.value" type="digit" placeholder="收入"/>
-      <el-switch v-model="calculation" active-text="计算备料" class="MT15"/>
+      <van-field v-model="orderInfo.form.value" type="digit" placeholder="收入" clearable/>
+      <date-picker class="MT15" placeholder="下单日期" :default-date="orderInfo.form.orderDate" @date-change="setOrderDate" />
+      <el-switch v-if="orderInfo.type === 'add'" v-model="calculation" active-text="计算备料" class="MT15"/>
 
-      <el-button type="primary" size="large" style="width: 100%" @click="add" class="MT50">添加</el-button>
+      <el-button
+        type="primary"
+        size="large"
+        style="width: 100%"
+        @click="orderSubmit"
+        class="MT50"
+        :disabled="!(orderInfo.form.title && orderInfo.form.value)"
+      >
+        提交
+      </el-button>
     </div>
   </van-popup>
 </template>
@@ -58,16 +75,39 @@
 import {computed, ref} from "vue";
 import type {RSA} from "otb-toolkit/src/types";
 import {LStorage} from "@/utils/localStorage.ts";
+import DatePicker from "@/components/Date.vue";
+import dayjs from "dayjs";
 
 // 是否编辑备料
 const save = ref(false);
 // 备料数据
 const data = ref([] as RSA[]);
-// 订单数据
-const orderData = ref([] as RSA[]);
-const orderForm = ref({} as RSA);
-// 弹出新增订单
-const addOrderShow = ref(false);
+
+// 订单
+interface Order {
+  title: string;
+  value: number;
+  orderDate: string;
+}
+
+const orderInfo = ref({
+  type: "add" as "add" | "upd",
+  show: false,
+  form: {
+    title: "2.2",
+    value: 60,
+    orderDate: dayjs(new Date()).format("YYYY-MM-DD")
+  } as Order,
+  data: [] as Order[],
+  index: 0,
+});
+const setOrderDate = (date: string) => {
+  orderInfo.value.form.orderDate = date;
+};
+// 合计金额
+const SumMoney = computed(() => {
+  return orderInfo.value.data.reduce((total, item) => total + Number(item.value), 0)
+})
 // 备料预警样式
 const Style = computed(() => {
   return (item: RSA) => {
@@ -83,41 +123,63 @@ const saveData = () => {
 };
 // 是否计算备料
 const calculation = ref(true);
-// 新增
-const add = () => {
-  if (calculation.value) {
-    if (orderForm.value.title === "2.2") {
-      data.value.forEach((item: RSA) => {
-        if (item.name === "风扇") item.num -= 1;
-        if (item.name === "塑料盒") item.num -= 2;
-        if (item.name === "钢丝软管") item.num -= 2;
-        if (item.name === "直法兰") item.num -= 1;
-      })
+// 新增/编辑
+const orderSubmit = () => {
+  const type = orderInfo.value.type;
+  if (type === "add") {
+    // 计入备料
+    if (calculation.value) {
+      if (orderInfo.value.form.title === "2.2") {
+        data.value.forEach((item: RSA) => {
+          if (item.name === "风扇") item.num -= 1;
+          if (item.name === "塑料盒") item.num -= 2;
+          if (item.name === "钢丝软管") item.num -= 2;
+          if (item.name === "直法兰") item.num -= 1;
+        })
+      }
+      if (orderInfo.value.form.title === "3.0") {
+        data.value.forEach((item: RSA) => {
+          if (item.name === "风扇") item.num -= 1;
+          if (item.name === "塑料盒") item.num -= 1;
+          if (item.name === "直法兰") item.num -= 1;
+          if (item.name === "花瓶") item.num -= 1;
+          if (item.name === "90度弯头") item.num -= 3;
+          if (item.name === "45度弯头") item.num -= 1;
+          if (item.name === "50管") item.num -= 1;
+          if (item.name === "内50软管") item.num -= 1;
+          if (item.name === "6型号盖") item.num -= 1;
+        })
+      }
+
+      LStorage.data.setter(data.value);
     }
-    if (orderForm.value.title === "3.0") {
-      data.value.forEach((item: RSA) => {
-        if (item.name === "风扇") item.num -= 1;
-        if (item.name === "塑料盒") item.num -= 1;
-        if (item.name === "直法兰") item.num -= 1;
-        if (item.name === "花瓶") item.num -= 1;
-        if (item.name === "90度弯头") item.num -= 3;
-        if (item.name === "45度弯头") item.num -= 1;
-        if (item.name === "50管") item.num -= 1;
-        if (item.name === "内50软管") item.num -= 1;
-        if (item.name === "6型号盖") item.num -= 1;
-      })
-    }
+
+    orderInfo.value.data.unshift(orderInfo.value.form);
   }
-  orderData.value.unshift(orderForm.value);
-  addOrderShow.value = false;
-  LStorage.orderData.setter(orderData.value);
-  LStorage.data.setter(data.value);
-  orderForm.value = {};
+  if (type === "upd") {
+    const index = orderInfo.value.index
+    if (index >= 0) orderInfo.value.data.splice(index, 1, orderInfo.value.form);
+  }
+
+  orderInfo.value.show = false;
+  LStorage.orderData.setter(orderInfo.value.data);
+  orderInfo.value.form = {
+    title: "2.2",
+    value: 60,
+    orderDate: dayjs(new Date()).format("YYYY-MM-DD")
+  } as Order;
 }
+// 预编辑
+const beforeUpd = (item: Order, index: number) => {
+  orderInfo.value.type = "upd"
+  orderInfo.value.index = index
+  orderInfo.value.form = {...item};
+  orderInfo.value.show = true
+};
 // 删除
 const del = (index: number) => {
-  orderData.value.splice(index, 1);
-  LStorage.orderData.setter(orderData.value);
+  orderInfo.value.data.splice(index, 1);
+  LStorage.orderData.setter(orderInfo.value.data);
 }
 // 初始化缓存数据
 const init = () => {
@@ -134,7 +196,7 @@ const init = () => {
   if (!data.value.some(o => o.name === "内50软管")) data.value.push({name: "内50软管", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "6型号盖")) data.value.push({name: "6型号盖", num: 0, warnNum: 1})
   // 订单
-  if (LStorage.orderData.getter()) orderData.value = LStorage.orderData.getter();
+  if (LStorage.orderData.getter()) orderInfo.value.data = LStorage.orderData.getter();
 };
 init();
 </script>
