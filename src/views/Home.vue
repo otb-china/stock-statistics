@@ -13,11 +13,23 @@
       </div>
     </div>
 
+    <div class="flex-row" style="width: 98%;margin:10px 1%" v-if="save">
+      <el-button type="success" style="flex: 1" @click="copy(data,'备料')">复制备料数据</el-button>
+      <el-button type="success" style="flex: 1" @click="copy(orderInfo.data,'订单')">复制订单数据</el-button>
+    </div>
+
     <el-button style="width: 98%;margin:20px 1%" size="large" :type="save ? 'primary' : 'success'" @click="saveData">
       {{ save ? "保存" : "调整" }}
     </el-button>
 
     <div class="shadow" style="margin: 1%">
+      <div class="flex-row P6">
+        <div v-for="item in orderInfo.monthData" :key="item.month" class="shadow M6 P6 bolder" style="color:#727781;">
+          <div class="MX6 FS15">{{ item.month }}</div>
+          <div class="align-center MT10 FS14">{{ item.value }}</div>
+        </div>
+      </div>
+
       <van-cell-group>
         <van-cell :value="`合计 ${SumMoney}`">
           <template #title>
@@ -52,8 +64,12 @@
         <el-radio-button label="3.1" value="3.1"/>
       </el-radio-group>
       <van-field v-model="orderInfo.form.value" type="digit" placeholder="收入" clearable/>
-      <date-picker class="MT15" placeholder="下单日期" :default-date="orderInfo.form.orderDate"
-                   @date-change="setOrderDate"/>
+      <date-picker
+        class="MT15"
+        placeholder="下单日期"
+        :default-date="orderInfo.form.orderDate"
+        @date-change="setOrderDate"
+      />
       <el-switch v-if="orderInfo.type === 'add'" v-model="calculation" active-text="计算备料" class="MT15"/>
 
       <el-button
@@ -76,6 +92,7 @@ import type {RSA} from "otb-toolkit/src/types";
 import {LStorage} from "@/utils/localStorage.ts";
 import DatePicker from "@/components/Date.vue";
 import dayjs from "dayjs";
+import {showToast} from "vant";
 
 // 是否编辑备料
 const save = ref(false);
@@ -89,6 +106,11 @@ interface Order {
   orderDate: string;
 }
 
+interface OrderMonth {
+  month: string;
+  value: number;
+}
+
 const orderInfo = ref({
   type: "add" as "add" | "upd",
   show: false,
@@ -98,10 +120,41 @@ const orderInfo = ref({
     orderDate: dayjs(new Date()).format("YYYY-MM-DD")
   } as Order,
   data: [] as Order[],
+  monthData: [] as OrderMonth[],
   index: 0,
 });
+// 设置日期
 const setOrderDate = (date: string) => {
   orderInfo.value.form.orderDate = date;
+};
+// 复制
+const copy = (data: RSA[], name: string) => {
+  navigator.clipboard.writeText(JSON.stringify(data));
+  showToast(`${name}数据复制成功`);
+}
+// 初始化分析数据
+const initOrderMonthData = () => {
+  const months = {} as Record<string, number>
+
+  for (let o of orderInfo.value.data) {
+    if (o.orderDate) {
+      const month = o.orderDate.substring(0, 7);
+      if (months[month]) {
+        months[month] += Number(o.value);
+      } else {
+        months[month] = Number(o.value);
+      }
+    }
+  }
+
+  const monthData = [] as OrderMonth[];
+  for (let key in months) {
+    monthData.push({
+      month: key,
+      value: months[key]
+    })
+  }
+  orderInfo.value.monthData = monthData;
 };
 // 合计金额
 const SumMoney = computed(() => {
@@ -167,6 +220,8 @@ const orderSubmit = () => {
     value: 60,
     orderDate: dayjs(new Date()).format("YYYY-MM-DD")
   } as Order;
+
+  initOrderMonthData();
 }
 // 预编辑
 const beforeUpd = (item: Order, index: number) => {
@@ -179,6 +234,7 @@ const beforeUpd = (item: Order, index: number) => {
 const del = (index: number) => {
   orderInfo.value.data.splice(index, 1);
   LStorage.orderData.setter(orderInfo.value.data);
+  initOrderMonthData();
 }
 // 初始化缓存数据
 const init = () => {
@@ -196,6 +252,7 @@ const init = () => {
   if (!data.value.some(o => o.name === "6型号盖")) data.value.push({name: "6型号盖", num: 0, warnNum: 1})
   // 订单
   if (LStorage.orderData.getter()) orderInfo.value.data = LStorage.orderData.getter();
+  initOrderMonthData()
 };
 init();
 </script>
