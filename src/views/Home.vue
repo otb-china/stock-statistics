@@ -1,15 +1,15 @@
 <template>
   <div style="padding: 2%">
-    <div class="flex-wrap space-between">
+    <div class="flex-wrap">
       <div
         class="shadow BR5"
         v-for="item in data" :key="item.index"
         :style="Style(item)"
         style="width: 44%;margin: 1%;padding: 2%"
       >
-        <h3 class="back-gauge">{{ item.name }}</h3>
-        <el-input-number class="MT10 W100" :disabled="!save" v-model="item.num" :min="0" :max="10000"/>
-        <el-input-number class="MT10 W100" v-if="save" v-model="item.warnNum" :min="0" :max="10000"/>
+        <h4 class="back-gauge">{{ item.name }}</h4>
+        <el-input-number class="MT6 W100" :disabled="!save" v-model="item.num" :min="0" :max="10000"/>
+        <el-input-number class="MT6 W100" v-if="save" v-model="item.warnNum" :min="0" :max="10000"/>
       </div>
     </div>
 
@@ -18,26 +18,24 @@
     </el-button>
 
     <div class="shadow" style="margin: 1%">
-      <van-cell-group inset>
+      <van-cell-group>
         <van-cell :value="`合计 ${SumMoney}`">
           <template #title>
             <el-button size="small" type="primary" plain @click="orderInfo.show = true">新增</el-button>
           </template>
         </van-cell>
 
-        <div style="max-height:525px;overflow-x: auto">
-          <van-swipe-cell v-for="(item,index) in orderInfo.data" :key="index">
-            <van-cell
-              :title="`${orderInfo.data.length-index}: 版本 ${item.title}`"
-              :label="item.orderDate"
-              :value="`收入 ${item.value}`"
-            />
-            <template #right>
-              <van-button square type="primary" text="编辑" @click="beforeUpd(item,index)"/>
-              <van-button square type="danger" text="删除" @click="del(index)"/>
-            </template>
-          </van-swipe-cell>
-        </div>
+        <van-swipe-cell v-for="(item,index) in orderInfo.data" :key="index">
+          <van-cell
+            :title="`${orderInfo.data.length-index}: 版本 ${item.title}`"
+            :label="item.orderDate"
+            :value="`收入 ${item.value}`"
+          />
+          <template #right>
+            <van-button square type="primary" style="height: 100%" text="编辑" @click="beforeUpd(item,index)"/>
+            <van-button square type="danger" style="height: 100%" text="删除" @click="del(index)"/>
+          </template>
+        </van-swipe-cell>
       </van-cell-group>
     </div>
   </div>
@@ -54,7 +52,8 @@
         <el-radio-button label="3.1" value="3.1"/>
       </el-radio-group>
       <van-field v-model="orderInfo.form.value" type="digit" placeholder="收入" clearable/>
-      <date-picker class="MT15" placeholder="下单日期" :default-date="orderInfo.form.orderDate" @date-change="setOrderDate" />
+      <date-picker class="MT15" placeholder="下单日期" :default-date="orderInfo.form.orderDate"
+                   @date-change="setOrderDate"/>
       <el-switch v-if="orderInfo.type === 'add'" v-model="calculation" active-text="计算备料" class="MT15"/>
 
       <el-button
