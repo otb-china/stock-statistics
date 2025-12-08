@@ -244,6 +244,7 @@ const init = () => {
   if (!data.value.some(o => o.name === "塑料盒")) data.value.push({name: "塑料盒", num: 0, warnNum: 5})
   if (!data.value.some(o => o.name === "钢丝软管")) data.value.push({name: "钢丝软管", num: 0, warnNum: 4})
   if (!data.value.some(o => o.name === "直法兰")) data.value.push({name: "直法兰", num: 0, warnNum: 2})
+  if (!data.value.some(o => o.name === "2.0包装箱")) data.value.push({name: "2.0包装箱", num: 0, warnNum: 2})
   if (!data.value.some(o => o.name === "花瓶")) data.value.push({name: "花瓶", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "90度弯头")) data.value.push({name: "90度弯头", num: 0, warnNum: 3})
   if (!data.value.some(o => o.name === "45度弯头")) data.value.push({name: "45度弯头", num: 0, warnNum: 1})
