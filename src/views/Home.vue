@@ -187,6 +187,8 @@ const orderSubmit = () => {
           if (item.name === "塑料盒") item.num -= 2;
           if (item.name === "钢丝软管") item.num -= 2;
           if (item.name === "直法兰") item.num -= 1;
+          if (item.name === "2.0包装箱") item.num -= 1;
+          if (item.name === "2.0饮料瓶") item.num -= 1;
         })
       }
       if (orderInfo.value.form.title === "3.0") {
@@ -200,6 +202,8 @@ const orderSubmit = () => {
           if (item.name === "50管") item.num -= 1;
           if (item.name === "内50软管") item.num -= 1;
           if (item.name === "6型号盖") item.num -= 1;
+          if (item.name === "3.0矿泉水桶") item.num -= 1;
+          if (item.name === "3.0吸管") item.num -= 1;
         })
       }
 
@@ -245,12 +249,15 @@ const init = () => {
   if (!data.value.some(o => o.name === "钢丝软管")) data.value.push({name: "钢丝软管", num: 0, warnNum: 4})
   if (!data.value.some(o => o.name === "直法兰")) data.value.push({name: "直法兰", num: 0, warnNum: 2})
   if (!data.value.some(o => o.name === "2.0包装箱")) data.value.push({name: "2.0包装箱", num: 0, warnNum: 2})
+  if (!data.value.some(o => o.name === "2.0饮料瓶")) data.value.push({name: "2.0饮料瓶", num: 0, warnNum: 2})
   if (!data.value.some(o => o.name === "花瓶")) data.value.push({name: "花瓶", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "90度弯头")) data.value.push({name: "90度弯头", num: 0, warnNum: 3})
   if (!data.value.some(o => o.name === "45度弯头")) data.value.push({name: "45度弯头", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "50管")) data.value.push({name: "50管", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "内50软管")) data.value.push({name: "内50软管", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "6型号盖")) data.value.push({name: "6型号盖", num: 0, warnNum: 1})
+  if (!data.value.some(o => o.name === "3.0矿泉水桶")) data.value.push({name: "3.0矿泉水桶", num: 0, warnNum: 1})
+  if (!data.value.some(o => o.name === "3.0吸管")) data.value.push({name: "3.0吸管", num: 0, warnNum: 1})
   // 订单
   if (LStorage.orderData.getter()) orderInfo.value.data = LStorage.orderData.getter();
   initOrderMonthData()
