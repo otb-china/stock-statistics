@@ -39,7 +39,7 @@
 
         <van-swipe-cell v-for="(item,index) in orderInfo.data" :key="index">
           <van-cell
-            :title="`${orderInfo.data.length-index}: 版本 ${item.title}`"
+            :title="`${orderInfo.data.length-index}：吸尘器${item.title}`"
             :label="item.orderDate"
             :value="`收入 ${item.value}`"
           />
@@ -56,12 +56,9 @@
 
   <van-popup v-model:show="orderInfo.show" position="bottom" destroy-on-close>
     <div class="P24">
-      <el-radio-group v-model="orderInfo.form.title" class="MB15">
+      <el-radio-group v-model="orderInfo.form.title" class="MB15" @change="typeChange">
         <el-radio-button label="2.0" value="2.0"/>
-        <el-radio-button label="2.1" value="2.1"/>
-        <el-radio-button label="2.2" value="2.2"/>
         <el-radio-button label="3.0" value="3.0"/>
-        <el-radio-button label="3.1" value="3.1"/>
       </el-radio-group>
       <van-field v-model="orderInfo.form.value" type="digit" placeholder="收入" clearable/>
       <date-picker
@@ -93,6 +90,7 @@ import {LStorage} from "@/utils/localStorage.ts";
 import DatePicker from "@/components/Date.vue";
 import dayjs from "dayjs";
 import {showToast} from "vant";
+import {sort} from "otb-toolkit/src/utils/data.ts"
 
 // 是否编辑备料
 const save = ref(false);
@@ -114,15 +112,24 @@ interface OrderMonth {
 const orderInfo = ref({
   type: "add" as "add" | "upd",
   show: false,
-  form: {
-    title: "2.2",
-    value: 60,
-    orderDate: dayjs(new Date()).format("YYYY-MM-DD")
-  } as Order,
+  form: {} as Order,
   data: [] as Order[],
   monthData: [] as OrderMonth[],
   index: 0,
 });
+const typeChange = (type: string) => {
+  // 设置价格
+  switch (type) {
+    case "2.0":
+      orderInfo.value.form.value = 70;
+      break;
+    case "3.0":
+      orderInfo.value.form.value = 120;
+      break;
+  }
+  // 默认今日
+  orderInfo.value.form.orderDate = dayjs(new Date()).format("YYYY-MM-DD");
+};
 // 设置日期
 const setOrderDate = (date: string) => {
   orderInfo.value.form.orderDate = date;
@@ -181,7 +188,7 @@ const orderSubmit = () => {
   if (type === "add") {
     // 计入备料
     if (calculation.value) {
-      if (orderInfo.value.form.title === "2.2") {
+      if (orderInfo.value.form.title === "2.0") {
         data.value.forEach((item: RSA) => {
           if (item.name === "风扇") item.num -= 1;
           if (item.name === "塑料盒") item.num -= 2;
@@ -219,11 +226,7 @@ const orderSubmit = () => {
 
   orderInfo.value.show = false;
   LStorage.orderData.setter(orderInfo.value.data);
-  orderInfo.value.form = {
-    title: "2.2",
-    value: 60,
-    orderDate: dayjs(new Date()).format("YYYY-MM-DD")
-  } as Order;
+  orderInfo.value.form = {} as Order;
 
   initOrderMonthData();
 }
@@ -259,7 +262,7 @@ const init = () => {
   if (!data.value.some(o => o.name === "3.0矿泉水桶")) data.value.push({name: "3.0矿泉水桶", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "3.0吸管")) data.value.push({name: "3.0吸管", num: 0, warnNum: 1})
   // 订单
-  if (LStorage.orderData.getter()) orderInfo.value.data = LStorage.orderData.getter();
+  if (LStorage.orderData.getter()) orderInfo.value.data = sort(LStorage.orderData.getter(), "desc", 'orderDate');
   initOrderMonthData()
 };
 init();
