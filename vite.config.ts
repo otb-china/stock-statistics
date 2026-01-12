@@ -17,6 +17,6 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "stock-statistics",
+    outDir: "docs",
   },
 })
