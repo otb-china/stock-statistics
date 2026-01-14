@@ -18,6 +18,11 @@
       <el-button type="success" style="flex: 1" @click="copy(orderInfo.data,'订单')">复制订单数据</el-button>
     </div>
 
+    <div class="flex-row" style="width: 98%;margin:10px 1%" v-if="save">
+      <el-button type="primary" style="flex: 1" @click="beforeImport('备料')">导入备料数据</el-button>
+      <el-button type="primary" style="flex: 1" @click="beforeImport('订单')">导入订单数据</el-button>
+    </div>
+
     <el-button style="width: 98%;margin:20px 1%" size="large" :type="save ? 'primary' : 'success'" @click="saveData">
       {{ save ? "保存" : "调整" }}
     </el-button>
@@ -81,6 +86,28 @@
       </el-button>
     </div>
   </van-popup>
+
+  <van-popup v-model:show="importInfo.show" position="bottom" destroy-on-close>
+    <div class="P24">
+      <el-input
+        v-model="importInfo.dataStr"
+        :placeholder="`请导入${importInfo.placeholder}数据`"
+        :rows="6"
+        type="textarea"
+      />
+
+      <el-button
+        type="primary"
+        size="large"
+        style="width: 100%"
+        @click="importData"
+        class="MT50"
+        :disabled="!(importInfo.dataStr)"
+      >
+        提交
+      </el-button>
+    </div>
+  </van-popup>
 </template>
 
 <script lang="ts" setup>
@@ -96,6 +123,29 @@ import {sort} from "otb-toolkit/src/utils/data.ts"
 const save = ref(false);
 // 备料数据
 const data = ref([] as RSA[]);
+// 导入数据
+const importInfo = ref({
+  show: false,
+  dataStr: "",
+  placeholder: "",
+});
+
+const beforeImport = (s: string) => {
+  importInfo.value.placeholder = s;
+  importInfo.value.show = true;
+};
+const importData = () => {
+  const importData = JSON.parse(importInfo.value.dataStr);
+  if (importInfo.value.placeholder === "备料") {
+    LStorage.data.setter(importData);
+  }
+  if (importInfo.value.placeholder === "订单") {
+    LStorage.orderData.setter(importData);
+  }
+  init();
+  importInfo.value.show = false;
+  save.value = false;
+};
 
 // 订单
 interface Order {
