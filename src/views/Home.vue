@@ -174,7 +174,7 @@ const typeChange = (type: string) => {
       orderInfo.value.form.value = 70;
       break;
     case "3.0":
-      orderInfo.value.form.value = 120;
+      orderInfo.value.form.value = 80;
       break;
   }
   // 默认今日
