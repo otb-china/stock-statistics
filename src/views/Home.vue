@@ -29,22 +29,28 @@
 
     <div class="shadow" style="margin: 1%">
       <div class="flex-row P6">
-        <div v-for="item in orderInfo.monthData" :key="item.month" class="shadow M6 P6 bolder" style="color:#727781;">
+        <el-check-tag
+          v-for="item in orderInfo.monthData"
+          :key="item.month"
+          :checked="orderInfo.checkedMonth === item.month"
+          class="M6 P6"
+          @change="monthChange(item.month)"
+        >
           <div class="MX6 FS15">{{ item.month }}</div>
           <div class="align-center MT10 FS14">{{ item.value }}</div>
-        </div>
+        </el-check-tag>
       </div>
 
       <van-cell-group>
-        <van-cell :value="`合计 ${SumMoney}`">
+        <van-cell :value="`合计 ${SumMoney(OrderData)}`">
           <template #title>
             <el-button size="small" type="primary" text bg @click="orderInfo.show = true">新增</el-button>
           </template>
         </van-cell>
 
-        <van-swipe-cell v-for="(item,index) in orderInfo.data" :key="index">
+        <van-swipe-cell v-for="(item,index) in OrderData" :key="index">
           <van-cell
-            :title="`${orderInfo.data.length-index}：吸尘器${item.title}`"
+            :title="`${OrderData.length-index}：吸尘器${item.title}`"
             :label="item.orderDate"
             :value="`收入 ${item.value}`"
           />
@@ -166,7 +172,13 @@ const orderInfo = ref({
   data: [] as Order[],
   monthData: [] as OrderMonth[],
   index: 0,
+  checkedMonth: "",
 });
+const OrderData = computed(() => {
+  const checkedMonth = orderInfo.value.checkedMonth;
+  if (checkedMonth) return orderInfo.value.data.filter((o: RSA) => o.orderDate.substring(0, 7) === checkedMonth);
+  return orderInfo.value.data;
+})
 const typeChange = (type: string) => {
   // 设置价格
   switch (type) {
@@ -180,6 +192,7 @@ const typeChange = (type: string) => {
   // 默认今日
   orderInfo.value.form.orderDate = dayjs(new Date()).format("YYYY-MM-DD");
 };
+const monthChange = (s: string) => orderInfo.value.checkedMonth = orderInfo.value.checkedMonth === s ? "" : s;
 // 设置日期
 const setOrderDate = (date: string) => {
   orderInfo.value.form.orderDate = date;
@@ -215,7 +228,9 @@ const initOrderMonthData = () => {
 };
 // 合计金额
 const SumMoney = computed(() => {
-  return orderInfo.value.data.reduce((total, item) => total + Number(item.value), 0)
+  return (data: Order[]) => {
+    return data.reduce((total, item) => total + Number(item.value), 0);
+  }
 })
 // 备料预警样式
 const Style = computed(() => {
