@@ -8,8 +8,14 @@
         style="width: 44%;margin: 1%;padding: 2%"
       >
         <h4 class="back-gauge">{{ item.name }}</h4>
-        <el-input-number class="MT6 W100" :disabled="!save" v-model="item.num" :min="0" :max="10000"/>
-        <el-input-number class="MT6 W100" v-if="save" v-model="item.warnNum" :min="0" :max="10000"/>
+        <div class="align-right">
+          <el-tag v-if="!save" type="success" class="P6 FS16">{{ item.num }}</el-tag>
+
+          <template v-if="save">
+            <el-input-number class="MT6 W100" v-model="item.num" :min="0" :max="10000"/>
+            <el-input-number class="MT6 W100" v-model="item.warnNum" :min="0" :max="10000"/>
+          </template>
+        </div>
       </div>
     </div>
 
