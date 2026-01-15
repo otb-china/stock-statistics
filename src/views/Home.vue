@@ -34,7 +34,7 @@
     </el-button>
 
     <div class="shadow" style="margin: 1%">
-      <div class="flex-row P6">
+      <div class="flex-row P6" style="overflow-x: auto">
         <el-check-tag
           v-for="item in orderInfo.monthData"
           :key="item.month"
