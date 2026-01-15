@@ -14,8 +14,6 @@ const loginOut = () => {
     width: "250px",
   }).then(() => {
     LStorage.token.remove();
-    LStorage.schoolList.remove();
-    LStorage.sid.remove();
     router.push("/login");
   }).catch(() => {
   });
