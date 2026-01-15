@@ -38,7 +38,7 @@
       <van-cell-group>
         <van-cell :value="`合计 ${SumMoney}`">
           <template #title>
-            <el-button size="small" type="primary" plain @click="orderInfo.show = true">新增</el-button>
+            <el-button size="small" type="primary" text bg @click="orderInfo.show = true">新增</el-button>
           </template>
         </van-cell>
 
@@ -304,11 +304,11 @@ const init = () => {
   if (!data.value.some(o => o.name === "2.0包装箱")) data.value.push({name: "2.0包装箱", num: 0, warnNum: 2})
   if (!data.value.some(o => o.name === "2.0饮料瓶")) data.value.push({name: "2.0饮料瓶", num: 0, warnNum: 2})
   if (!data.value.some(o => o.name === "花瓶")) data.value.push({name: "花瓶", num: 0, warnNum: 1})
+  if (!data.value.some(o => o.name === "6型号盖")) data.value.push({name: "6型号盖", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "90度弯头")) data.value.push({name: "90度弯头", num: 0, warnNum: 3})
   if (!data.value.some(o => o.name === "45度弯头")) data.value.push({name: "45度弯头", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "50管")) data.value.push({name: "50管", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "内50软管")) data.value.push({name: "内50软管", num: 0, warnNum: 1})
-  if (!data.value.some(o => o.name === "6型号盖")) data.value.push({name: "6型号盖", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "3.0矿泉水桶")) data.value.push({name: "3.0矿泉水桶", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "3.0吸管")) data.value.push({name: "3.0吸管", num: 0, warnNum: 1})
   // 订单
