@@ -241,7 +241,7 @@ const SumMoney = computed(() => {
 // 备料预警样式
 const Style = computed(() => {
   return (item: RSA) => {
-    if (item.num === 0) return {backgroundColor: "#E47471", color: "#ffffff"};
+    if (item.num - item.warnNum < 0) return {backgroundColor: "#E47471", color: "#ffffff"};
     if (item.num > 0 && item.num <= item.warnNum) return {backgroundColor: "#DCA551", color: "#ffffff"};
     return {};
   };
