@@ -189,10 +189,10 @@ const typeChange = (type: string) => {
   // 设置价格
   switch (type) {
     case "2.0":
-      orderInfo.value.form.value = 70;
+      orderInfo.value.form.value = 45;
       break;
     case "3.0":
-      orderInfo.value.form.value = 80;
+      orderInfo.value.form.value = 65;
       break;
   }
   // 默认今日
