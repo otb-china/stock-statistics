@@ -330,8 +330,9 @@ const init = () => {
   if (!data.value.some(o => o.name === "45度弯头")) data.value.push({name: "45度弯头", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "50管")) data.value.push({name: "50管", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "内50软管")) data.value.push({name: "内50软管", num: 0, warnNum: 1})
+  if (!data.value.some(o => o.name === "3.0包装箱")) data.value.push({name: "3.0包装箱", num: 0, warnNum: 1})
   if (!data.value.some(o => o.name === "3.0矿泉水桶")) data.value.push({name: "3.0矿泉水桶", num: 0, warnNum: 1})
-  if (!data.value.some(o => o.name === "3.0吸管")) data.value.push({name: "3.0吸管", num: 0, warnNum: 1})
+  // if (!data.value.some(o => o.name === "3.0吸管")) data.value.push({name: "3.0吸管", num: 0, warnNum: 1})
   // 订单
   if (LStorage.orderData.getter()) orderInfo.value.data = sort(LStorage.orderData.getter(), "desc", 'orderDate');
   initOrderMonthData()
