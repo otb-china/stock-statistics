@@ -209,9 +209,14 @@
                   <div class="product-title-row">
                     <div class="product-title-block">
                       <strong>{{ product.name }}</strong>
-                      <span class="product-status" :class="productStatusClass(product.status)">
+                      <button
+                        class="product-status"
+                        :class="productStatusClass(product.status)"
+                        type="button"
+                        @click.stop="toggleProductStatus(product)"
+                      >
                         {{ product.status === "active" ? "正常" : "停产" }}
-                      </span>
+                      </button>
                     </div>
                     <span class="product-count">可制 {{ craftableCountForProduct(product) }}</span>
                   </div>
@@ -258,12 +263,6 @@
           <div>
             <h3>{{ productEditor.type === "add" ? "新增货品" : "编辑货品" }}</h3>
           </div>
-          <button class="status-toggle" type="button" :class="productEditor.form.status" @click="toggleProductStatus">
-            <span class="status-toggle-track"></span>
-            <span class="status-toggle-text">
-              {{ productEditor.form.status === "active" ? "正常" : "停产" }}
-            </span>
-          </button>
         </div>
 
         <div class="product-editor-grid">
@@ -1087,8 +1086,17 @@ const addRecipeItem = () => {
   });
 };
 
-const toggleProductStatus = () => {
-  productEditor.value.form.status = productEditor.value.form.status === "active" ? "inactive" : "active";
+const toggleProductStatus = (product: Product) => {
+  const nextStatus = product.status === "active" ? "inactive" : "active";
+  const index = products.value.findIndex((item) => item.id === product.id);
+  if (index < 0) return;
+
+  products.value.splice(index, 1, {
+    ...products.value[index],
+    status: nextStatus,
+  });
+  saveProducts();
+  showToast(nextStatus === "active" ? "货品已设为正常" : "货品已设为停产");
 };
 
 const availableMaterialsForRecipe = (index: number) => {
@@ -1739,61 +1747,6 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
-.status-toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 100px;
-  height: 38px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: #eef3f8;
-  color: #7b8995;
-  overflow: hidden;
-}
-
-.status-toggle-track {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(31, 48, 64, 0.14);
-  transition: transform 0.2s ease;
-}
-
-.status-toggle-text {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  padding: 0 30px 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.status-toggle.active {
-  background: #e8f1ff;
-  color: #2f73da;
-}
-
-.status-toggle.active .status-toggle-track {
-  transform: translateX(62px);
-}
-
-.status-toggle.inactive {
-  background: #fff2d9;
-  color: #a56700;
-}
-
-.status-toggle.inactive .status-toggle-text {
-  padding: 0 10px 0 30px;
-}
-
 .manage-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2211,8 +2164,11 @@ onUnmounted(() => {
 .product-status {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   padding: 3px 8px;
+  border: 0;
   border-radius: 999px;
+  line-height: 1.2;
   font-size: 12px;
   font-weight: 600;
 }
