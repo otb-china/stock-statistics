@@ -139,7 +139,7 @@
     </section>
 
     <van-popup v-model:show="materialsPopup.show" position="bottom" round destroy-on-close>
-      <div class="popup-body">
+      <div class="popup-body manage-popup-body">
         <div class="popup-head MB12">
           <div>
             <h3>{{ materialsPopup.tab === "materials" ? "备料管理" : "货品管理" }}</h3>
@@ -162,7 +162,7 @@
         </div>
 
         <template v-if="materialsPopup.tab === 'materials'">
-          <div class="materials-list">
+          <div class="materials-list manage-list-scroll">
             <van-swipe-cell
               v-for="item in materialsList"
               :key="item.id"
@@ -202,7 +202,7 @@
         </template>
 
         <template v-else>
-          <div class="products-list">
+          <div class="products-list manage-list-scroll">
             <van-swipe-cell v-for="product in productsList" :key="product.id" class="manage-swipe-cell">
               <div class="product-row">
                 <div class="product-main">
@@ -1717,6 +1717,27 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
+.manage-popup-body {
+  display: flex;
+  flex-direction: column;
+  height: 82vh;
+  overflow: hidden;
+}
+
+.manage-popup-body .popup-head {
+  flex: 0 0 auto;
+}
+
+.manage-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 2px;
+  align-content: start;
+  grid-auto-rows: max-content;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .status-toggle {
   position: relative;
   display: inline-flex;
@@ -2045,15 +2066,15 @@ onUnmounted(() => {
 .material-row {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px 12px;
-  padding: 10px 12px;
+  padding: 14px 16px;
   border-radius: 10px;
-  background: #ffffff;
-  box-shadow: 0 6px 18px rgba(38, 56, 88, 0.04);
+  background: #f8fbff;
 }
 
 .manage-swipe-cell {
   overflow: hidden;
   border-radius: 10px;
+  background: #f8fbff;
 }
 
 .manage-swipe-cell :deep(.van-swipe-cell__wrapper) {
