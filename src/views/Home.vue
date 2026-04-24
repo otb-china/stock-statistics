@@ -128,9 +128,9 @@
           </template>
         </van-swipe-cell>
 
-        <van-cell v-if="OrderData.length > 15" class="orders-toggle-cell" center>
+        <van-cell v-if="OrderData.length > orderPreviewLimit" class="orders-toggle-cell" center>
           <button class="orders-toggle-btn" type="button" @click="ordersExpanded = !ordersExpanded">
-            {{ ordersExpanded ? "收起订单" : "展开更多订单" }}
+            {{ ordersExpanded ? "收起订单" : `展开剩余 ${collapsedOrdersCount} 条` }}
           </button>
         </van-cell>
       </van-cell-group>
@@ -542,6 +542,7 @@ const headerSection = ref<HTMLElement | null>(null);
 const ordersSection = ref<HTMLElement | null>(null);
 const showScrollTop = ref(false);
 const ordersExpanded = ref(false);
+const orderPreviewLimit = 10;
 const data = ref([] as Material[]);
 const products = ref([] as Product[]);
 const calculation = ref(true);
@@ -732,9 +733,11 @@ const OrderData = computed(() => {
 });
 
 const visibleOrders = computed(() => {
-  if (ordersExpanded.value || OrderData.value.length <= 15) return OrderData.value;
-  return OrderData.value.slice(0, 15);
+  if (ordersExpanded.value || OrderData.value.length <= orderPreviewLimit) return OrderData.value;
+  return OrderData.value.slice(0, orderPreviewLimit);
 });
+
+const collapsedOrdersCount = computed(() => Math.max(0, OrderData.value.length - orderPreviewLimit));
 
 const SumMoney = computed(() => {
   return (list: Order[]) => list.reduce((total, item) => total + Number(item.value), 0);
