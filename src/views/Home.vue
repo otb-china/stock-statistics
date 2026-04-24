@@ -69,7 +69,7 @@
             <span class="bolder MB6">{{ item.name }}</span>
             <div class="warning-material-meta">
               <small>库存 {{ item.num }}</small>
-              <strong :class="materialStatus(item)">
+              <strong :class="materialStatusClass(item)">
                 {{ materialStatus(item) === "danger" ? "缺货" : "预警" }}
               </strong>
             </div>
@@ -104,13 +104,18 @@
       </div>
 
       <van-cell-group inset v-if="OrderData.length">
-        <van-cell :value="`${OrderData.length}条`" class="summary-cell">
+        <van-cell class="summary-cell">
           <template #title>
             <span class="summary-title">货品订单</span>
           </template>
+          <template #value>
+            <div class="summary-actions">
+              <span class="summary-count">{{ OrderData.length }}条</span>
+            </div>
+          </template>
         </van-cell>
 
-        <van-swipe-cell v-for="item in OrderData" :key="item.id">
+        <van-swipe-cell v-for="item in visibleOrders" :key="item.id">
           <van-cell
             class="order-cell"
             :title="item.title"
@@ -122,6 +127,12 @@
             <van-button square type="danger" class="swipe-btn" text="删除" @click="del(item.id)" />
           </template>
         </van-swipe-cell>
+
+        <van-cell v-if="OrderData.length > 15" class="orders-toggle-cell" center>
+          <button class="orders-toggle-btn" type="button" @click="ordersExpanded = !ordersExpanded">
+            {{ ordersExpanded ? "收起订单" : "展开更多订单" }}
+          </button>
+        </van-cell>
       </van-cell-group>
 
       <el-empty v-else description="还没有订单记录" :image-size="84" />
@@ -152,62 +163,67 @@
 
         <template v-if="materialsPopup.tab === 'materials'">
           <div class="materials-list">
-            <div
+            <van-swipe-cell
               v-for="item in materialsList"
               :key="item.id"
-              class="material-row"
-              :class="materialStatus(item)"
+              class="manage-swipe-cell"
             >
-              <div class="material-info">
-                <div class="material-title-row">
-                  <strong>{{ item.name }}</strong>
-                  <span class="material-status" :class="materialStatus(item)">
-                    {{ materialStatusText(item) }}
-                  </span>
+              <div
+                class="material-row"
+                :class="materialStatusClass(item)"
+              >
+                <div class="material-info">
+                  <div class="material-title-row">
+                    <strong>{{ item.name }}</strong>
+                    <span class="material-status" :class="materialStatusClass(item)">
+                      {{ materialStatusText(item) }}
+                    </span>
+                  </div>
+                  <small>{{ materialRelatedSummary(item.id) }}</small>
                 </div>
-                <small>{{ materialRelatedSummary(item.id) }}</small>
-              </div>
 
-              <div class="material-metrics">
-                <div class="material-metric">
-                  <span>{{ item.num }}</span>
-                  <small>库存</small>
-                </div>
-                <div class="material-metric">
-                  <strong>{{ materialCraftableCount(item.id) }}</strong>
-                  <small>可制</small>
+                <div class="material-metrics">
+                  <div class="material-metric">
+                    <span>{{ item.num }}</span>
+                    <small>库存</small>
+                  </div>
+                  <div class="material-metric">
+                    <strong>{{ materialCraftableCount(item.id) }}</strong>
+                    <small>可制</small>
+                  </div>
                 </div>
               </div>
-
-              <div class="manage-actions">
-                <button class="mini-action" @click="openMaterialEditor(item)">编辑</button>
-                <button class="mini-action danger" @click="removeMaterial(item.id)">删除</button>
-              </div>
-            </div>
+              <template #right>
+                <van-button square type="primary" class="swipe-btn" text="编辑" @click="openMaterialEditor(item)" />
+                <van-button square type="danger" class="swipe-btn" text="删除" @click="removeMaterial(item.id)" />
+              </template>
+            </van-swipe-cell>
           </div>
         </template>
 
         <template v-else>
           <div class="products-list">
-            <div v-for="product in productsList" :key="product.id" class="product-row">
-              <div class="product-main">
-                <div class="product-title-row">
-                  <div class="product-title-block">
-                    <strong>{{ product.name }}</strong>
-                    <span class="product-status" :class="product.status">
-                      {{ product.status === "active" ? "正常" : "停产" }}
-                    </span>
+            <van-swipe-cell v-for="product in productsList" :key="product.id" class="manage-swipe-cell">
+              <div class="product-row">
+                <div class="product-main">
+                  <div class="product-title-row">
+                    <div class="product-title-block">
+                      <strong>{{ product.name }}</strong>
+                      <span class="product-status" :class="productStatusClass(product.status)">
+                        {{ product.status === "active" ? "正常" : "停产" }}
+                      </span>
+                    </div>
+                    <span class="product-count">可制 {{ craftableCountForProduct(product) }}</span>
                   </div>
-                  <span class="product-count">可制 {{ craftableCountForProduct(product) }}</span>
+                  <p>默认价格 ¥{{ product.defaultValue || 0 }}</p>
+                  <small>{{ recipePreview(product) }}</small>
                 </div>
-                <p>默认价格 ¥{{ product.defaultValue || 0 }}</p>
-                <small>{{ recipePreview(product) }}</small>
               </div>
-              <div class="manage-actions">
-                <button class="mini-action" @click="openProductEditor(product)">编辑</button>
-                <button class="mini-action danger" @click="removeProduct(product.id)">删除</button>
-              </div>
-            </div>
+              <template #right>
+                <van-button square type="primary" class="swipe-btn" text="编辑" @click="openProductEditor(product)" />
+                <van-button square type="danger" class="swipe-btn" text="删除" @click="removeProduct(product.id)" />
+              </template>
+            </van-swipe-cell>
           </div>
         </template>
       </div>
@@ -507,6 +523,7 @@ const router = useRouter();
 const headerSection = ref<HTMLElement | null>(null);
 const ordersSection = ref<HTMLElement | null>(null);
 const showScrollTop = ref(false);
+const ordersExpanded = ref(false);
 const data = ref([] as Material[]);
 const products = ref([] as Product[]);
 const calculation = ref(true);
@@ -673,6 +690,11 @@ const OrderData = computed(() => {
   return orderInfo.value.data;
 });
 
+const visibleOrders = computed(() => {
+  if (ordersExpanded.value || OrderData.value.length <= 15) return OrderData.value;
+  return OrderData.value.slice(0, 15);
+});
+
 const SumMoney = computed(() => {
   return (list: Order[]) => list.reduce((total, item) => total + Number(item.value), 0);
 });
@@ -734,9 +756,9 @@ function materialStatus(item: Material) {
 }
 
 function materialRelatedSummary(materialId: string) {
-  const list = relatedProducts(materialId);
-  if (!list.length) return "未关联货品";
-  return `关联 ${list.length} 个货品`;
+  const activeList = activeRelatedProducts(materialId);
+  if (!activeList.length) return "未关联货品";
+  return `关联 ${activeList.length} 个货品`;
 }
 
 function materialStatusText(item: Material) {
@@ -745,6 +767,14 @@ function materialStatusText(item: Material) {
   if (status === "warning") return `可制 ${materialCraftableCount(item.id)}`;
   if (!activeRelatedProducts(item.id).length) return "未关联";
   return `可制 ${materialCraftableCount(item.id)}`;
+}
+
+function materialStatusClass(item: Material) {
+  return `status-${materialStatus(item)}`;
+}
+
+function productStatusClass(status: Product["status"]) {
+  return `status-${status}`;
 }
 
 function recipePreview(product: Product) {
@@ -843,6 +873,7 @@ const importData = () => {
 
 const monthChange = (month: string) => {
   orderInfo.value.checkedMonth = orderInfo.value.checkedMonth === month ? "" : month;
+  ordersExpanded.value = false;
 };
 
 const setOrderDate = (date: string) => {
@@ -1529,12 +1560,12 @@ onUnmounted(() => {
   line-height: 1.2;
 }
 
-.warning-material-row strong.warning {
+.warning-material-row strong.status-warning {
   color: #af770d;
   background: #fff4dd;
 }
 
-.warning-material-row strong.danger {
+.warning-material-row strong.status-danger {
   color: #c6584c;
   background: #ffe9e6;
 }
@@ -1609,6 +1640,38 @@ onUnmounted(() => {
 .summary-cell :deep(.van-cell__value) {
   color: #1f6a79;
   font-weight: 700;
+}
+
+.summary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.summary-toggle {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7b8995;
+  font-size: 12px;
+}
+
+.summary-count {
+  color: #1f6a79;
+  font-weight: 700;
+}
+
+.orders-toggle-cell :deep(.van-cell__value) {
+  text-align: center;
+}
+
+.orders-toggle-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #7b8995;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .orders-panel :deep(.van-cell-group--inset) {
@@ -1984,15 +2047,17 @@ onUnmounted(() => {
   gap: 10px 12px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: #f8fbff;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(38, 56, 88, 0.04);
 }
 
-.material-row.warning {
-  background: #fff8ed;
+.manage-swipe-cell {
+  overflow: hidden;
+  border-radius: 10px;
 }
 
-.material-row.danger {
-  background: #fff1ef;
+.manage-swipe-cell :deep(.van-swipe-cell__wrapper) {
+  height: 100%;
 }
 
 .material-title-row {
@@ -2021,17 +2086,17 @@ onUnmounted(() => {
   flex: 0 0 auto;
 }
 
-.material-status.safe {
+.material-status.status-safe {
   color: #1a7a67;
   background: #eaf7f2;
 }
 
-.material-status.warning {
+.material-status.status-warning {
   color: #af770d;
   background: #fff4dd;
 }
 
-.material-status.danger {
+.material-status.status-danger {
   color: #c6584c;
   background: #ffe9e6;
 }
@@ -2133,12 +2198,12 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.product-status.active {
+.product-status.status-active {
   color: #1a7a67;
   background: #eaf7f2;
 }
 
-.product-status.inactive {
+.product-status.status-inactive {
   color: #a56700;
   background: #fff2d9;
 }
@@ -2176,7 +2241,7 @@ onUnmounted(() => {
 
 .recipe-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px 34px;
+  grid-template-columns: minmax(0, 1fr) 110px 48px;
   gap: 8px;
   align-items: center;
 }
@@ -2190,7 +2255,9 @@ onUnmounted(() => {
 .recipe-delete {
   width: 100%;
   height: 32px;
+  min-width: 48px;
   padding: 0;
+  border-radius: 10px;
 }
 
 .recipe-quantity :deep(.el-input-number) {
@@ -2255,7 +2322,7 @@ onUnmounted(() => {
   }
 
   .recipe-row {
-    grid-template-columns: minmax(0, 1fr) 96px 40px;
+    grid-template-columns: minmax(0, 1fr) 96px 48px;
   }
 }
 </style>
