@@ -162,7 +162,7 @@
         </div>
 
         <template v-if="materialsPopup.tab === 'materials'">
-          <div class="materials-list manage-list-scroll">
+          <div class="manage-list-scroll">
             <van-swipe-cell
               v-for="item in materialsList"
               :key="item.id"
@@ -202,7 +202,7 @@
         </template>
 
         <template v-else>
-          <div class="products-list manage-list-scroll">
+          <div class="manage-list-scroll">
             <van-swipe-cell v-for="product in productsList" :key="product.id" class="manage-swipe-cell">
               <div class="product-row">
                 <div class="product-main">
@@ -1720,7 +1720,7 @@ onUnmounted(() => {
 .manage-popup-body {
   display: flex;
   flex-direction: column;
-  height: 82vh;
+  height: 75vh;
   overflow: hidden;
 }
 
@@ -1729,11 +1729,12 @@ onUnmounted(() => {
 }
 
 .manage-list-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   flex: 1 1 auto;
   min-height: 0;
   padding-right: 2px;
-  align-content: start;
-  grid-auto-rows: max-content;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -2072,13 +2073,10 @@ onUnmounted(() => {
 }
 
 .manage-swipe-cell {
+  flex: 0 0 auto;
   overflow: hidden;
   border-radius: 10px;
   background: #f8fbff;
-}
-
-.manage-swipe-cell :deep(.van-swipe-cell__wrapper) {
-  height: 100%;
 }
 
 .material-title-row {
