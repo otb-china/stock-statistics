@@ -804,7 +804,7 @@ function materialGroupKey(item: Material): MaterialGroupKey {
 function materialRelatedSummary(materialId: string) {
   const activeList = activeRelatedProducts(materialId);
   if (!activeList.length) return "未关联货品";
-  return `关联 ${activeList.length} 个货品`;
+  return `关联 ${activeList.map((product) => product.name).join("、")}`;
 }
 
 function materialStatusText(item: Material) {
