@@ -163,41 +163,59 @@
 
         <template v-if="materialsPopup.tab === 'materials'">
           <div class="manage-list-scroll">
-            <van-swipe-cell
-              v-for="item in materialsList"
-              :key="item.id"
-              class="manage-swipe-cell"
+            <section
+              v-for="group in materialManageGroups"
+              :key="group.key"
+              class="material-group"
+              :class="{ collapsed: group.collapsed }"
             >
-              <div
-                class="material-row"
-                :class="materialStatusClass(item)"
+              <button
+                class="material-group-head"
+                type="button"
+                @click="toggleMaterialGroup(group.key)"
               >
-                <div class="material-info">
-                  <div class="material-title-row">
-                    <strong>{{ item.name }}</strong>
-                    <span class="material-status" :class="materialStatusClass(item)">
-                      {{ materialStatusText(item) }}
-                    </span>
-                  </div>
-                  <small>{{ materialRelatedSummary(item.id) }}</small>
-                </div>
+                <span>{{ group.title }}</span>
+                <small>{{ group.items.length }}项</small>
+              </button>
 
-                <div class="material-metrics">
-                  <div class="material-metric">
-                    <span>{{ item.num }}</span>
-                    <small>库存</small>
+              <div v-if="!group.collapsed" class="material-group-list">
+                <van-swipe-cell
+                  v-for="item in group.items"
+                  :key="item.id"
+                  class="manage-swipe-cell"
+                >
+                  <div
+                    class="material-row"
+                    :class="materialStatusClass(item)"
+                  >
+                    <div class="material-info">
+                      <div class="material-title-row">
+                        <strong>{{ item.name }}</strong>
+                        <span class="material-status" :class="materialStatusClass(item)">
+                          {{ materialStatusText(item) }}
+                        </span>
+                      </div>
+                      <small>{{ materialRelatedSummary(item.id) }}</small>
+                    </div>
+
+                    <div class="material-metrics">
+                      <div class="material-metric">
+                        <span>{{ item.num }}</span>
+                        <small>库存</small>
+                      </div>
+                      <div class="material-metric">
+                        <strong>{{ materialCraftableCount(item.id) }}</strong>
+                        <small>可制</small>
+                      </div>
+                    </div>
                   </div>
-                  <div class="material-metric">
-                    <strong>{{ materialCraftableCount(item.id) }}</strong>
-                    <small>可制</small>
-                  </div>
-                </div>
+                  <template #right>
+                    <van-button square type="primary" class="swipe-btn" text="编辑" @click="openMaterialEditor(item)" />
+                    <van-button square type="danger" class="swipe-btn" text="删除" @click="removeMaterial(item.id)" />
+                  </template>
+                </van-swipe-cell>
               </div>
-              <template #right>
-                <van-button square type="primary" class="swipe-btn" text="编辑" @click="openMaterialEditor(item)" />
-                <van-button square type="danger" class="swipe-btn" text="删除" @click="removeMaterial(item.id)" />
-              </template>
-            </van-swipe-cell>
+            </section>
           </div>
         </template>
 
@@ -477,6 +495,7 @@ import { useRouter } from "vue-router";
 import { Delete, Download, Plus, Setting, SwitchButton, Top, Upload } from "@element-plus/icons-vue";
 
 type ManageTab = "materials" | "products";
+type MaterialGroupKey = "danger" | "warning" | "safe" | "unlinked";
 
 interface Material extends RSA {
   id: string;
@@ -530,6 +549,12 @@ const settingsPopup = ref(false);
 const materialsPopup = ref({
   show: false,
   tab: "materials" as ManageTab,
+});
+const materialGroupCollapsed = ref<Record<MaterialGroupKey, boolean>>({
+  danger: false,
+  warning: false,
+  safe: false,
+  unlinked: true,
 });
 const importExportInfo = ref({
   show: false,
@@ -634,16 +659,33 @@ const activeProducts = computed(() => {
 
 const materialsList = computed(() => {
   return [...data.value].sort((a, b) => {
-    const rank = { danger: 0, warning: 1, safe: 2 };
-    const statusDiff = rank[materialStatus(a)] - rank[materialStatus(b)];
+    const rank: Record<MaterialGroupKey, number> = { danger: 0, warning: 1, safe: 2, unlinked: 3 };
+    const statusDiff = rank[materialGroupKey(a)] - rank[materialGroupKey(b)];
     if (statusDiff !== 0) return statusDiff;
     return a.name.localeCompare(b.name);
   });
 });
 
+const materialManageGroups = computed(() => {
+  const groupMeta = [
+    { key: "danger" as const, title: "缺货" },
+    { key: "warning" as const, title: "预警" },
+    { key: "safe" as const, title: "正常" },
+    { key: "unlinked" as const, title: "未关联" },
+  ];
+
+  return groupMeta
+    .map((group) => ({
+      ...group,
+      collapsed: materialGroupCollapsed.value[group.key],
+      items: materialsList.value.filter((item) => materialGroupKey(item) === group.key),
+    }))
+    .filter((group) => group.items.length > 0);
+});
+
 const materialsSummary = computed(() => {
-  const warningKinds = data.value.filter((item) => materialStatus(item) === "warning").length;
-  const dangerKinds = data.value.filter((item) => materialStatus(item) === "danger").length;
+  const warningKinds = data.value.filter((item) => materialGroupKey(item) === "warning").length;
+  const dangerKinds = data.value.filter((item) => materialGroupKey(item) === "danger").length;
   const footer = [] as string[];
   if (warningKinds > 0) footer.push(`预警 ${warningKinds}`);
   if (dangerKinds > 0) footer.push(`缺货 ${dangerKinds}`);
@@ -676,7 +718,7 @@ const craftableProducts = computed(() => {
 
 const warningMaterials = computed(() => {
   return materialsList.value.filter((item) => {
-    const status = materialStatus(item);
+    const status = materialGroupKey(item);
     return status === "warning" || status === "danger";
   });
 });
@@ -754,6 +796,11 @@ function materialStatus(item: Material) {
   return "safe";
 }
 
+function materialGroupKey(item: Material): MaterialGroupKey {
+  if (!activeRelatedProducts(item.id).length) return "unlinked";
+  return materialStatus(item);
+}
+
 function materialRelatedSummary(materialId: string) {
   const activeList = activeRelatedProducts(materialId);
   if (!activeList.length) return "未关联货品";
@@ -761,19 +808,23 @@ function materialRelatedSummary(materialId: string) {
 }
 
 function materialStatusText(item: Material) {
-  const status = materialStatus(item);
+  const status = materialGroupKey(item);
+  if (status === "unlinked") return "未关联";
   if (status === "danger") return "缺货";
   if (status === "warning") return `可制 ${materialCraftableCount(item.id)}`;
-  if (!activeRelatedProducts(item.id).length) return "未关联";
   return `可制 ${materialCraftableCount(item.id)}`;
 }
 
 function materialStatusClass(item: Material) {
-  return `status-${materialStatus(item)}`;
+  return `status-${materialGroupKey(item)}`;
 }
 
 function productStatusClass(status: Product["status"]) {
   return `status-${status}`;
+}
+
+function toggleMaterialGroup(key: MaterialGroupKey) {
+  materialGroupCollapsed.value[key] = !materialGroupCollapsed.value[key];
 }
 
 function recipePreview(product: Product) {
@@ -2025,6 +2076,50 @@ onUnmounted(() => {
   background: #f8fbff;
 }
 
+.material-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.material-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: #203747;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.material-group-head::after {
+  content: "收起";
+  color: #8a98a6;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.material-group.collapsed .material-group-head::after {
+  content: "展开";
+}
+
+.material-group-head small {
+  margin-left: auto;
+  color: #75828e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.material-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .manage-swipe-cell {
   flex: 0 0 auto;
   overflow: hidden;
@@ -2071,6 +2166,11 @@ onUnmounted(() => {
 .material-status.status-danger {
   color: #c6584c;
   background: #ffe9e6;
+}
+
+.material-status.status-unlinked {
+  color: #607180;
+  background: #eef3f8;
 }
 
 .material-info small,
