@@ -831,7 +831,7 @@ function recipePreview(product: Product) {
   if (!product.recipe.length) return "未配置备料";
   return product.recipe
     .map((item) => `${materialsMap.value.get(item.materialId)?.name || "未知备料"} x${item.quantity}`)
-    .join(" / ");
+    .join("、");
 }
 
 const scrollToTop = () => {
@@ -2180,6 +2180,11 @@ onUnmounted(() => {
   margin-top: 4px;
   font-size: 12px;
   color: #75828e;
+}
+
+.product-main small {
+  text-align: justify;
+  text-justify: inter-ideograph;
 }
 
 .material-metrics {

@@ -4,12 +4,19 @@ html {
   padding: 0;
   height: 100%;
   width: 100%;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+* {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
 body::-webkit-scrollbar,
-html::-webkit-scrollbar {
+html::-webkit-scrollbar,
+*::-webkit-scrollbar {
   width: 0;
   height: 0;
   display: none;
