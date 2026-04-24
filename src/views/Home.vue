@@ -1774,6 +1774,14 @@ onUnmounted(() => {
   padding: 18px 16px 22px;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.popup-body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .manage-popup-body {
@@ -1796,6 +1804,14 @@ onUnmounted(() => {
   padding-right: 2px;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.manage-list-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .manage-tabs {
