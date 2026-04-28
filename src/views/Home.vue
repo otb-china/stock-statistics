@@ -12,9 +12,6 @@
         <button class="header-icon" type="button" @click="settingsPopup = true">
           <el-icon><Setting /></el-icon>
         </button>
-        <button class="header-icon danger" type="button" @click="loginOut">
-          <el-icon><SwitchButton /></el-icon>
-        </button>
       </div>
     </header>
 
@@ -28,7 +25,7 @@
       <div class="hero-stats">
         <button class="stat-item income stat-button" type="button" @click="scrollToOrders">
           <span class="MB8">收入</span>
-          <strong>¥{{ SumMoney(orderInfo.data) }}</strong>
+          <strong>¥{{ orderTotal }}</strong>
           <small class="MT8 align-right">共 {{ orderInfo.data.length }} 单</small>
         </button>
         <button class="stat-item stat-button materials-stat" type="button" @click="openMaterialsPopup('materials')">
@@ -143,13 +140,7 @@
         <div class="popup-head MB12">
           <div>
             <h3>{{ materialsPopup.tab === "materials" ? "备料管理" : "货品管理" }}</h3>
-            <p>
-              {{
-                materialsPopup.tab === "materials"
-                  ? "管理库存数量和预警状态。"
-                  : "管理货品配方、价格和消耗规则。"
-              }}
-            </p>
+            <p>{{ materialsPopupDescription }}</p>
           </div>
           <button
             class="popup-create-btn"
@@ -157,7 +148,7 @@
             @click="materialsPopup.tab === 'materials' ? openMaterialEditor() : openProductEditor()"
           >
             <el-icon><Plus /></el-icon>
-            <span>{{ materialsPopup.tab === "materials" ? "新增备料" : "新增货品" }}</span>
+            <span>{{ materialsPopupCreateText }}</span>
           </button>
         </div>
 
@@ -361,7 +352,7 @@
             </span>
             <span>
               <strong>导出总数据</strong>
-              <em>复制备料、货品和订单完整 JSON</em>
+              <em>下载备料、货品和订单备份文件</em>
             </span>
           </button>
 
@@ -371,7 +362,17 @@
             </span>
             <span>
               <strong>导入总数据</strong>
-              <em>粘贴完整 JSON 后恢复全部数据</em>
+              <em>上传备份文件后恢复全部数据</em>
+            </span>
+          </button>
+
+          <button class="settings-item settings-item-feature danger" @click="resetAllData">
+            <span class="settings-item-icon">
+              <el-icon><Delete /></el-icon>
+            </span>
+            <span>
+              <strong>重置数据</strong>
+              <em>清除备料、货品和订单全部数据</em>
             </span>
           </button>
         </div>
@@ -384,23 +385,34 @@
           <div>
             <p class="section-tag">Data</p>
             <h3>导入总数据</h3>
-            <p>粘贴导出的完整 JSON，会同时覆盖备料、货品和订单。</p>
+            <p>选择导出的备份文件，会同时覆盖备料、货品和订单。</p>
           </div>
         </div>
 
-        <div class="import-export-card">
+        <div v-if="hasImportOverwriteData" class="import-export-card">
           <div>
-            <strong>完整备份</strong>
+            <strong>当前数据</strong>
             <span>{{ importExportSummary }}</span>
           </div>
         </div>
 
-        <el-input
-          v-model="importInfo.dataStr"
-          placeholder="粘贴总数据 JSON，提交后会覆盖当前数据"
-          :rows="7"
-          type="textarea"
+        <input
+          ref="importFileInput"
+          class="file-input"
+          type="file"
+          accept="application/json,.json"
+          @change="onImportFileChange"
         />
+
+        <button class="file-upload-card" type="button" @click="selectImportFile">
+          <span class="settings-item-icon">
+            <el-icon><Upload /></el-icon>
+          </span>
+          <span>
+            <strong>{{ importInfo.fileName || "选择备份文件" }}</strong>
+            <em>{{ importInfo.dataStr ? "文件已读取，点击下方按钮导入" : "支持导出的 .json 备份文件" }}</em>
+          </span>
+        </button>
 
         <el-button
           type="primary"
@@ -426,7 +438,7 @@
 
         <div class="order-product-list">
           <button
-            v-for="product in products.filter((item) => item.status === 'active')"
+            v-for="product in activeOrderProducts"
             :key="product.id"
             class="order-product-card"
             :class="{ active: orderInfo.form.title === product.name }"
@@ -491,11 +503,12 @@ import DatePicker from "@/components/Date.vue";
 import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
 import { sort } from "otb-toolkit/src/utils/data.ts";
-import { useRouter } from "vue-router";
-import { Delete, Download, Plus, Setting, SwitchButton, Top, Upload } from "@element-plus/icons-vue";
+import { Delete, Download, Plus, Setting, Top, Upload } from "@element-plus/icons-vue";
 
 type ManageTab = "materials" | "products";
 type MaterialGroupKey = "danger" | "warning" | "safe" | "unlinked";
+type EditorType = "add" | "edit";
+type OrderEditorType = "add" | "upd";
 
 interface Material extends RSA {
   id: string;
@@ -537,12 +550,64 @@ interface BackupData extends RSA {
   orderData?: RSA[];
 }
 
-const router = useRouter();
+interface ResolvedBackupData {
+  materials: RSA[];
+  products: RSA[];
+  orders: RSA[];
+}
+
+const DATE_FORMAT = "YYYY-MM-DD";
+const SCROLL_TOP_THRESHOLD = 240;
+const TOP_SCROLL_GAP = 10;
+const ORDER_PREVIEW_LIMIT = 10;
+
+const MATERIAL_GROUP_META = [
+  { key: "danger", title: "缺货" },
+  { key: "warning", title: "预警" },
+  { key: "safe", title: "正常" },
+  { key: "unlinked", title: "未关联" },
+] as const satisfies { key: MaterialGroupKey; title: string }[];
+
+const MATERIAL_GROUP_RANK: Record<MaterialGroupKey, number> = {
+  danger: 0,
+  warning: 1,
+  safe: 2,
+  unlinked: 3,
+};
+
+function createEmptyMaterialForm(): Material {
+  return {
+    id: "",
+    name: "",
+    num: 0,
+  };
+}
+
+function createEmptyProductForm(): Product {
+  return {
+    id: "",
+    name: "",
+    defaultValue: 0,
+    status: "active",
+    recipe: [],
+  };
+}
+
+function createEmptyOrderForm(): Order {
+  return {
+    id: "",
+    title: "",
+    value: 0,
+    orderDate: "",
+  };
+}
+
 const headerSection = ref<HTMLElement | null>(null);
 const ordersSection = ref<HTMLElement | null>(null);
+const importFileInput = ref<HTMLInputElement | null>(null);
 const showScrollTop = ref(false);
 const ordersExpanded = ref(false);
-const orderPreviewLimit = 10;
+const orderPreviewLimit = ORDER_PREVIEW_LIMIT;
 const data = ref([] as Material[]);
 const products = ref([] as Product[]);
 const calculation = ref(true);
@@ -562,31 +627,23 @@ const importExportInfo = ref({
 });
 const importInfo = ref({
   dataStr: "",
+  fileName: "",
 });
 const materialEditor = ref({
   show: false,
-  type: "add" as "add" | "edit",
-  form: {
-    id: "",
-    name: "",
-    num: 0,
-  } as Material,
+  type: "add" as EditorType,
+  form: createEmptyMaterialForm(),
 });
 const productEditor = ref({
   show: false,
-  type: "add" as "add" | "edit",
-  form: {
-    id: "",
-    name: "",
-    defaultValue: 0,
-    recipe: [] as ProductRecipe[],
-  } as Product,
+  type: "add" as EditorType,
+  form: createEmptyProductForm(),
 });
 
 const orderInfo = ref({
-  type: "add" as "add" | "upd",
+  type: "add" as OrderEditorType,
   show: false,
-  form: {} as Order,
+  form: createEmptyOrderForm(),
   data: [] as Order[],
   monthData: [] as OrderMonth[],
   editingId: "",
@@ -660,22 +717,14 @@ const activeProducts = computed(() => {
 
 const materialsList = computed(() => {
   return [...data.value].sort((a, b) => {
-    const rank: Record<MaterialGroupKey, number> = { danger: 0, warning: 1, safe: 2, unlinked: 3 };
-    const statusDiff = rank[materialGroupKey(a)] - rank[materialGroupKey(b)];
+    const statusDiff = MATERIAL_GROUP_RANK[materialGroupKey(a)] - MATERIAL_GROUP_RANK[materialGroupKey(b)];
     if (statusDiff !== 0) return statusDiff;
     return a.name.localeCompare(b.name);
   });
 });
 
 const materialManageGroups = computed(() => {
-  const groupMeta = [
-    { key: "danger" as const, title: "缺货" },
-    { key: "warning" as const, title: "预警" },
-    { key: "safe" as const, title: "正常" },
-    { key: "unlinked" as const, title: "未关联" },
-  ];
-
-  return groupMeta
+  return MATERIAL_GROUP_META
     .map((group) => ({
       ...group,
       collapsed: materialGroupCollapsed.value[group.key],
@@ -685,8 +734,9 @@ const materialManageGroups = computed(() => {
 });
 
 const materialsSummary = computed(() => {
-  const warningKinds = data.value.filter((item) => materialGroupKey(item) === "warning").length;
-  const dangerKinds = data.value.filter((item) => materialGroupKey(item) === "danger").length;
+  const statusCount = countMaterialsByGroup();
+  const warningKinds = statusCount.warning;
+  const dangerKinds = statusCount.danger;
   const footer = [] as string[];
   if (warningKinds > 0) footer.push(`预警 ${warningKinds}`);
   if (dangerKinds > 0) footer.push(`缺货 ${dangerKinds}`);
@@ -699,8 +749,8 @@ const materialsSummary = computed(() => {
 });
 
 const productsSummary = computed(() => {
-  const activeCount = products.value.filter((item) => item.status === "active").length;
-  const inactiveCount = products.value.filter((item) => item.status === "inactive").length;
+  const activeCount = activeProducts.value.length;
+  const inactiveCount = products.value.length - activeCount;
   const footer = [] as string[];
   if (activeCount > 0) footer.push(`正常 ${activeCount}`);
   if (inactiveCount > 0) footer.push(`停产 ${inactiveCount}`);
@@ -739,11 +789,11 @@ const visibleOrders = computed(() => {
 
 const collapsedOrdersCount = computed(() => Math.max(0, OrderData.value.length - orderPreviewLimit));
 
-const SumMoney = computed(() => {
-  return (list: Order[]) => list.reduce((total, item) => total + Number(item.value), 0);
-});
+const orderTotal = computed(() => sumOrderValue(orderInfo.value.data));
 
 const selectedOrderProduct = computed(() => productByName(orderInfo.value.form.title));
+
+const activeOrderProducts = computed(() => activeProducts.value);
 
 const canSyncCalculation = computed(() => {
   const product = selectedOrderProduct.value;
@@ -752,8 +802,38 @@ const canSyncCalculation = computed(() => {
 });
 
 const importExportSummary = computed(() => {
-  return `${data.value.length} 项备料 · ${products.value.length} 个货品 · ${orderInfo.value.data.length} 条订单`;
+  return `导入后将覆盖 ${data.value.length} 项备料 · ${products.value.length} 个货品 · ${orderInfo.value.data.length} 条订单`;
 });
+
+const hasImportOverwriteData = computed(() => {
+  return data.value.length > 0 || products.value.length > 0 || orderInfo.value.data.length > 0;
+});
+
+const materialsPopupDescription = computed(() => {
+  return materialsPopup.value.tab === "materials"
+    ? "管理库存数量和预警状态。"
+    : "管理货品配方、价格和消耗规则。";
+});
+
+const materialsPopupCreateText = computed(() => {
+  return materialsPopup.value.tab === "materials" ? "新增备料" : "新增货品";
+});
+
+function countMaterialsByGroup() {
+  return data.value.reduce<Record<MaterialGroupKey, number>>((result, item) => {
+    result[materialGroupKey(item)] += 1;
+    return result;
+  }, {
+    danger: 0,
+    warning: 0,
+    safe: 0,
+    unlinked: 0,
+  });
+}
+
+function sumOrderValue(list: Order[]) {
+  return list.reduce((total, item) => total + Number(item.value), 0);
+}
 
 function productByName(name: string) {
   return products.value.find((item) => item.name === name);
@@ -767,10 +847,6 @@ function craftableCountForProduct(product: Product) {
     return Math.floor(Number(material.num || 0) / Number(recipe.quantity));
   });
   return Math.min(...counts);
-}
-
-function relatedProducts(materialId: string) {
-  return products.value.filter((product) => product.recipe.some((item) => item.materialId === materialId));
 }
 
 function activeRelatedProducts(materialId: string) {
@@ -845,28 +921,15 @@ const scrollToTop = () => {
 };
 
 const updateScrollTopVisibility = () => {
-  showScrollTop.value = window.scrollY > 240;
+  showScrollTop.value = window.scrollY > SCROLL_TOP_THRESHOLD;
 };
 
 const scrollToOrders = () => {
   if (!ordersSection.value) return;
   const headerHeight = headerSection.value?.offsetHeight || 0;
-  const topGap = 10;
   window.scrollTo({
-    top: Math.max(0, ordersSection.value.getBoundingClientRect().top + window.scrollY - headerHeight - topGap),
+    top: Math.max(0, ordersSection.value.getBoundingClientRect().top + window.scrollY - headerHeight - TOP_SCROLL_GAP),
     behavior: "smooth",
-  });
-};
-
-const loginOut = () => {
-  showConfirmDialog({
-    title: "提示",
-    message: "确认退出吗？",
-    width: "250px",
-  }).then(() => {
-    LStorage.token.remove();
-    router.push("/login");
-  }).catch(() => {
   });
 };
 
@@ -878,6 +941,10 @@ const openMaterialsPopup = (tab: ManageTab = "materials") => {
 const openImportExport = () => {
   settingsPopup.value = false;
   importInfo.value.dataStr = "";
+  importInfo.value.fileName = "";
+  if (importFileInput.value) {
+    importFileInput.value.value = "";
+  }
   importExportInfo.value.show = true;
 };
 
@@ -888,8 +955,68 @@ const createBackupData = () => ({
 });
 
 const exportAllData = () => {
-  copy(createBackupData(), "总");
+  const backupText = JSON.stringify(createBackupData(), null, 2);
+  const blob = new Blob([backupText], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const downloadLink = document.createElement("a");
+  downloadLink.href = url;
+  downloadLink.download = `stock-statistics-backup-${dayjs(new Date()).format(DATE_FORMAT)}.json`;
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  document.body.removeChild(downloadLink);
+  URL.revokeObjectURL(url);
   settingsPopup.value = false;
+  showToast("备份文件已导出");
+};
+
+const selectImportFile = () => {
+  importFileInput.value?.click();
+};
+
+const onImportFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  importInfo.value.dataStr = "";
+  importInfo.value.fileName = "";
+
+  if (!file) return;
+
+  const isJsonFile = file.type === "application/json" || file.name.toLowerCase().endsWith(".json");
+  if (!isJsonFile) {
+    showToast("请选择 JSON 备份文件");
+    input.value = "";
+    return;
+  }
+
+  try {
+    importInfo.value.dataStr = await file.text();
+    importInfo.value.fileName = file.name;
+    showToast("备份文件已读取");
+  } catch {
+    showToast("文件读取失败");
+    input.value = "";
+  }
+};
+
+const resetAllData = () => {
+  showConfirmDialog({
+    title: "提示",
+    message: "确认清除所有备料、货品和订单数据吗？",
+    width: "250px",
+  }).then(() => {
+    data.value = [];
+    products.value = [];
+    orderInfo.value.data = [];
+    orderInfo.value.monthData = [];
+    orderInfo.value.checkedMonth = "";
+    ordersExpanded.value = false;
+    LStorage.data.setter([]);
+    LStorage.productData.setter([]);
+    LStorage.orderData.setter([]);
+    settingsPopup.value = false;
+    showToast("数据已重置");
+  }).catch(() => {
+  });
 };
 
 const resolveBackupList = (parsedData: BackupData, primaryKey: keyof BackupData, legacyKey: keyof BackupData) => {
@@ -900,27 +1027,62 @@ const resolveBackupList = (parsedData: BackupData, primaryKey: keyof BackupData,
   return null;
 };
 
+const resolveBackupData = (parsedData: BackupData): ResolvedBackupData => {
+  const materials = resolveBackupList(parsedData, "materials", "data");
+  const products = resolveBackupList(parsedData, "products", "productData");
+  const orders = resolveBackupList(parsedData, "orders", "orderData");
+
+  if (!materials || !products || !orders) {
+    throw new Error("备份数据不完整");
+  }
+
+  return { materials, products, orders };
+};
+
+const assertValidBackupData = ({ materials, products, orders }: ResolvedBackupData) => {
+  const normalizedMaterials = normalizeMaterials(materials);
+  const normalizedProducts = normalizeProducts(products);
+  const normalizedOrders = normalizeOrders(orders);
+
+  if (
+    normalizedMaterials.length !== materials.length
+    || normalizedProducts.length !== products.length
+    || normalizedOrders.length !== orders.length
+  ) {
+    throw new Error("备份字段不完整");
+  }
+
+  const materialIds = new Set(normalizedMaterials.map((item) => item.id));
+  const hasInvalidRecipe = normalizedProducts.some((product) => {
+    return product.recipe.some((recipe) => !materialIds.has(recipe.materialId));
+  });
+
+  if (hasInvalidRecipe) {
+    throw new Error("货品配方引用了不存在的备料");
+  }
+};
+
 const importData = () => {
   try {
     const parsedData = JSON.parse(importInfo.value.dataStr) as BackupData;
     if (!parsedData || typeof parsedData !== "object" || Array.isArray(parsedData)) {
       throw new Error("Invalid backup data");
     }
-    const materials = resolveBackupList(parsedData, "materials", "data");
-    const products = resolveBackupList(parsedData, "products", "productData");
-    const orders = resolveBackupList(parsedData, "orders", "orderData");
-    if (!materials || !products || !orders) {
-      throw new Error("Incomplete backup data");
-    }
+    const { materials, products, orders } = resolveBackupData(parsedData);
+    assertValidBackupData({ materials, products, orders });
     LStorage.data.setter(materials);
     LStorage.productData.setter(products);
     LStorage.orderData.setter(orders);
     init();
     importExportInfo.value.show = false;
     importInfo.value.dataStr = "";
+    importInfo.value.fileName = "";
+    if (importFileInput.value) {
+      importFileInput.value.value = "";
+    }
     showToast("总数据导入成功");
   } catch {
-    showToast("导入失败，请检查 JSON 格式");
+    showToast("导入失败，请检查备份文件");
   }
 };
 
@@ -931,11 +1093,6 @@ const monthChange = (month: string) => {
 
 const setOrderDate = (date: string) => {
   orderInfo.value.form.orderDate = date;
-};
-
-const copy = (content: unknown, name: string) => {
-  navigator.clipboard.writeText(JSON.stringify(content));
-  showToast(`${name}数据复制成功`);
 };
 
 const initOrderMonthData = () => {
@@ -964,24 +1121,24 @@ const onProductChange = (productName: string) => {
     calculation.value = craftableCountForProduct(product) > 0;
   }
   if (!orderInfo.value.form.orderDate) {
-    orderInfo.value.form.orderDate = dayjs(new Date()).format("YYYY-MM-DD");
+    orderInfo.value.form.orderDate = dayjs(new Date()).format(DATE_FORMAT);
   }
 };
 
 const openCreateOrder = () => {
-  const activeProducts = products.value.filter((item) => item.status === "active");
-  if (!activeProducts.length) {
+  const availableProducts = activeProducts.value;
+  if (!availableProducts.length) {
     showToast("请先配置正常状态的货品");
     openMaterialsPopup("products");
     return;
   }
-  const firstProduct = activeProducts[0];
+  const firstProduct = availableProducts[0];
   orderInfo.value.type = "add";
   orderInfo.value.form = {
     id: "",
     title: firstProduct.name,
     value: firstProduct.defaultValue || 0,
-    orderDate: dayjs(new Date()).format("YYYY-MM-DD"),
+    orderDate: dayjs(new Date()).format(DATE_FORMAT),
   };
   calculation.value = true;
   orderInfo.value.show = true;
@@ -1020,7 +1177,7 @@ const orderSubmit = () => {
 
   orderInfo.value.show = false;
   LStorage.orderData.setter(orderInfo.value.data);
-  orderInfo.value.form = {} as Order;
+  orderInfo.value.form = createEmptyOrderForm();
   initOrderMonthData();
 };
 
@@ -1051,11 +1208,7 @@ const openMaterialEditor = (item?: Material) => {
   materialEditor.value.type = item ? "edit" : "add";
   materialEditor.value.form = item
     ? { ...item }
-    : {
-      id: "",
-      name: "",
-      num: 0,
-    };
+    : createEmptyMaterialForm();
   materialEditor.value.show = true;
 };
 
@@ -1117,13 +1270,7 @@ const openProductEditor = (product?: Product) => {
       ...product,
       recipe: product.recipe.map((item) => ({ ...item })),
     }
-    : {
-      id: "",
-      name: "",
-      defaultValue: 0,
-      status: "active",
-      recipe: [],
-    };
+    : createEmptyProductForm();
   productEditor.value.show = true;
 };
 
@@ -1209,7 +1356,7 @@ const submitProductEditor = () => {
     return;
   }
 
-  const productPayload = {
+  const productPayload: Product = {
     id: productEditor.value.form.id || createId("product"),
     name,
     defaultValue: Number(productEditor.value.form.defaultValue || 0),
@@ -1242,7 +1389,7 @@ const removeProduct = (id: string) => {
   });
 };
 
-const normalizeMaterials = (list: RSA[] | undefined) => {
+const normalizeMaterials = (list: RSA[] | undefined): Material[] => {
   const source = Array.isArray(list) ? list : [];
   return source.map((item) => ({
     id: String(item.id || legacyMaterialId(String(item.name || ""))),
@@ -1263,7 +1410,7 @@ const seedMissingMaterials = () => {
   });
 };
 
-const buildDefaultProducts = () => {
+const buildDefaultProducts = (): Product[] => {
   return defaultProductConfigs.map((product) => ({
     id: createId("product"),
     name: product.name,
@@ -1276,25 +1423,28 @@ const buildDefaultProducts = () => {
   }));
 };
 
-const normalizeProducts = (list: RSA[] | undefined) => {
+const normalizeProducts = (list: RSA[] | undefined): Product[] => {
   const source = Array.isArray(list) ? list : [];
-  return source.map((item) => ({
-    id: String(item.id || createId("product")),
-    name: String(item.name || ""),
-    defaultValue: Number(item.defaultValue || item.value || 0),
-    status: item.status === "inactive" ? "inactive" : "active",
-    recipe: Array.isArray(item.recipe)
-      ? item.recipe
-        .map((recipe: RSA) => ({
-          materialId: String(recipe.materialId || ""),
-          quantity: Number(recipe.quantity || 1),
-        }))
-        .filter((recipe) => recipe.materialId)
-      : [],
-  })).filter((item) => item.name);
+  return source.map((item): Product => {
+    const status: Product["status"] = item.status === "inactive" ? "inactive" : "active";
+    return {
+      id: String(item.id || createId("product")),
+      name: String(item.name || ""),
+      defaultValue: Number(item.defaultValue || item.value || 0),
+      status,
+      recipe: Array.isArray(item.recipe)
+        ? item.recipe
+          .map((recipe: RSA): ProductRecipe => ({
+            materialId: String(recipe.materialId || ""),
+            quantity: Number(recipe.quantity || 1),
+          }))
+          .filter((recipe) => recipe.materialId)
+        : [],
+    };
+  }).filter((item) => item.name);
 };
 
-const normalizeOrders = (list: RSA[] | undefined) => {
+const normalizeOrders = (list: RSA[] | undefined): Order[] => {
   const source = Array.isArray(list) ? list : [];
   return sort(source.map((item) => ({
     id: String(item.id || createId("order")),
@@ -1305,11 +1455,15 @@ const normalizeOrders = (list: RSA[] | undefined) => {
 };
 
 const init = () => {
-  data.value = normalizeMaterials(LStorage.data.getter());
-  seedMissingMaterials();
+  const storedMaterials = LStorage.data.getter();
+  data.value = normalizeMaterials(storedMaterials);
+  if (!Array.isArray(storedMaterials)) {
+    seedMissingMaterials();
+  }
 
-  const storedProducts = normalizeProducts(LStorage.productData.getter());
-  products.value = storedProducts.length ? storedProducts : buildDefaultProducts();
+  const rawStoredProducts = LStorage.productData.getter();
+  const storedProducts = normalizeProducts(rawStoredProducts);
+  products.value = Array.isArray(rawStoredProducts) ? storedProducts : buildDefaultProducts();
 
   orderInfo.value.data = normalizeOrders(LStorage.orderData.getter());
   initOrderMonthData();
@@ -1871,6 +2025,10 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #eff8f7 0%, #f7f9fc 58%, #fff5ea 100%);
 }
 
+.settings-item-feature.danger {
+  background: linear-gradient(135deg, #fff3f1 0%, #f7f9fc 58%, #fff8ee 100%);
+}
+
 .settings-item-icon {
   display: inline-flex !important;
   align-items: center;
@@ -1882,6 +2040,53 @@ onUnmounted(() => {
   background: #ffffff;
   color: #1f6b7b;
   box-shadow: 0 8px 18px rgba(31, 107, 123, 0.1);
+}
+
+.settings-item-feature.danger .settings-item-icon {
+  color: #d05f52;
+  box-shadow: 0 8px 18px rgba(208, 95, 82, 0.12);
+}
+
+.file-input {
+  display: none;
+}
+
+.file-upload-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed #c9d8e8;
+  border-radius: 12px;
+  background: #f7f9fc;
+  text-align: left;
+}
+
+.file-upload-card > span:last-child {
+  min-width: 0;
+}
+
+.file-upload-card strong,
+.file-upload-card em {
+  display: block;
+}
+
+.file-upload-card strong {
+  color: #203747;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-upload-card em {
+  margin-top: 4px;
+  color: #7b8995;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
 }
 
 .settings-item strong,
