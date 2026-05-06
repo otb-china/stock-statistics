@@ -52,7 +52,7 @@
             <strong>可制 {{ craftableCountForProduct(product) }}</strong>
           </div>
         </div>
-        <div v-else class="craftable-empty">当前没有正常状态的货品</div>
+        <div v-else class="craftable-empty">当前没有可制作的正常货品</div>
       </div>
 
       <div class="craftable-card warning-materials-card">
@@ -229,7 +229,7 @@
                     </div>
                     <span class="product-count">可制 {{ craftableCountForProduct(product) }}</span>
                   </div>
-                  <p>默认价格 ¥{{ product.defaultValue || 0 }}</p>
+                  <p>收入金额 ¥{{ product.defaultValue || 0 }}</p>
                   <small>{{ recipePreview(product) }}</small>
                 </div>
               </div>
@@ -281,7 +281,7 @@
           </label>
 
           <label class="editor-field">
-            <span>默认价格</span>
+            <span>收入金额</span>
             <el-input-number
               v-model="productEditor.form.defaultValue"
               :min="0"
@@ -432,7 +432,7 @@
           <div>
             <p class="section-tag">Order</p>
             <h3>{{ orderInfo.type === "add" ? "新增订单" : "编辑订单" }}</h3>
-            <p>{{ orderInfo.type === "add" ? "选择货品后会自动带出默认价格。" : "调整订单信息后保存。" }}</p>
+            <p>{{ orderInfo.type === "add" ? "选择货品后会自动带出收入金额。" : "调整订单信息后保存。" }}</p>
           </div>
         </div>
 
