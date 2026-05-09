@@ -257,8 +257,17 @@
           </div>
         </div>
 
-        <el-input v-model="materialEditor.form.name" placeholder="备料名称" />
-        <el-input-number v-model="materialEditor.form.num" :min="0" :max="100000" class="editor-number MT15 W100" />
+        <div class="editor-card material-editor-card">
+          <label class="editor-field">
+            <span>备料名称</span>
+            <el-input v-model="materialEditor.form.name" placeholder="备料名称" />
+          </label>
+
+          <label class="editor-field">
+            <span>库存数量</span>
+            <el-input-number v-model="materialEditor.form.num" :min="0" :max="100000" class="editor-number W100" />
+          </label>
+        </div>
 
         <el-button
           type="primary"
@@ -280,22 +289,24 @@
           </div>
         </div>
 
-        <div class="product-editor-grid">
-          <label class="editor-field">
-            <span>货品名称</span>
-            <el-input v-model="productEditor.form.name" placeholder="货品名称" />
-          </label>
+        <div class="editor-card">
+          <div class="product-editor-grid">
+            <label class="editor-field">
+              <span>货品名称</span>
+              <el-input v-model="productEditor.form.name" placeholder="货品名称" />
+            </label>
 
-          <label class="editor-field">
-            <span>收入金额</span>
-            <el-input-number
-              v-model="productEditor.form.defaultValue"
-              :min="0"
-              :max="100000"
-              controls-position="right"
-              class="editor-number W100"
-            />
-          </label>
+            <label class="editor-field">
+              <span>收入金额</span>
+              <el-input-number
+                v-model="productEditor.form.defaultValue"
+                :min="0"
+                :max="100000"
+                controls-position="right"
+                class="editor-number W100"
+              />
+            </label>
+          </div>
         </div>
 
         <div class="recipe-header MT12">
@@ -303,31 +314,33 @@
           <el-button size="small" plain @click="addRecipeItem">新增关联</el-button>
         </div>
 
-        <div class="recipe-list">
-          <div v-for="(item, index) in productEditor.form.recipe" :key="index" class="recipe-row">
-            <el-select
-              v-model="item.materialId"
-              placeholder="选择备料"
-              class="recipe-select"
-              @change="onRecipeMaterialChange(index, $event)"
-            >
-              <el-option
-                v-for="material in availableMaterialsForRecipe(index)"
-                :key="material.id"
-                :label="material.name"
-                :value="material.id"
+        <div class="recipe-card">
+          <div class="recipe-list">
+            <div v-for="(item, index) in productEditor.form.recipe" :key="index" class="recipe-row">
+              <el-select
+                v-model="item.materialId"
+                placeholder="选择备料"
+                class="recipe-select"
+                @change="onRecipeMaterialChange(index, $event)"
+              >
+                <el-option
+                  v-for="material in availableMaterialsForRecipe(index)"
+                  :key="material.id"
+                  :label="material.name"
+                  :value="material.id"
+                />
+              </el-select>
+              <el-input-number
+                v-model="item.quantity"
+                :min="1"
+                :max="1000"
+                controls-position="right"
+                class="recipe-quantity"
               />
-            </el-select>
-            <el-input-number
-              v-model="item.quantity"
-              :min="1"
-              :max="1000"
-              controls-position="right"
-              class="recipe-quantity"
-            />
-            <button class="mini-action danger recipe-delete icon-only" @click="removeRecipeItem(index)">
-              <el-icon><Delete /></el-icon>
-            </button>
+              <button class="mini-action danger recipe-delete icon-only" @click="removeRecipeItem(index)">
+                <el-icon><Delete /></el-icon>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -483,12 +496,20 @@
         <div class="order-form-card">
           <label class="order-field">
             <span>收入金额</span>
-            <van-field v-model="orderInfo.form.value" type="digit" placeholder="收入" clearable />
+            <van-field
+              v-model="orderInfo.form.value"
+              class="order-control"
+              type="digit"
+              placeholder="请输入收入金额"
+              right-icon="edit"
+              clearable
+            />
           </label>
 
           <label class="order-field">
             <span>下单日期</span>
             <date-picker
+              class-name="order-control date-control"
               placeholder="下单日期"
               :default-date="orderInfo.form.orderDate"
               @date-change="setOrderDate"
@@ -2346,7 +2367,22 @@ onUnmounted(() => {
   margin-bottom: 0;
   padding: 12px 14px;
   border-radius: 10px;
+  border: 1px solid var(--divider);
   background: var(--field-bg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.order-form-card :deep(.van-field__control) {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.order-form-card :deep(.van-icon) {
+  color: var(--accent);
+}
+
+.order-form-card :deep(.date-control .van-field) {
+  cursor: pointer;
 }
 
 .sync-card {
@@ -2615,9 +2651,32 @@ onUnmounted(() => {
 
 .product-editor-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 160px;
+  grid-template-columns: minmax(0, 1fr) 140px;
   gap: 10px;
-  margin-top: 10px;
+}
+
+.editor-card,
+.recipe-card {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--divider);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.recipe-card {
+  padding: 10px;
+}
+
+.recipe-list {
+  display: grid;
+  gap: 8px;
+}
+
+.material-editor-card {
+  display: grid;
+  gap: 12px;
 }
 
 .editor-field {
@@ -2635,12 +2694,24 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 16px 0 10px;
+  margin: 18px 0 10px;
+}
+
+.recipe-header strong {
+  color: var(--text-strong);
+  font-size: 18px;
+}
+
+.recipe-header :deep(.el-button) {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--surface);
+  font-weight: 700;
 }
 
 .recipe-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px 48px;
+  grid-template-columns: minmax(0, 1fr) 88px 40px;
   gap: 8px;
   align-items: center;
 }
@@ -2651,12 +2722,116 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.editor-card :deep(.el-input__wrapper),
+.recipe-card :deep(.el-input__wrapper),
+.recipe-card :deep(.el-select__wrapper) {
+  box-shadow: none;
+  border: 1px solid var(--divider);
+  background: var(--surface);
+}
+
+.editor-card :deep(.el-input__wrapper.is-focus),
+.editor-card :deep(.el-input__wrapper:hover),
+.editor-card :deep(.el-input__wrapper:focus-within),
+.recipe-card :deep(.el-input__wrapper.is-focus),
+.recipe-card :deep(.el-input__wrapper:hover),
+.recipe-card :deep(.el-input__wrapper:focus-within),
+.recipe-card :deep(.el-select__wrapper.is-focused),
+.recipe-card :deep(.el-select__wrapper:hover) {
+  box-shadow: none;
+  border-color: var(--divider);
+}
+
+.editor-card :deep(.el-input__wrapper),
+.recipe-card :deep(.el-input__wrapper),
+.recipe-card :deep(.el-select__wrapper) {
+  min-height: 38px;
+  border-radius: 10px;
+}
+
+.editor-card :deep(.el-input-number),
+.recipe-card :deep(.el-input-number) {
+  height: 38px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.editor-card :deep(.el-input-number .el-input__wrapper),
+.recipe-card :deep(.el-input-number .el-input__wrapper) {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.editor-card :deep(.el-input-number.is-focus),
+.editor-card :deep(.el-input-number:hover),
+.editor-card :deep(.el-input-number:focus-within),
+.recipe-card :deep(.el-input-number.is-focus),
+.recipe-card :deep(.el-input-number:hover),
+.recipe-card :deep(.el-input-number:focus-within) {
+  border-color: var(--divider);
+}
+
+.editor-card :deep(.el-input-number .el-input__wrapper.is-focus),
+.editor-card :deep(.el-input-number .el-input__wrapper:focus-within),
+.recipe-card :deep(.el-input-number .el-input__wrapper.is-focus),
+.recipe-card :deep(.el-input-number .el-input__wrapper:focus-within) {
+  box-shadow: none !important;
+  border-color: transparent;
+}
+
+.editor-card :deep(.el-input-number .el-input__inner:focus),
+.recipe-card :deep(.el-input-number .el-input__inner:focus) {
+  box-shadow: none;
+  outline: none;
+}
+
+.editor-card :deep(.el-input-number__decrease),
+.editor-card :deep(.el-input-number__increase),
+.recipe-card :deep(.el-input-number__decrease),
+.recipe-card :deep(.el-input-number__increase) {
+  border-color: var(--divider);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+}
+
+.editor-card :deep(.el-input-number.is-controls-right .el-input-number__increase),
+.editor-card :deep(.el-input-number.is-controls-right .el-input-number__decrease),
+.recipe-card :deep(.el-input-number.is-controls-right .el-input-number__increase),
+.recipe-card :deep(.el-input-number.is-controls-right .el-input-number__decrease) {
+  height: 50%;
+  line-height: 1;
+}
+
+.editor-card :deep(.el-input-number.is-controls-right .el-input-number__increase),
+.recipe-card :deep(.el-input-number.is-controls-right .el-input-number__increase) {
+  top: 0;
+  bottom: auto;
+}
+
+.editor-card :deep(.el-input-number.is-controls-right .el-input-number__decrease),
+.recipe-card :deep(.el-input-number.is-controls-right .el-input-number__decrease) {
+  top: auto;
+  bottom: 0;
+}
+
+.editor-card :deep(.el-input__inner),
+.recipe-card :deep(.el-input__inner) {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
 .recipe-delete {
   width: 100%;
-  height: 32px;
-  min-width: 48px;
+  height: 38px;
+  min-width: 40px;
   padding: 0;
   border-radius: 10px;
+  background: transparent;
+  font-size: 16px;
 }
 
 .recipe-quantity :deep(.el-input-number) {
