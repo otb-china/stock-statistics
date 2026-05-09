@@ -249,37 +249,12 @@
       </div>
     </van-popup>
 
-    <van-popup v-model:show="materialEditor.show" position="bottom" round destroy-on-close>
-      <div class="popup-body">
-        <div class="popup-head MB12">
-          <div>
-            <h3>{{ materialEditor.type === "add" ? "新增备料" : "编辑备料" }}</h3>
-          </div>
-        </div>
-
-        <div class="editor-card material-editor-card">
-          <label class="editor-field">
-            <span>备料名称</span>
-            <el-input v-model="materialEditor.form.name" placeholder="备料名称" />
-          </label>
-
-          <label class="editor-field">
-            <span>库存数量</span>
-            <el-input-number v-model="materialEditor.form.num" :min="0" :max="100000" class="editor-number W100" />
-          </label>
-        </div>
-
-        <el-button
-          type="primary"
-          size="large"
-          class="submit-button"
-          @click="submitMaterialEditor"
-          :disabled="!materialEditor.form.name"
-        >
-          提交
-        </el-button>
-      </div>
-    </van-popup>
+    <MaterialEditorPopup
+      v-model:show="materialEditor.show"
+      :type="materialEditor.type"
+      :form="materialEditor.form"
+      @submit="submitMaterialEditor"
+    />
 
     <ProductEditorPopup
       v-model:show="productEditor.show"
@@ -422,6 +397,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { LStorage } from "@/utils/localStorage.ts";
+import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
 import OrderEditorPopup from "@/components/OrderEditorPopup.vue";
 import ProductEditorPopup from "@/components/ProductEditorPopup.vue";
 import StatCard from "@/components/StatCard.vue";
@@ -2142,113 +2118,6 @@ onUnmounted(() => {
 .product-count {
   font-size: 12px;
   color: var(--accent-strong);
-  font-weight: 600;
-}
-
-.editor-card {
-  margin-top: 14px;
-  padding: 12px;
-  border: 1px solid var(--divider);
-  border-radius: 14px;
-  background: var(--surface-soft);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
-}
-
-.material-editor-card {
-  display: grid;
-  gap: 12px;
-}
-
-.editor-field {
-  display: block;
-}
-
-.editor-field > span {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.editor-number {
-  width: 100%;
-}
-
-.editor-card :deep(.el-input__wrapper) {
-  box-shadow: none;
-  border: 1px solid var(--divider);
-  background: var(--surface);
-}
-
-.editor-card :deep(.el-input__wrapper.is-focus),
-.editor-card :deep(.el-input__wrapper:hover),
-.editor-card :deep(.el-input__wrapper:focus-within) {
-  box-shadow: none;
-  border-color: var(--divider);
-}
-
-.editor-card :deep(.el-input__wrapper) {
-  min-height: 38px;
-  border-radius: 10px;
-}
-
-.editor-card :deep(.el-input-number) {
-  height: 38px;
-  border: 1px solid var(--divider);
-  border-radius: 10px;
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.editor-card :deep(.el-input-number .el-input__wrapper) {
-  height: 100%;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.editor-card :deep(.el-input-number.is-focus),
-.editor-card :deep(.el-input-number:hover),
-.editor-card :deep(.el-input-number:focus-within) {
-  border-color: var(--divider);
-}
-
-.editor-card :deep(.el-input-number .el-input__wrapper.is-focus),
-.editor-card :deep(.el-input-number .el-input__wrapper:focus-within) {
-  box-shadow: none !important;
-  border-color: transparent;
-}
-
-.editor-card :deep(.el-input-number .el-input__inner:focus) {
-  box-shadow: none;
-  outline: none;
-}
-
-.editor-card :deep(.el-input-number__decrease),
-.editor-card :deep(.el-input-number__increase) {
-  border-color: var(--divider);
-  background: var(--surface-soft);
-  color: var(--text-muted);
-}
-
-.editor-card :deep(.el-input-number.is-controls-right .el-input-number__increase),
-.editor-card :deep(.el-input-number.is-controls-right .el-input-number__decrease) {
-  height: 50%;
-  line-height: 1;
-}
-
-.editor-card :deep(.el-input-number.is-controls-right .el-input-number__increase) {
-  top: 0;
-  bottom: auto;
-}
-
-.editor-card :deep(.el-input-number.is-controls-right .el-input-number__decrease) {
-  top: auto;
-  bottom: 0;
-}
-
-.editor-card :deep(.el-input__inner) {
-  color: var(--text-main);
   font-weight: 600;
 }
 
