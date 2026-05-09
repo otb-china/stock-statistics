@@ -43,38 +43,41 @@ defineEmits<{
 }
 
 .stat-card.income {
-  background: linear-gradient(135deg, #1b6c78 0%, #2f8d6f 100%);
+  background: linear-gradient(135deg, #0f766e 0%, #22a06b 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
 .stat-card.materials {
-  background: linear-gradient(135deg, #f0f5fb 0%, #e7eef9 100%);
-  color: #1f4763;
+  background: linear-gradient(135deg, #eef5f4 0%, #e2eceb 100%);
+  color: #26535a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
 }
 
 .stat-card.goods {
-  background: linear-gradient(135deg, #fff5e9 0%, #fff0d8 100%);
-  color: #8a5c07;
+  background: linear-gradient(135deg, #f2f7ed 0%, #e5efd9 100%);
+  color: #526b1f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .stat-card.income:active,
 .stat-card.income:focus,
 .stat-card.income:focus-visible {
-  background: linear-gradient(135deg, #1b6c78 0%, #2f8d6f 100%);
+  background: linear-gradient(135deg, #0f766e 0%, #22a06b 100%);
   color: #ffffff;
 }
 
 .stat-card.materials:active,
 .stat-card.materials:focus,
 .stat-card.materials:focus-visible {
-  background: linear-gradient(135deg, #f0f5fb 0%, #e7eef9 100%);
-  color: #1f4763;
+  background: linear-gradient(135deg, #eef5f4 0%, #e2eceb 100%);
+  color: #26535a;
 }
 
 .stat-card.goods:active,
 .stat-card.goods:focus,
 .stat-card.goods:focus-visible {
-  background: linear-gradient(135deg, #fff5e9 0%, #fff0d8 100%);
-  color: #8a5c07;
+  background: linear-gradient(135deg, #f2f7ed 0%, #e5efd9 100%);
+  color: #526b1f;
 }
 
 .stat-title,
