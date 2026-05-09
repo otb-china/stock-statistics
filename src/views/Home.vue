@@ -23,21 +23,27 @@
       </div>
 
       <div class="hero-stats">
-        <button class="stat-item income stat-button" type="button" @click="scrollToOrders">
-          <span class="MB8">收入</span>
-          <strong>¥{{ orderTotal }}</strong>
-          <small class="MT8 align-right">共 {{ orderInfo.data.length }} 单</small>
-        </button>
-        <button class="stat-item stat-button materials-stat" type="button" @click="openMaterialsPopup('materials')">
-          <span class="MB8">备料</span>
-          <strong>{{ materialsSummary.totalKinds }}</strong>
-          <small class="MT8 align-right">{{ materialsSummary.footerText }}</small>
-        </button>
-        <button class="stat-item stat-button goods" type="button" @click="openMaterialsPopup('products')">
-          <span class="MB8">货品</span>
-          <strong>{{ products.length }}</strong>
-          <small class="MT8 align-right">{{ productsSummary.footerText }}</small>
-        </button>
+        <StatCard
+          title="收入"
+          :value="`¥${orderTotal}`"
+          :footer="`共 ${orderInfo.data.length} 单`"
+          variant="income"
+          @click="scrollToOrders"
+        />
+        <StatCard
+          title="备料"
+          :value="materialsSummary.totalKinds"
+          :footer="materialsSummary.footerText"
+          variant="materials"
+          @click="openMaterialsPopup('materials')"
+        />
+        <StatCard
+          title="货品"
+          :value="products.length"
+          :footer="productsSummary.footerText"
+          variant="goods"
+          @click="openMaterialsPopup('products')"
+        />
       </div>
 
       <div class="craftable-card">
@@ -500,6 +506,7 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import type { RSA } from "otb-toolkit/src/types";
 import { LStorage } from "@/utils/localStorage.ts";
 import DatePicker from "@/components/Date.vue";
+import StatCard from "@/components/StatCard.vue";
 import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
 import { sort } from "otb-toolkit/src/utils/data.ts";
@@ -1601,82 +1608,6 @@ onUnmounted(() => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
-}
-
-.stat-item {
-  padding: 10px;
-  border-radius: 10px;
-  color: #ffffff;
-  text-align: left;
-}
-
-.stat-item.income {
-  background: linear-gradient(135deg, #1b6c78 0%, #2f8d6f 100%);
-}
-
-.stat-item.materials-stat {
-  background: linear-gradient(135deg, #f0f5fb 0%, #e7eef9 100%);
-  color: #1f4763;
-}
-
-.stat-item.goods {
-  background: linear-gradient(135deg, #fff5e9 0%, #fff0d8 100%);
-  color: #8a5c07;
-}
-
-.stat-button {
-  border: 0;
-  -webkit-tap-highlight-color: transparent;
-  transition: none;
-}
-
-.stat-button:active,
-.stat-button:focus,
-.stat-button:focus-visible {
-  outline: none;
-}
-
-.stat-item.income:active,
-.stat-item.income:focus,
-.stat-item.income:focus-visible {
-  background: linear-gradient(135deg, #1b6c78 0%, #2f8d6f 100%);
-  color: #ffffff;
-}
-
-.stat-item.materials-stat:active,
-.stat-item.materials-stat:focus,
-.stat-item.materials-stat:focus-visible {
-  background: linear-gradient(135deg, #f0f5fb 0%, #e7eef9 100%);
-  color: #1f4763;
-}
-
-.stat-item.goods:active,
-.stat-item.goods:focus,
-.stat-item.goods:focus-visible {
-  background: linear-gradient(135deg, #fff5e9 0%, #fff0d8 100%);
-  color: #8a5c07;
-}
-
-.stat-item span,
-.stat-item strong,
-.stat-item small {
-  display: block;
-}
-
-.stat-item span {
-  font-size: 12px;
-  opacity: 0.82;
-}
-
-.stat-item strong {
-  margin-top: 6px;
-  font-size: 24px;
-  line-height: 1;
-}
-
-.stat-item small {
-  font-size: 12px;
-  opacity: 0.82;
 }
 
 .craftable-card {
