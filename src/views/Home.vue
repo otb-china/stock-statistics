@@ -1,5 +1,5 @@
 <template>
-  <div class="home-page">
+  <div class="home-page" :style="themeStyle">
     <header ref="headerSection" class="page-header">
       <div>
         <p class="hero-tag">Stock Statistics</p>
@@ -351,6 +351,29 @@
           </div>
         </div>
 
+        <div class="theme-panel">
+          <div class="theme-panel-head">
+            <strong>界面主题</strong>
+            <span>{{ currentThemeOption.name }}</span>
+          </div>
+          <div class="theme-options">
+            <button
+              v-for="theme in themeOptions"
+              :key="theme.key"
+              class="theme-option"
+              :class="{ active: currentTheme === theme.key }"
+              type="button"
+              @click="setTheme(theme.key)"
+            >
+              <span class="theme-swatch" :style="{ background: theme.swatch }"></span>
+              <span>
+                <strong>{{ theme.name }}</strong>
+                <em>{{ theme.caption }}</em>
+              </span>
+            </button>
+          </div>
+        </div>
+
         <div class="settings-grid">
           <button class="settings-item settings-item-feature" @click="exportAllData">
             <span class="settings-item-icon">
@@ -507,6 +530,8 @@ import type { RSA } from "otb-toolkit/src/types";
 import { LStorage } from "@/utils/localStorage.ts";
 import DatePicker from "@/components/Date.vue";
 import StatCard from "@/components/StatCard.vue";
+import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
+import type { ThemeKey } from "@/config/themes";
 import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
 import { sort } from "otb-toolkit/src/utils/data.ts";
@@ -615,6 +640,7 @@ const importFileInput = ref<HTMLInputElement | null>(null);
 const showScrollTop = ref(false);
 const ordersExpanded = ref(false);
 const orderPreviewLimit = ORDER_PREVIEW_LIMIT;
+const currentTheme = ref<ThemeKey>(DEFAULT_THEME);
 const data = ref([] as Material[]);
 const products = ref([] as Product[]);
 const calculation = ref(true);
@@ -629,6 +655,12 @@ const materialGroupCollapsed = ref<Record<MaterialGroupKey, boolean>>({
   safe: false,
   unlinked: true,
 });
+
+const themeStorage = LStorage.new("stockStatisticsTheme");
+const currentThemeOption = computed(() => {
+  return themeOptions.find((theme) => theme.key === currentTheme.value) || themeOptions[0];
+});
+const themeStyle = computed(() => currentThemeOption.value.variables);
 const importExportInfo = ref({
   show: false,
 });
@@ -709,6 +741,11 @@ const defaultProductConfigs = [
 
 const createId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const legacyMaterialId = (name: string) => `material-${encodeURIComponent(name)}`;
+
+const setTheme = (theme: ThemeKey) => {
+  currentTheme.value = theme;
+  themeStorage.setter(theme);
+};
 
 const materialsMap = computed(() => {
   return new Map(data.value.map((item) => [item.id, item]));
@@ -1462,6 +1499,9 @@ const normalizeOrders = (list: RSA[] | undefined): Order[] => {
 };
 
 const init = () => {
+  const storedTheme = themeStorage.getter();
+  currentTheme.value = isThemeKey(storedTheme) ? storedTheme : DEFAULT_THEME;
+
   const storedMaterials = LStorage.data.getter();
   data.value = normalizeMaterials(storedMaterials);
   if (!Array.isArray(storedMaterials)) {
@@ -1494,16 +1534,17 @@ onUnmounted(() => {
 .home-page {
   min-height: 100vh;
   padding: 10px;
-  background: #f4f7fb;
+  background: var(--page-bg);
+  color: var(--text-main);
 }
 
 .page-header,
 .hero-card,
 .orders-panel {
   margin-bottom: 10px;
-  background: #ffffff;
+  background: var(--surface);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(38, 56, 88, 0.06);
+  box-shadow: var(--shadow);
 }
 
 .home-page > section:last-of-type {
@@ -1524,7 +1565,7 @@ onUnmounted(() => {
   border-radius: 0;
   margin: -10px -10px 10px;
   padding: 14px 14px 12px;
-  box-shadow: 0 4px 16px rgba(38, 56, 88, 0.05);
+  box-shadow: var(--header-shadow);
 }
 
 .page-header,
@@ -1540,7 +1581,7 @@ onUnmounted(() => {
 .section-tag {
   margin: 0 0 4px;
   font-size: 11px;
-  color: #7d8a96;
+  color: var(--text-muted);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -1550,6 +1591,7 @@ onUnmounted(() => {
 .section-row h2,
 .popup-head h3 {
   margin: 0;
+  color: var(--text-strong);
 }
 
 .header-actions {
@@ -1566,19 +1608,19 @@ onUnmounted(() => {
   height: 36px;
   border: 0;
   border-radius: 999px;
-  background: #edf4fb;
-  color: #1f6a79;
+  background: var(--header-icon-bg);
+  color: var(--accent);
 }
 
 .header-icon.danger {
-  background: #fff0ed;
-  color: #d05f52;
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .popup-head p {
   margin: 0;
   font-size: 12px;
-  color: #72808c;
+  color: var(--text-subtle);
 }
 
 .popup-create-btn {
@@ -1589,10 +1631,10 @@ onUnmounted(() => {
   flex: 0 0 auto;
   margin-top: 2px;
   padding: 6px 9px;
-  border: 1px solid #d9e6f7;
+  border: 1px solid var(--divider);
   border-radius: 999px;
-  background: #ffffff;
-  color: #2f73da;
+  background: var(--surface);
+  color: var(--accent);
   font-size: 10px;
   font-weight: 600;
   line-height: 1;
@@ -1614,7 +1656,7 @@ onUnmounted(() => {
   margin-top: 10px;
   padding: 12px;
   border-radius: 10px;
-  background: #f7f9fc;
+  background: var(--surface-soft);
 }
 
 .craftable-head {
@@ -1626,13 +1668,13 @@ onUnmounted(() => {
 }
 
 .craftable-head strong {
-  color: #223848;
+  color: var(--text-strong);
 }
 
 .craftable-head span,
 .craftable-empty {
   font-size: 12px;
-  color: #7b8995;
+  color: var(--text-muted);
 }
 
 .craftable-list {
@@ -1653,15 +1695,15 @@ onUnmounted(() => {
   gap: 8px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .craftable-row span {
-  color: #203747;
+  color: var(--text-main);
 }
 
 .craftable-row strong {
-  color: #1f6780;
+  color: var(--accent-strong);
 }
 
 .warning-materials-card {
@@ -1673,7 +1715,7 @@ onUnmounted(() => {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .warning-material-row span,
@@ -1683,7 +1725,7 @@ onUnmounted(() => {
 }
 
 .warning-material-row span {
-  color: #203747;
+  color: var(--text-main);
   line-height: 1.25;
 }
 
@@ -1696,7 +1738,7 @@ onUnmounted(() => {
 
 .warning-material-row small {
   font-size: 12px;
-  color: #7b8995;
+  color: var(--text-muted);
 }
 
 .warning-material-row strong {
@@ -1708,13 +1750,13 @@ onUnmounted(() => {
 }
 
 .warning-material-row strong.status-warning {
-  color: #af770d;
-  background: #fff4dd;
+  color: var(--warning-text);
+  background: var(--warning-bg);
 }
 
 .warning-material-row strong.status-danger {
-  color: #c6584c;
-  background: #ffe9e6;
+  color: var(--danger-text);
+  background: var(--danger-bg);
 }
 
 .orders-head-actions {
@@ -1726,14 +1768,14 @@ onUnmounted(() => {
 .create-order-btn {
   border: 0;
   color: #ffffff;
-  background: linear-gradient(135deg, #ff8f3d 0%, #ff5f6d 100%);
-  box-shadow: 0 10px 20px rgba(255, 111, 102, 0.22);
+  background: var(--create-btn-bg);
+  box-shadow: var(--create-btn-shadow);
 }
 
 .create-order-btn:hover,
 .create-order-btn:focus {
   color: #ffffff;
-  background: linear-gradient(135deg, #ff8f3d 0%, #ff5f6d 100%);
+  background: var(--create-btn-bg);
 }
 
 .orders-panel {
@@ -1760,9 +1802,9 @@ onUnmounted(() => {
   padding: 8px 10px;
   border: 0;
   border-radius: 10px;
-  background: #f2f5f9;
+  background: var(--surface-muted);
   text-align: left;
-  color: #445560;
+  color: var(--text-main);
 }
 
 .month-chip span,
@@ -1780,12 +1822,12 @@ onUnmounted(() => {
 }
 
 .month-chip.active {
-  background: #1f6b7b;
+  background: var(--accent);
   color: #ffffff;
 }
 
 .summary-cell :deep(.van-cell__value) {
-  color: #1f6a79;
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -1799,12 +1841,12 @@ onUnmounted(() => {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #7b8995;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .summary-count {
-  color: #1f6a79;
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -1816,7 +1858,7 @@ onUnmounted(() => {
   padding: 0;
   border: 0;
   background: transparent;
-  color: #7b8995;
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
 }
@@ -1832,29 +1874,41 @@ onUnmounted(() => {
 
 .summary-title {
   font-weight: 600;
-  color: #223848;
+  color: var(--text-strong);
 }
 
 .order-cell :deep(.van-cell__title) {
   font-size: 14px;
   font-weight: 600;
-  color: #203746;
+  color: var(--text-main);
 }
 
 .order-cell :deep(.van-cell__label) {
   margin-top: 2px;
   font-size: 12px;
-  color: #75838e;
+  color: var(--text-subtle);
 }
 
 .order-cell :deep(.van-cell__value) {
   font-size: 14px;
   font-weight: 700;
-  color: #1e6781;
+  color: var(--accent-strong);
 }
 
 .swipe-btn {
   height: 100%;
+  min-width: 60px;
+  border: 0;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.swipe-btn.van-button--primary {
+  background: var(--swipe-edit-bg);
+}
+
+.swipe-btn.van-button--danger {
+  background: var(--swipe-delete-bg);
 }
 
 .popup-body {
@@ -1913,13 +1967,13 @@ onUnmounted(() => {
   padding: 10px;
   border: 0;
   border-radius: 10px;
-  background: #f2f5f9;
-  color: #5a6f7c;
+  background: var(--surface-muted);
+  color: var(--text-subtle);
   font-weight: 600;
 }
 
 .manage-tab.active {
-  background: #1f6b7b;
+  background: var(--accent);
   color: #ffffff;
 }
 
@@ -1936,12 +1990,91 @@ onUnmounted(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.theme-panel {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.theme-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.theme-panel-head strong {
+  color: var(--text-strong);
+}
+
+.theme-panel-head span {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.theme-option.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.theme-swatch {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
+}
+
+.theme-option > span:last-child {
+  min-width: 0;
+}
+
+.theme-option strong,
+.theme-option em {
+  display: block;
+}
+
+.theme-option strong {
+  color: var(--text-strong);
+  font-size: 13px;
+}
+
+.theme-option em {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.2;
+}
+
 .settings-item,
 .product-row {
   padding: 14px 16px;
   border: 0;
   border-radius: 10px;
-  background: #f7f9fc;
+  background: var(--surface-soft);
 }
 
 .settings-item {
@@ -1953,11 +2086,11 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   width: 100%;
-  background: linear-gradient(135deg, #eff8f7 0%, #f7f9fc 58%, #fff5ea 100%);
+  background: var(--settings-card-bg);
 }
 
 .settings-item-feature.danger {
-  background: linear-gradient(135deg, #fff3f1 0%, #f7f9fc 58%, #fff8ee 100%);
+  background: var(--settings-danger-bg);
 }
 
 .settings-item-icon {
@@ -1968,13 +2101,13 @@ onUnmounted(() => {
   width: 42px;
   height: 42px;
   border-radius: 10px;
-  background: #ffffff;
-  color: #1f6b7b;
+  background: var(--surface);
+  color: var(--accent);
   box-shadow: 0 8px 18px rgba(31, 107, 123, 0.1);
 }
 
 .settings-item-feature.danger .settings-item-icon {
-  color: #d05f52;
+  color: var(--danger-text);
   box-shadow: 0 8px 18px rgba(208, 95, 82, 0.12);
 }
 
@@ -1989,9 +2122,9 @@ onUnmounted(() => {
   width: 100%;
   margin-top: 14px;
   padding: 14px;
-  border: 1px dashed #c9d8e8;
+  border: 1px dashed var(--divider);
   border-radius: 12px;
-  background: #f7f9fc;
+  background: var(--surface-soft);
   text-align: left;
 }
 
@@ -2005,7 +2138,7 @@ onUnmounted(() => {
 }
 
 .file-upload-card strong {
-  color: #203747;
+  color: var(--text-main);
   font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2014,7 +2147,7 @@ onUnmounted(() => {
 
 .file-upload-card em {
   margin-top: 4px;
-  color: #7b8995;
+  color: var(--text-muted);
   font-size: 12px;
   font-style: normal;
   line-height: 1.35;
@@ -2027,13 +2160,13 @@ onUnmounted(() => {
 
 .settings-item strong {
   font-size: 14px;
-  color: #203747;
+  color: var(--text-main);
 }
 
 .settings-item span {
   margin-top: 4px;
   font-size: 12px;
-  color: #7b8995;
+  color: var(--text-muted);
 }
 
 .settings-item-feature > span:last-child {
@@ -2044,7 +2177,7 @@ onUnmounted(() => {
 .settings-item-feature em {
   display: block;
   margin-top: 4px;
-  color: #7b8995;
+  color: var(--text-muted);
   font-size: 12px;
   font-style: normal;
   line-height: 1.35;
@@ -2054,7 +2187,8 @@ onUnmounted(() => {
   min-height: 150px !important;
   border: 0;
   border-radius: 12px;
-  background: #f7f9fc;
+  background: var(--field-bg);
+  color: var(--text-main);
   box-shadow: none;
 }
 
@@ -2066,7 +2200,7 @@ onUnmounted(() => {
   margin: 14px 0 12px;
   padding: 14px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #1b6c78 0%, #2f8d6f 100%);
+  background: var(--stat-income-bg);
   color: #ffffff;
 }
 
@@ -2086,7 +2220,7 @@ onUnmounted(() => {
 }
 
 .order-popup {
-  background: linear-gradient(180deg, #ffffff 0%, #f5f8fb 100%);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
 }
 
 .order-popup-head {
@@ -2114,7 +2248,7 @@ onUnmounted(() => {
   padding: 10px 12px;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface);
   text-align: left;
   box-shadow: 0 8px 18px rgba(38, 56, 88, 0.05);
 }
@@ -2129,7 +2263,7 @@ onUnmounted(() => {
 }
 
 .order-product-card strong {
-  color: #203747;
+  color: var(--text-main);
   font-size: 14px;
   line-height: 1.2;
 }
@@ -2138,20 +2272,20 @@ onUnmounted(() => {
   flex: 0 0 auto;
   padding: 4px 8px;
   border-radius: 999px;
-  background: #edf4fb;
-  color: #1f6780;
+  background: var(--header-icon-bg);
+  color: var(--accent-strong);
   font-size: 11px;
   font-style: normal;
   font-weight: 700;
 }
 
 .order-product-card.active {
-  border-color: rgba(31, 107, 123, 0.22);
-  background: linear-gradient(135deg, #eff8f7 0%, #ffffff 100%);
+  border-color: var(--accent-border);
+  background: var(--settings-card-bg);
 }
 
 .order-product-card.active strong {
-  color: #1f6b7b;
+  color: var(--accent);
 }
 
 .order-form-card,
@@ -2159,7 +2293,7 @@ onUnmounted(() => {
   margin-top: 12px;
   padding: 14px;
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface);
   box-shadow: 0 8px 18px rgba(38, 56, 88, 0.05);
 }
 
@@ -2174,7 +2308,7 @@ onUnmounted(() => {
 .order-field > span {
   display: block;
   margin-bottom: 7px;
-  color: #7b8995;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -2182,7 +2316,7 @@ onUnmounted(() => {
   margin-bottom: 0;
   padding: 12px 14px;
   border-radius: 10px;
-  background: #f7f9fc;
+  background: var(--field-bg);
 }
 
 .sync-card {
@@ -2194,8 +2328,8 @@ onUnmounted(() => {
 }
 
 .sync-card.active {
-  border-color: rgba(31, 107, 123, 0.18);
-  background: #f2fbf8;
+  border-color: var(--accent-border);
+  background: var(--settings-card-bg);
 }
 
 .sync-card strong,
@@ -2204,13 +2338,13 @@ onUnmounted(() => {
 }
 
 .sync-card strong {
-  color: #203747;
+  color: var(--text-main);
   font-size: 14px;
 }
 
 .sync-card span {
   margin-top: 4px;
-  color: #7b8995;
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -2228,7 +2362,7 @@ onUnmounted(() => {
   gap: 10px 12px;
   padding: 14px 16px;
   border-radius: 10px;
-  background: #f8fbff;
+  background: var(--surface-soft);
 }
 
 .material-group {
@@ -2245,7 +2379,7 @@ onUnmounted(() => {
   padding: 2px 4px;
   border: 0;
   background: transparent;
-  color: #203747;
+  color: var(--text-main);
   font-size: 14px;
   font-weight: 700;
   text-align: left;
@@ -2253,7 +2387,7 @@ onUnmounted(() => {
 
 .material-group-head::after {
   content: "收起";
-  color: #8a98a6;
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
 }
@@ -2264,7 +2398,7 @@ onUnmounted(() => {
 
 .material-group-head small {
   margin-left: auto;
-  color: #75828e;
+  color: var(--text-subtle);
   font-size: 12px;
   font-weight: 600;
 }
@@ -2279,7 +2413,7 @@ onUnmounted(() => {
   flex: 0 0 auto;
   overflow: hidden;
   border-radius: 10px;
-  background: #f8fbff;
+  background: var(--surface-soft);
 }
 
 .material-title-row {
@@ -2294,7 +2428,7 @@ onUnmounted(() => {
   display: block;
   font-size: 16px;
   line-height: 1.2;
-  color: #1f3040;
+  color: var(--text-main);
 }
 
 .material-status {
@@ -2303,29 +2437,29 @@ onUnmounted(() => {
   width: fit-content;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #eef3f8;
+  background: var(--surface-muted);
   font-size: 12px;
   flex: 0 0 auto;
 }
 
 .material-status.status-safe {
-  color: #1a7a67;
-  background: #eaf7f2;
+  color: var(--accent);
+  background: var(--header-icon-bg);
 }
 
 .material-status.status-warning {
-  color: #af770d;
-  background: #fff4dd;
+  color: var(--warning-text);
+  background: var(--warning-bg);
 }
 
 .material-status.status-danger {
-  color: #c6584c;
-  background: #ffe9e6;
+  color: var(--danger-text);
+  background: var(--danger-bg);
 }
 
 .material-status.status-unlinked {
-  color: #607180;
-  background: #eef3f8;
+  color: var(--text-muted);
+  background: var(--surface-muted);
 }
 
 .material-info small,
@@ -2334,7 +2468,7 @@ onUnmounted(() => {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: #75828e;
+  color: var(--text-subtle);
 }
 
 .product-main small {
@@ -2363,19 +2497,19 @@ onUnmounted(() => {
 .material-metric strong {
   font-size: 18px;
   font-weight: 700;
-  color: #1f6780;
+  color: var(--accent-strong);
   line-height: 1;
 }
 
 .material-metric small {
   margin-top: 3px;
   font-size: 11px;
-  color: #75828e;
+  color: var(--text-subtle);
 }
 
 .material-metric:last-child span,
 .material-metric:last-child strong {
-  color: #5e7383;
+  color: var(--text-muted);
 }
 
 .manage-actions {
@@ -2390,18 +2524,18 @@ onUnmounted(() => {
   padding: 5px 12px;
   border: 0;
   border-radius: 8px;
-  background: #eaf1f9;
-  color: #1f6780;
+  background: var(--header-icon-bg);
+  color: var(--accent-strong);
   font-size: 12px;
 }
 
 .mini-action.danger {
-  background: #fff0ed;
-  color: #d05f52;
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .product-row {
-  background: #f8fbff;
+  background: var(--surface-soft);
 }
 
 .product-main {
@@ -2434,18 +2568,18 @@ onUnmounted(() => {
 }
 
 .product-status.status-active {
-  color: #1a7a67;
-  background: #eaf7f2;
+  color: var(--accent);
+  background: var(--header-icon-bg);
 }
 
 .product-status.status-inactive {
-  color: #a56700;
-  background: #fff2d9;
+  color: var(--warning-text);
+  background: var(--warning-bg);
 }
 
 .product-count {
   font-size: 12px;
-  color: #1f6780;
+  color: var(--accent-strong);
   font-weight: 600;
 }
 
@@ -2464,7 +2598,7 @@ onUnmounted(() => {
   display: block;
   margin-bottom: 6px;
   font-size: 12px;
-  color: #7b8995;
+  color: var(--text-muted);
 }
 
 .recipe-header {
@@ -2516,8 +2650,28 @@ onUnmounted(() => {
 }
 
 .van-field {
-  background: #f7f8fa;
+  background: var(--field-bg);
   border-radius: 12px;
+}
+
+.home-page :deep(.van-cell),
+.home-page :deep(.van-cell-group) {
+  background: var(--surface);
+  color: var(--text-main);
+}
+
+.home-page :deep(.van-cell::after) {
+  border-color: var(--divider);
+}
+
+.home-page :deep(.van-field__control),
+.home-page :deep(.van-field__label) {
+  color: var(--text-main);
+}
+
+.home-page :deep(.van-popup) {
+  background: var(--surface);
+  color: var(--text-main);
 }
 
 @media (max-width: 720px) {
