@@ -1,15 +1,15 @@
 <template>
-  <app-h5 />
+  <RouterView />
 </template>
 
 <script setup lang="ts">
-import {useScreenOrientation} from "@/utils/useScreenOrientation.ts";
-import {onMounted, onUnmounted, provide, ref} from "vue";
-import AppH5 from "@/AppH5.vue";
+import { useScreenOrientation } from "@/utils/useScreenOrientation.ts";
+import { onMounted, onUnmounted, provide, ref } from "vue";
+import { RouterView } from "vue-router";
 
 declare global {
   interface Window {
-    orientationChangeTimer?: NodeJS.Timeout
+    orientationChangeTimer?: NodeJS.Timeout;
   }
 }
 
@@ -43,3 +43,11 @@ provide("screenState", {
   screenType
 });
 </script>
+
+<style scoped lang="scss">
+:deep(.van-nav-bar__title),
+:deep(.van-nav-bar__left i),
+:deep(.van-nav-bar__left span) {
+  color: #ffffff !important;
+}
+</style>
