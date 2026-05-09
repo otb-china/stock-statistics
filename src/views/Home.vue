@@ -240,11 +240,12 @@ import SettingsPopup from "@/components/SettingsPopup.vue";
 import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
 import { useBackupActions } from "@/composables/useBackupActions";
+import { useMaterialEditor } from "@/composables/useMaterialEditor";
 import { useMaterialStatus } from "@/composables/useMaterialStatus";
 import { useOrderActions } from "@/composables/useOrderActions";
+import { useProductEditor } from "@/composables/useProductEditor";
 import type { ThemeKey } from "@/config/themes";
 import type {
-  EditorType,
   ManageTab,
   Material,
   MaterialGroupKey,
@@ -252,16 +253,13 @@ import type {
 } from "@/types/stock";
 import {
   buildDefaultProducts,
-  createEmptyMaterialForm,
-  createEmptyProductForm,
-  createId,
   defaultMaterialNames,
   legacyMaterialId,
   normalizeMaterials,
   normalizeOrders,
   normalizeProducts,
 } from "@/utils/stockData.ts";
-import { showConfirmDialog, showToast } from "vant";
+import { showToast } from "vant";
 import { Setting, Top } from "@element-plus/icons-vue";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -308,17 +306,6 @@ const currentThemeOption = computed(() => {
   return themeOptions.find((theme) => theme.key === currentTheme.value) || themeOptions[0];
 });
 const themeStyle = computed(() => currentThemeOption.value.variables);
-const materialEditor = ref({
-  show: false,
-  type: "add" as EditorType,
-  form: createEmptyMaterialForm(),
-});
-const productEditor = ref({
-  show: false,
-  type: "add" as EditorType,
-  form: createEmptyProductForm(),
-});
-
 const setTheme = (theme: ThemeKey) => {
   currentTheme.value = theme;
   themeStorage.setter(theme);
@@ -384,6 +371,27 @@ const {
   dateFormat: DATE_FORMAT,
   initData: () => init(),
 });
+
+const {
+  materialEditor,
+  saveMaterials,
+  openMaterialEditor,
+  submitMaterialEditor,
+  removeMaterial,
+} = useMaterialEditor(data, products);
+
+const {
+  productEditor,
+  saveProducts,
+  openProductEditor,
+  addRecipeItem,
+  toggleProductStatus,
+  availableMaterialsForRecipe,
+  onRecipeMaterialChange,
+  removeRecipeItem,
+  submitProductEditor,
+  removeProduct,
+} = useProductEditor(data, products);
 
 const productsList = computed(() => {
   return [...products.value].sort((a, b) => craftableCountForProduct(b) - craftableCountForProduct(a));
@@ -497,199 +505,6 @@ const scrollToOrders = () => {
 const openMaterialsPopup = (tab: ManageTab = "materials") => {
   materialsPopup.value.tab = tab;
   materialsPopup.value.show = true;
-};
-
-const saveMaterials = () => {
-  LStorage.data.setter(data.value);
-};
-
-const saveProducts = () => {
-  LStorage.productData.setter(products.value);
-};
-
-const openMaterialEditor = (item?: Material) => {
-  materialEditor.value.type = item ? "edit" : "add";
-  materialEditor.value.form = item
-    ? { ...item }
-    : createEmptyMaterialForm();
-  materialEditor.value.show = true;
-};
-
-const submitMaterialEditor = () => {
-  const name = materialEditor.value.form.name.trim();
-  if (!name) {
-    showToast("请输入备料名称");
-    return;
-  }
-
-  const duplicated = data.value.some((item) => item.name === name && item.id !== materialEditor.value.form.id);
-  if (duplicated) {
-    showToast("备料名称已存在");
-    return;
-  }
-
-  if (materialEditor.value.type === "add") {
-    data.value.push({
-      id: createId("material"),
-      name,
-      num: Number(materialEditor.value.form.num || 0),
-    });
-  } else {
-    const index = data.value.findIndex((item) => item.id === materialEditor.value.form.id);
-    if (index >= 0) {
-      data.value.splice(index, 1, {
-        ...data.value[index],
-        name,
-        num: Number(materialEditor.value.form.num || 0),
-      });
-    }
-  }
-
-  saveMaterials();
-  materialEditor.value.show = false;
-};
-
-const removeMaterial = (id: string) => {
-  showConfirmDialog({
-    title: "提示",
-    message: "删除备料后，相关货品配方也会移除该备料，确认继续吗？",
-  }).then(() => {
-    data.value = data.value.filter((item) => item.id !== id);
-    products.value = products.value.map((product) => ({
-      ...product,
-      recipe: product.recipe.filter((item) => item.materialId !== id),
-    }));
-    saveMaterials();
-    saveProducts();
-    showToast("备料已删除");
-  }).catch(() => {
-  });
-};
-
-const openProductEditor = (product?: Product) => {
-  productEditor.value.type = product ? "edit" : "add";
-  productEditor.value.form = product
-    ? {
-      ...product,
-      recipe: product.recipe.map((item) => ({ ...item })),
-    }
-    : createEmptyProductForm();
-  productEditor.value.show = true;
-};
-
-const addRecipeItem = () => {
-  const selectedIds = productEditor.value.form.recipe.map((item) => item.materialId).filter(Boolean);
-  const nextMaterial = data.value.find((material) => !selectedIds.includes(material.id));
-  if (!nextMaterial) {
-    showToast("没有可选的备料了");
-    return;
-  }
-  productEditor.value.form.recipe.push({
-    materialId: nextMaterial.id,
-    quantity: 1,
-  });
-};
-
-const toggleProductStatus = (product: Product) => {
-  const nextStatus = product.status === "active" ? "inactive" : "active";
-  const index = products.value.findIndex((item) => item.id === product.id);
-  if (index < 0) return;
-
-  products.value.splice(index, 1, {
-    ...products.value[index],
-    status: nextStatus,
-  });
-  saveProducts();
-  showToast(nextStatus === "active" ? "货品已设为正常" : "货品已设为停产");
-};
-
-const availableMaterialsForRecipe = (index: number) => {
-  const selectedIds = productEditor.value.form.recipe
-    .map((item, currentIndex) => currentIndex === index ? "" : item.materialId)
-    .filter(Boolean);
-
-  return data.value.filter((material) => {
-    return !selectedIds.includes(material.id) || material.id === productEditor.value.form.recipe[index]?.materialId;
-  });
-};
-
-const onRecipeMaterialChange = (index: number, materialId: string) => {
-  const duplicated = productEditor.value.form.recipe.some((item, currentIndex) => {
-    return currentIndex !== index && item.materialId === materialId;
-  });
-
-  if (duplicated) {
-    showToast("该备料已经选择过了");
-    productEditor.value.form.recipe[index].materialId = "";
-  }
-};
-
-const removeRecipeItem = (index: number) => {
-  productEditor.value.form.recipe.splice(index, 1);
-};
-
-const submitProductEditor = () => {
-  const name = productEditor.value.form.name.trim();
-  if (!name) {
-    showToast("请输入货品名称");
-    return;
-  }
-
-  const validRecipe = productEditor.value.form.recipe
-    .filter((item) => item.materialId && Number(item.quantity) > 0)
-    .map((item) => ({
-      materialId: item.materialId,
-      quantity: Number(item.quantity),
-    }));
-
-  if (!validRecipe.length) {
-    showToast("请至少配置一个备料");
-    return;
-  }
-
-  const duplicatedMaterial = new Set(validRecipe.map((item) => item.materialId));
-  if (duplicatedMaterial.size !== validRecipe.length) {
-    showToast("同一个备料请只配置一次");
-    return;
-  }
-
-  const duplicated = products.value.some((item) => item.name === name && item.id !== productEditor.value.form.id);
-  if (duplicated) {
-    showToast("货品名称已存在");
-    return;
-  }
-
-  const productPayload: Product = {
-    id: productEditor.value.form.id || createId("product"),
-    name,
-    defaultValue: Number(productEditor.value.form.defaultValue || 0),
-    status: productEditor.value.form.status,
-    recipe: validRecipe,
-  };
-
-  if (productEditor.value.type === "add") {
-    products.value.push(productPayload);
-  } else {
-    const index = products.value.findIndex((item) => item.id === productEditor.value.form.id);
-    if (index >= 0) {
-      products.value.splice(index, 1, productPayload);
-    }
-  }
-
-  saveProducts();
-  productEditor.value.show = false;
-};
-
-const removeProduct = (id: string) => {
-  showConfirmDialog({
-    title: "提示",
-    message: "确认删除这个货品吗？",
-  }).then(() => {
-    products.value = products.value.filter((item) => item.id !== id);
-    saveProducts();
-    showToast("货品已删除");
-  }).catch(() => {
-  });
 };
 
 const seedMissingMaterials = () => {
