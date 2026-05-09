@@ -127,7 +127,7 @@
           />
           <template #right>
             <van-button square type="primary" class="swipe-btn" text="编辑" @click="beforeUpd(item)" />
-            <van-button square type="danger" class="swipe-btn" text="删除" @click="del(item.id)" />
+            <van-button square type="danger" class="swipe-btn" text="删除" @click="del(item)" />
           </template>
         </van-swipe-cell>
 
@@ -1232,11 +1232,41 @@ const beforeUpd = (item: Order) => {
   orderInfo.value.show = true;
 };
 
-const del = (id: string) => {
+const deleteOrder = (id: string) => {
   orderInfo.value.data = orderInfo.value.data.filter((item) => item.id !== id);
   LStorage.orderData.setter(orderInfo.value.data);
   initOrderMonthData();
-  showToast("订单已删除");
+};
+
+const returnOrderMaterials = (order: Order) => {
+  const product = productByName(order.title);
+  if (!product?.recipe.length) return false;
+
+  product.recipe.forEach((recipe) => {
+    const material = data.value.find((item) => item.id === recipe.materialId);
+    if (material) {
+      material.num = Number(material.num || 0) + Number(recipe.quantity || 0);
+    }
+  });
+  saveMaterials();
+  return true;
+};
+
+const del = (order: Order) => {
+  showConfirmDialog({
+    title: "删除订单",
+    message: `是否将「${order.title}」消耗的备料返还库存？`,
+    confirmButtonText: "返还备料",
+    cancelButtonText: "仅删除订单",
+  }).then(() => {
+    const returned = returnOrderMaterials(order);
+    deleteOrder(order.id);
+    showToast(returned ? "订单已删除，备料已返还" : "订单已删除，未找到可返还备料");
+  }).catch((action) => {
+    if (action !== "cancel") return;
+    deleteOrder(order.id);
+    showToast("订单已删除");
+  });
 };
 
 const saveMaterials = () => {
@@ -2646,6 +2676,26 @@ onUnmounted(() => {
 .submit-button {
   width: 100%;
   margin-top: 28px;
+  border: 0;
+  color: #ffffff;
+  background: var(--submit-btn-bg);
+  box-shadow: var(--submit-btn-shadow);
+}
+
+.submit-button:hover,
+.submit-button:focus {
+  color: #ffffff;
+  background: var(--submit-btn-bg);
+}
+
+.submit-button.is-disabled,
+.submit-button.is-disabled:hover,
+.submit-button.is-disabled:focus {
+  border: 0;
+  color: rgba(255, 255, 255, 0.72);
+  background: var(--submit-btn-bg);
+  box-shadow: none;
+  opacity: 0.48;
 }
 
 .van-field {
