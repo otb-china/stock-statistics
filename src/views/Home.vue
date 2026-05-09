@@ -239,11 +239,11 @@ import ProductManagePopup from "@/components/ProductManagePopup.vue";
 import SettingsPopup from "@/components/SettingsPopup.vue";
 import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
+import { useBackupActions } from "@/composables/useBackupActions";
 import { useMaterialStatus } from "@/composables/useMaterialStatus";
 import { useOrderActions } from "@/composables/useOrderActions";
 import type { ThemeKey } from "@/config/themes";
 import type {
-  BackupData,
   EditorType,
   ManageTab,
   Material,
@@ -251,7 +251,6 @@ import type {
   Product,
 } from "@/types/stock";
 import {
-  assertValidBackupData,
   buildDefaultProducts,
   createEmptyMaterialForm,
   createEmptyProductForm,
@@ -261,9 +260,7 @@ import {
   normalizeMaterials,
   normalizeOrders,
   normalizeProducts,
-  resolveBackupData,
 } from "@/utils/stockData.ts";
-import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
 import { Setting, Top } from "@element-plus/icons-vue";
 
@@ -311,13 +308,6 @@ const currentThemeOption = computed(() => {
   return themeOptions.find((theme) => theme.key === currentTheme.value) || themeOptions[0];
 });
 const themeStyle = computed(() => currentThemeOption.value.variables);
-const importExportInfo = ref({
-  show: false,
-});
-const importInfo = ref({
-  dataStr: "",
-  fileName: "",
-});
 const materialEditor = ref({
   show: false,
   type: "add" as EditorType,
@@ -373,6 +363,26 @@ const {
   dateFormat: DATE_FORMAT,
   craftableCountForProduct,
   openProductsManage: () => openMaterialsPopup("products"),
+});
+
+const {
+  importExportInfo,
+  importInfo,
+  importExportSummary,
+  hasImportOverwriteData,
+  openImportExport,
+  exportAllData,
+  onImportFileLoaded,
+  resetAllData,
+  importData,
+} = useBackupActions({
+  materials: data,
+  products,
+  orderInfo,
+  ordersExpanded,
+  settingsPopup,
+  dateFormat: DATE_FORMAT,
+  initData: () => init(),
 });
 
 const productsList = computed(() => {
@@ -438,14 +448,6 @@ const warningMaterials = computed(() => {
   });
 });
 
-const importExportSummary = computed(() => {
-  return `导入后将覆盖 ${data.value.length} 项备料 · ${products.value.length} 个货品 · ${orderInfo.value.data.length} 条订单`;
-});
-
-const hasImportOverwriteData = computed(() => {
-  return data.value.length > 0 || products.value.length > 0 || orderInfo.value.data.length > 0;
-});
-
 const materialsPopupDescription = computed(() => {
   return materialsPopup.value.tab === "materials"
     ? "管理库存数量和预警状态。"
@@ -495,82 +497,6 @@ const scrollToOrders = () => {
 const openMaterialsPopup = (tab: ManageTab = "materials") => {
   materialsPopup.value.tab = tab;
   materialsPopup.value.show = true;
-};
-
-const openImportExport = () => {
-  settingsPopup.value = false;
-  importInfo.value.dataStr = "";
-  importInfo.value.fileName = "";
-  importExportInfo.value.show = true;
-};
-
-const createBackupData = () => ({
-  materials: data.value,
-  products: products.value,
-  orders: orderInfo.value.data,
-});
-
-const exportAllData = () => {
-  const backupText = JSON.stringify(createBackupData(), null, 2);
-  const blob = new Blob([backupText], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const downloadLink = document.createElement("a");
-  downloadLink.href = url;
-  downloadLink.download = `stock-statistics-backup-${dayjs(new Date()).format(DATE_FORMAT)}.json`;
-  document.body.appendChild(downloadLink);
-  downloadLink.click();
-  document.body.removeChild(downloadLink);
-  URL.revokeObjectURL(url);
-  settingsPopup.value = false;
-  showToast("备份文件已导出");
-};
-
-const onImportFileLoaded = (payload: { dataStr: string; fileName: string }) => {
-  importInfo.value.dataStr = payload.dataStr;
-  importInfo.value.fileName = payload.fileName;
-  showToast("备份文件已读取");
-};
-
-const resetAllData = () => {
-  showConfirmDialog({
-    title: "提示",
-    message: "确认清除所有备料、货品和订单数据吗？",
-    width: "250px",
-  }).then(() => {
-    data.value = [];
-    products.value = [];
-    orderInfo.value.data = [];
-    orderInfo.value.monthData = [];
-    orderInfo.value.checkedMonth = "";
-    ordersExpanded.value = false;
-    LStorage.data.setter([]);
-    LStorage.productData.setter([]);
-    LStorage.orderData.setter([]);
-    settingsPopup.value = false;
-    showToast("数据已重置");
-  }).catch(() => {
-  });
-};
-
-const importData = () => {
-  try {
-    const parsedData = JSON.parse(importInfo.value.dataStr) as BackupData;
-    if (!parsedData || typeof parsedData !== "object" || Array.isArray(parsedData)) {
-      throw new Error("Invalid backup data");
-    }
-    const { materials, products, orders } = resolveBackupData(parsedData);
-    assertValidBackupData({ materials, products, orders });
-    LStorage.data.setter(materials);
-    LStorage.productData.setter(products);
-    LStorage.orderData.setter(orders);
-    init();
-    importExportInfo.value.show = false;
-    importInfo.value.dataStr = "";
-    importInfo.value.fileName = "";
-    showToast("总数据导入成功");
-  } catch {
-    showToast("导入失败，请检查备份文件");
-  }
 };
 
 const saveMaterials = () => {
