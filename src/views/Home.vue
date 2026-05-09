@@ -281,84 +281,16 @@
       </div>
     </van-popup>
 
-    <van-popup v-model:show="productEditor.show" position="bottom" round destroy-on-close>
-      <div class="popup-body">
-        <div class="popup-head">
-          <div>
-            <h3>{{ productEditor.type === "add" ? "新增货品" : "编辑货品" }}</h3>
-          </div>
-        </div>
-
-        <div class="editor-card">
-          <div class="product-editor-grid">
-            <label class="editor-field">
-              <span>货品名称</span>
-              <el-input v-model="productEditor.form.name" placeholder="货品名称" />
-            </label>
-
-            <label class="editor-field">
-              <span>收入金额</span>
-              <el-input-number
-                v-model="productEditor.form.defaultValue"
-                :min="0"
-                :max="100000"
-                controls-position="right"
-                class="editor-number W100"
-              />
-            </label>
-          </div>
-        </div>
-
-        <div class="recipe-header MT12">
-          <strong>配方</strong>
-          <el-button size="small" plain @click="addRecipeItem">新增关联</el-button>
-        </div>
-
-        <div class="recipe-card">
-          <div v-if="productEditor.form.recipe.length" class="recipe-list">
-            <div v-for="(item, index) in productEditor.form.recipe" :key="index" class="recipe-row">
-              <el-select
-                v-model="item.materialId"
-                placeholder="选择备料"
-                class="recipe-select"
-                @change="onRecipeMaterialChange(index, $event)"
-              >
-                <el-option
-                  v-for="material in availableMaterialsForRecipe(index)"
-                  :key="material.id"
-                  :label="material.name"
-                  :value="material.id"
-                />
-              </el-select>
-              <el-input-number
-                v-model="item.quantity"
-                :min="1"
-                :max="1000"
-                controls-position="right"
-                class="recipe-quantity"
-              />
-              <button class="mini-action danger recipe-delete icon-only" @click="removeRecipeItem(index)">
-                <el-icon><Delete /></el-icon>
-              </button>
-            </div>
-          </div>
-          <div v-else class="recipe-empty">
-            <strong>还没有配方备料</strong>
-            <span>点击右上角“新增关联”，添加需要消耗的备料和数量。</span>
-          </div>
-        </div>
-
-        <el-button
-          type="primary"
-          size="large"
-          class="submit-button"
-          @click="submitProductEditor"
-          :disabled="!productEditor.form.name || !productEditor.form.recipe.length"
-        >
-          提交
-        </el-button>
-      </div>
-    </van-popup>
+    <ProductEditorPopup
+      v-model:show="productEditor.show"
+      :type="productEditor.type"
+      :form="productEditor.form"
+      :available-materials-for-recipe="availableMaterialsForRecipe"
+      @add-recipe="addRecipeItem"
+      @recipe-material-change="onRecipeMaterialChange"
+      @remove-recipe="removeRecipeItem"
+      @submit="submitProductEditor"
+    />
 
     <van-popup v-model:show="settingsPopup" position="bottom" round destroy-on-close>
       <div class="popup-body">
@@ -553,6 +485,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { LStorage } from "@/utils/localStorage.ts";
 import DatePicker from "@/components/Date.vue";
+import ProductEditorPopup from "@/components/ProductEditorPopup.vue";
 import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
 import type { ThemeKey } from "@/config/themes";
@@ -1828,11 +1761,6 @@ onUnmounted(() => {
 .materials-list,
 .products-list,
 .settings-grid,
-.recipe-list {
-  display: grid;
-  gap: 10px;
-}
-
 .settings-grid {
   margin-top: 16px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2375,28 +2303,6 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-.manage-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-start;
-  gap: 6px;
-}
-
-.mini-action {
-  min-width: 72px;
-  padding: 5px 12px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--header-icon-bg);
-  color: var(--accent-strong);
-  font-size: 12px;
-}
-
-.mini-action.danger {
-  background: var(--danger-bg);
-  color: var(--danger-text);
-}
-
 .product-row {
   background: var(--surface-soft);
 }
@@ -2446,57 +2352,13 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
-.product-editor-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px;
-  gap: 10px;
-}
-
-.editor-card,
-.recipe-card {
+.editor-card {
   margin-top: 14px;
   padding: 12px;
   border: 1px solid var(--divider);
   border-radius: 14px;
   background: var(--surface-soft);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
-}
-
-.recipe-card {
-  padding: 10px;
-}
-
-.recipe-list {
-  display: grid;
-  gap: 8px;
-}
-
-.recipe-empty {
-  display: grid;
-  place-items: center;
-  min-height: 72px;
-  padding: 12px;
-  border: 1px dashed var(--divider);
-  border-radius: 12px;
-  background: var(--surface);
-  text-align: center;
-}
-
-.recipe-empty strong,
-.recipe-empty span {
-  display: block;
-}
-
-.recipe-empty strong {
-  color: var(--text-strong);
-  font-size: 14px;
-}
-
-.recipe-empty span {
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.35;
 }
 
 .material-editor-card {
@@ -2515,41 +2377,11 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-.recipe-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin: 18px 0 10px;
-}
-
-.recipe-header strong {
-  color: var(--text-strong);
-  font-size: 18px;
-}
-
-.recipe-header :deep(.el-button) {
-  border-color: var(--accent-border);
-  color: var(--accent);
-  background: var(--surface);
-  font-weight: 700;
-}
-
-.recipe-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px 40px;
-  gap: 8px;
-  align-items: center;
-}
-
-.recipe-select,
-.editor-number,
-.recipe-quantity {
+.editor-number {
   width: 100%;
 }
 
-.editor-card :deep(.el-input__wrapper),
-.recipe-card :deep(.el-input__wrapper),
-.recipe-card :deep(.el-select__wrapper) {
+.editor-card :deep(.el-input__wrapper) {
   box-shadow: none;
   border: 1px solid var(--divider);
   background: var(--surface);
@@ -2557,25 +2389,17 @@ onUnmounted(() => {
 
 .editor-card :deep(.el-input__wrapper.is-focus),
 .editor-card :deep(.el-input__wrapper:hover),
-.editor-card :deep(.el-input__wrapper:focus-within),
-.recipe-card :deep(.el-input__wrapper.is-focus),
-.recipe-card :deep(.el-input__wrapper:hover),
-.recipe-card :deep(.el-input__wrapper:focus-within),
-.recipe-card :deep(.el-select__wrapper.is-focused),
-.recipe-card :deep(.el-select__wrapper:hover) {
+.editor-card :deep(.el-input__wrapper:focus-within) {
   box-shadow: none;
   border-color: var(--divider);
 }
 
-.editor-card :deep(.el-input__wrapper),
-.recipe-card :deep(.el-input__wrapper),
-.recipe-card :deep(.el-select__wrapper) {
+.editor-card :deep(.el-input__wrapper) {
   min-height: 38px;
   border-radius: 10px;
 }
 
-.editor-card :deep(.el-input-number),
-.recipe-card :deep(.el-input-number) {
+.editor-card :deep(.el-input-number) {
   height: 38px;
   border: 1px solid var(--divider);
   border-radius: 10px;
@@ -2583,8 +2407,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.editor-card :deep(.el-input-number .el-input__wrapper),
-.recipe-card :deep(.el-input-number .el-input__wrapper) {
+.editor-card :deep(.el-input-number .el-input__wrapper) {
   height: 100%;
   border: 0;
   border-radius: 0;
@@ -2593,85 +2416,47 @@ onUnmounted(() => {
 
 .editor-card :deep(.el-input-number.is-focus),
 .editor-card :deep(.el-input-number:hover),
-.editor-card :deep(.el-input-number:focus-within),
-.recipe-card :deep(.el-input-number.is-focus),
-.recipe-card :deep(.el-input-number:hover),
-.recipe-card :deep(.el-input-number:focus-within) {
+.editor-card :deep(.el-input-number:focus-within) {
   border-color: var(--divider);
 }
 
 .editor-card :deep(.el-input-number .el-input__wrapper.is-focus),
-.editor-card :deep(.el-input-number .el-input__wrapper:focus-within),
-.recipe-card :deep(.el-input-number .el-input__wrapper.is-focus),
-.recipe-card :deep(.el-input-number .el-input__wrapper:focus-within) {
+.editor-card :deep(.el-input-number .el-input__wrapper:focus-within) {
   box-shadow: none !important;
   border-color: transparent;
 }
 
-.editor-card :deep(.el-input-number .el-input__inner:focus),
-.recipe-card :deep(.el-input-number .el-input__inner:focus) {
+.editor-card :deep(.el-input-number .el-input__inner:focus) {
   box-shadow: none;
   outline: none;
 }
 
 .editor-card :deep(.el-input-number__decrease),
-.editor-card :deep(.el-input-number__increase),
-.recipe-card :deep(.el-input-number__decrease),
-.recipe-card :deep(.el-input-number__increase) {
+.editor-card :deep(.el-input-number__increase) {
   border-color: var(--divider);
   background: var(--surface-soft);
   color: var(--text-muted);
 }
 
 .editor-card :deep(.el-input-number.is-controls-right .el-input-number__increase),
-.editor-card :deep(.el-input-number.is-controls-right .el-input-number__decrease),
-.recipe-card :deep(.el-input-number.is-controls-right .el-input-number__increase),
-.recipe-card :deep(.el-input-number.is-controls-right .el-input-number__decrease) {
+.editor-card :deep(.el-input-number.is-controls-right .el-input-number__decrease) {
   height: 50%;
   line-height: 1;
 }
 
-.editor-card :deep(.el-input-number.is-controls-right .el-input-number__increase),
-.recipe-card :deep(.el-input-number.is-controls-right .el-input-number__increase) {
+.editor-card :deep(.el-input-number.is-controls-right .el-input-number__increase) {
   top: 0;
   bottom: auto;
 }
 
-.editor-card :deep(.el-input-number.is-controls-right .el-input-number__decrease),
-.recipe-card :deep(.el-input-number.is-controls-right .el-input-number__decrease) {
+.editor-card :deep(.el-input-number.is-controls-right .el-input-number__decrease) {
   top: auto;
   bottom: 0;
 }
 
-.editor-card :deep(.el-input__inner),
-.recipe-card :deep(.el-input__inner) {
+.editor-card :deep(.el-input__inner) {
   color: var(--text-main);
   font-weight: 600;
-}
-
-.recipe-delete {
-  width: 100%;
-  height: 38px;
-  min-width: 40px;
-  padding: 0;
-  border-radius: 10px;
-  background: transparent;
-  font-size: 16px;
-}
-
-.recipe-quantity :deep(.el-input-number) {
-  width: 100%;
-}
-
-.icon-only {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.material-edit {
-  display: flex;
-  gap: 8px;
 }
 
 .submit-button {
@@ -2741,11 +2526,6 @@ onUnmounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .product-editor-grid {
-    grid-template-columns: minmax(0, 1fr) 110px;
-    align-items: end;
-  }
-
   .material-row,
   .product-row {
     grid-template-columns: minmax(0, 1fr) auto auto;
@@ -2753,15 +2533,6 @@ onUnmounted(() => {
 
   .material-row {
     grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .manage-actions {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .recipe-row {
-    grid-template-columns: minmax(0, 1fr) 96px 48px;
   }
 }
 </style>
