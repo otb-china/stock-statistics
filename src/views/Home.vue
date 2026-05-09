@@ -315,7 +315,7 @@
         </div>
 
         <div class="recipe-card">
-          <div class="recipe-list">
+          <div v-if="productEditor.form.recipe.length" class="recipe-list">
             <div v-for="(item, index) in productEditor.form.recipe" :key="index" class="recipe-row">
               <el-select
                 v-model="item.materialId"
@@ -341,6 +341,10 @@
                 <el-icon><Delete /></el-icon>
               </button>
             </div>
+          </div>
+          <div v-else class="recipe-empty">
+            <strong>还没有配方备料</strong>
+            <span>点击右上角“新增关联”，添加需要消耗的备料和数量。</span>
           </div>
         </div>
 
@@ -2672,6 +2676,34 @@ onUnmounted(() => {
 .recipe-list {
   display: grid;
   gap: 8px;
+}
+
+.recipe-empty {
+  display: grid;
+  place-items: center;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px dashed var(--divider);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.recipe-empty strong,
+.recipe-empty span {
+  display: block;
+}
+
+.recipe-empty strong {
+  color: var(--text-strong);
+  font-size: 14px;
+}
+
+.recipe-empty span {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .material-editor-card {
