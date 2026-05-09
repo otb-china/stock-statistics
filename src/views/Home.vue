@@ -240,6 +240,7 @@ import SettingsPopup from "@/components/SettingsPopup.vue";
 import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
 import { useMaterialStatus } from "@/composables/useMaterialStatus";
+import { useOrderActions } from "@/composables/useOrderActions";
 import type { ThemeKey } from "@/config/themes";
 import type {
   BackupData,
@@ -247,16 +248,12 @@ import type {
   ManageTab,
   Material,
   MaterialGroupKey,
-  Order,
-  OrderEditorType,
-  OrderMonth,
   Product,
 } from "@/types/stock";
 import {
   assertValidBackupData,
   buildDefaultProducts,
   createEmptyMaterialForm,
-  createEmptyOrderForm,
   createEmptyProductForm,
   createId,
   defaultMaterialNames,
@@ -265,7 +262,6 @@ import {
   normalizeOrders,
   normalizeProducts,
   resolveBackupData,
-  sumOrderValue,
 } from "@/utils/stockData.ts";
 import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
@@ -298,7 +294,6 @@ const orderPreviewLimit = ORDER_PREVIEW_LIMIT;
 const currentTheme = ref<ThemeKey>(DEFAULT_THEME);
 const data = ref([] as Material[]);
 const products = ref([] as Product[]);
-const calculation = ref(true);
 const settingsPopup = ref(false);
 const materialsPopup = ref({
   show: false,
@@ -334,16 +329,6 @@ const productEditor = ref({
   form: createEmptyProductForm(),
 });
 
-const orderInfo = ref({
-  type: "add" as OrderEditorType,
-  show: false,
-  form: createEmptyOrderForm(),
-  data: [] as Order[],
-  monthData: [] as OrderMonth[],
-  editingId: "",
-  checkedMonth: "",
-});
-
 const setTheme = (theme: ThemeKey) => {
   currentTheme.value = theme;
   themeStorage.setter(theme);
@@ -361,6 +346,34 @@ const {
   productStatusClass,
   recipePreview,
 } = useMaterialStatus(data, products);
+
+const {
+  calculation,
+  orderInfo,
+  OrderData,
+  visibleOrders,
+  collapsedOrdersCount,
+  orderTotal,
+  activeOrderProducts,
+  canSyncCalculation,
+  initOrderMonthData,
+  monthChange,
+  setOrderDate,
+  onProductChange,
+  openCreateOrder,
+  orderSubmit,
+  beforeUpd,
+  del,
+} = useOrderActions({
+  materials: data,
+  products,
+  activeProducts,
+  ordersExpanded,
+  orderPreviewLimit,
+  dateFormat: DATE_FORMAT,
+  craftableCountForProduct,
+  openProductsManage: () => openMaterialsPopup("products"),
+});
 
 const productsList = computed(() => {
   return [...products.value].sort((a, b) => craftableCountForProduct(b) - craftableCountForProduct(a));
@@ -425,33 +438,6 @@ const warningMaterials = computed(() => {
   });
 });
 
-const OrderData = computed(() => {
-  const checkedMonth = orderInfo.value.checkedMonth;
-  if (checkedMonth) {
-    return orderInfo.value.data.filter((item) => item.orderDate?.substring(0, 7) === checkedMonth);
-  }
-  return orderInfo.value.data;
-});
-
-const visibleOrders = computed(() => {
-  if (ordersExpanded.value || OrderData.value.length <= orderPreviewLimit) return OrderData.value;
-  return OrderData.value.slice(0, orderPreviewLimit);
-});
-
-const collapsedOrdersCount = computed(() => Math.max(0, OrderData.value.length - orderPreviewLimit));
-
-const orderTotal = computed(() => sumOrderValue(orderInfo.value.data));
-
-const selectedOrderProduct = computed(() => productByName(orderInfo.value.form.title));
-
-const activeOrderProducts = computed(() => activeProducts.value);
-
-const canSyncCalculation = computed(() => {
-  const product = selectedOrderProduct.value;
-  if (!product) return false;
-  return craftableCountForProduct(product) > 0;
-});
-
 const importExportSummary = computed(() => {
   return `导入后将覆盖 ${data.value.length} 项备料 · ${products.value.length} 个货品 · ${orderInfo.value.data.length} 条订单`;
 });
@@ -480,10 +466,6 @@ function countMaterialsByGroup() {
     safe: 0,
     unlinked: 0,
   });
-}
-
-function productByName(name: string) {
-  return products.value.find((item) => item.name === name);
 }
 
 function toggleMaterialGroup(key: MaterialGroupKey) {
@@ -589,146 +571,6 @@ const importData = () => {
   } catch {
     showToast("导入失败，请检查备份文件");
   }
-};
-
-const monthChange = (month: string) => {
-  orderInfo.value.checkedMonth = orderInfo.value.checkedMonth === month ? "" : month;
-  ordersExpanded.value = false;
-};
-
-const setOrderDate = (date: string) => {
-  orderInfo.value.form.orderDate = date;
-};
-
-const initOrderMonthData = () => {
-  const months = {} as Record<string, number>;
-
-  for (const item of orderInfo.value.data) {
-    if (item.orderDate) {
-      const month = item.orderDate.substring(0, 7);
-      months[month] = (months[month] || 0) + Number(item.value);
-    }
-  }
-
-  orderInfo.value.monthData = Object.keys(months)
-    .sort((a, b) => b.localeCompare(a))
-    .map((month) => ({
-      month,
-      value: months[month],
-    }));
-};
-
-const onProductChange = (productName: string) => {
-  const product = productByName(productName);
-  if (product) {
-    orderInfo.value.form.title = product.name;
-    orderInfo.value.form.value = product.defaultValue || 0;
-    calculation.value = craftableCountForProduct(product) > 0;
-  }
-  if (!orderInfo.value.form.orderDate) {
-    orderInfo.value.form.orderDate = dayjs(new Date()).format(DATE_FORMAT);
-  }
-};
-
-const openCreateOrder = () => {
-  const availableProducts = activeProducts.value;
-  if (!availableProducts.length) {
-    showToast("请先配置正常状态的货品");
-    openMaterialsPopup("products");
-    return;
-  }
-  const firstProduct = availableProducts[0];
-  orderInfo.value.type = "add";
-  orderInfo.value.form = {
-    id: "",
-    title: firstProduct.name,
-    value: firstProduct.defaultValue || 0,
-    orderDate: dayjs(new Date()).format(DATE_FORMAT),
-  };
-  calculation.value = true;
-  orderInfo.value.show = true;
-};
-
-const orderSubmit = () => {
-  const currentType = orderInfo.value.type;
-  const product = productByName(orderInfo.value.form.title);
-
-  if (currentType === "add") {
-    if (calculation.value && product) {
-      product.recipe.forEach((recipe) => {
-        const material = data.value.find((item) => item.id === recipe.materialId);
-        if (material) {
-          material.num = Math.max(0, Number(material.num) - Number(recipe.quantity));
-        }
-      });
-      saveMaterials();
-    }
-
-    orderInfo.value.data.unshift({
-      ...orderInfo.value.form,
-      id: createId("order"),
-    });
-  }
-
-  if (currentType === "upd") {
-    const index = orderInfo.value.data.findIndex((item) => item.id === orderInfo.value.editingId);
-    if (index >= 0) {
-      orderInfo.value.data.splice(index, 1, {
-        ...orderInfo.value.form,
-        id: orderInfo.value.editingId,
-      });
-    }
-  }
-
-  orderInfo.value.show = false;
-  LStorage.orderData.setter(orderInfo.value.data);
-  orderInfo.value.form = createEmptyOrderForm();
-  initOrderMonthData();
-};
-
-const beforeUpd = (item: Order) => {
-  orderInfo.value.type = "upd";
-  orderInfo.value.editingId = item.id;
-  orderInfo.value.form = { ...item };
-  calculation.value = false;
-  orderInfo.value.show = true;
-};
-
-const deleteOrder = (id: string) => {
-  orderInfo.value.data = orderInfo.value.data.filter((item) => item.id !== id);
-  LStorage.orderData.setter(orderInfo.value.data);
-  initOrderMonthData();
-};
-
-const returnOrderMaterials = (order: Order) => {
-  const product = productByName(order.title);
-  if (!product?.recipe.length) return false;
-
-  product.recipe.forEach((recipe) => {
-    const material = data.value.find((item) => item.id === recipe.materialId);
-    if (material) {
-      material.num = Number(material.num || 0) + Number(recipe.quantity || 0);
-    }
-  });
-  saveMaterials();
-  return true;
-};
-
-const del = (order: Order) => {
-  showConfirmDialog({
-    title: "删除订单",
-    message: `是否将「${order.title}」消耗的备料返还库存？`,
-    confirmButtonText: "返还备料",
-    cancelButtonText: "仅删除订单",
-  }).then(() => {
-    const returned = returnOrderMaterials(order);
-    deleteOrder(order.id);
-    showToast(returned ? "订单已删除，备料已返还" : "订单已删除，未找到可返还备料");
-  }).catch((action) => {
-    if (action !== "cancel") return;
-    deleteOrder(order.id);
-    showToast("订单已删除");
-  });
 };
 
 const saveMaterials = () => {
