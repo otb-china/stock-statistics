@@ -190,117 +190,27 @@
       @submit="submitProductEditor"
     />
 
-    <van-popup v-model:show="settingsPopup" position="bottom" round destroy-on-close>
-      <div class="popup-body">
-        <div class="popup-head">
-          <div>
-            <h3>更多操作</h3>
-          </div>
-        </div>
+    <SettingsPopup
+      v-model:show="settingsPopup"
+      :theme-options="themeOptions"
+      :current-theme="currentTheme"
+      :current-theme-name="currentThemeOption.name"
+      @set-theme="setTheme"
+      @export="exportAllData"
+      @open-import="openImportExport"
+      @reset="resetAllData"
+    />
 
-        <div class="theme-panel">
-          <div class="theme-panel-head">
-            <strong>界面主题</strong>
-            <span>{{ currentThemeOption.name }}</span>
-          </div>
-          <div class="theme-options">
-            <button
-              v-for="theme in themeOptions"
-              :key="theme.key"
-              class="theme-option"
-              :class="{ active: currentTheme === theme.key }"
-              type="button"
-              @click="setTheme(theme.key)"
-            >
-              <span class="theme-swatch" :style="{ background: theme.swatch }"></span>
-              <span>
-                <strong>{{ theme.name }}</strong>
-                <em>{{ theme.caption }}</em>
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div class="settings-grid">
-          <button class="settings-item settings-item-feature" @click="exportAllData">
-            <span class="settings-item-icon">
-              <el-icon><Download /></el-icon>
-            </span>
-            <span>
-              <strong>导出总数据</strong>
-              <em>下载备料、货品和订单备份文件</em>
-            </span>
-          </button>
-
-          <button class="settings-item settings-item-feature" @click="openImportExport">
-            <span class="settings-item-icon">
-              <el-icon><Upload /></el-icon>
-            </span>
-            <span>
-              <strong>导入总数据</strong>
-              <em>上传备份文件后恢复全部数据</em>
-            </span>
-          </button>
-
-          <button class="settings-item settings-item-feature danger" @click="resetAllData">
-            <span class="settings-item-icon">
-              <el-icon><Delete /></el-icon>
-            </span>
-            <span>
-              <strong>重置数据</strong>
-              <em>清除备料、货品和订单全部数据</em>
-            </span>
-          </button>
-        </div>
-      </div>
-    </van-popup>
-
-    <van-popup v-model:show="importExportInfo.show" position="bottom" destroy-on-close round>
-      <div class="popup-body import-export-popup">
-        <div class="popup-head">
-          <div>
-            <p class="section-tag">Data</p>
-            <h3>导入总数据</h3>
-            <p>选择导出的备份文件，会同时覆盖备料、货品和订单。</p>
-          </div>
-        </div>
-
-        <div v-if="hasImportOverwriteData" class="import-export-card">
-          <div>
-            <strong>当前数据</strong>
-            <span>{{ importExportSummary }}</span>
-          </div>
-        </div>
-
-        <input
-          ref="importFileInput"
-          class="file-input"
-          type="file"
-          accept="application/json,.json"
-          @change="onImportFileChange"
-        />
-
-        <button class="file-upload-card" type="button" @click="selectImportFile">
-          <span class="settings-item-icon">
-            <el-icon><Upload /></el-icon>
-          </span>
-          <span>
-            <strong>{{ importInfo.fileName || "选择备份文件" }}</strong>
-            <em>{{ importInfo.dataStr ? "文件已读取，点击下方按钮导入" : "支持导出的 .json 备份文件" }}</em>
-          </span>
-        </button>
-
-        <el-button
-          type="primary"
-          size="large"
-          class="submit-button"
-          @click="importData"
-          :disabled="!(importInfo.dataStr)"
-        >
-          导入总数据
-        </el-button>
-      </div>
-    </van-popup>
+    <ImportDataPopup
+      v-model:show="importExportInfo.show"
+      :has-overwrite-data="hasImportOverwriteData"
+      :summary="importExportSummary"
+      :file-name="importInfo.fileName"
+      :has-file="Boolean(importInfo.dataStr)"
+      @file-loaded="onImportFileLoaded"
+      @file-error="showToast"
+      @import="importData"
+    />
 
     <OrderEditorPopup
       v-model:show="orderInfo.show"
@@ -320,11 +230,13 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { LStorage } from "@/utils/localStorage.ts";
+import ImportDataPopup from "@/components/ImportDataPopup.vue";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
 import MaterialManagePopup from "@/components/MaterialManagePopup.vue";
 import OrderEditorPopup from "@/components/OrderEditorPopup.vue";
 import ProductEditorPopup from "@/components/ProductEditorPopup.vue";
 import ProductManagePopup from "@/components/ProductManagePopup.vue";
+import SettingsPopup from "@/components/SettingsPopup.vue";
 import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
 import type { ThemeKey } from "@/config/themes";
@@ -356,7 +268,7 @@ import {
 } from "@/utils/stockData.ts";
 import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
-import { Delete, Download, Setting, Top, Upload } from "@element-plus/icons-vue";
+import { Setting, Top } from "@element-plus/icons-vue";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const SCROLL_TOP_THRESHOLD = 240;
@@ -379,7 +291,6 @@ const MATERIAL_GROUP_RANK: Record<MaterialGroupKey, number> = {
 
 const headerSection = ref<HTMLElement | null>(null);
 const ordersSection = ref<HTMLElement | null>(null);
-const importFileInput = ref<HTMLInputElement | null>(null);
 const showScrollTop = ref(false);
 const ordersExpanded = ref(false);
 const orderPreviewLimit = ORDER_PREVIEW_LIMIT;
@@ -672,9 +583,6 @@ const openImportExport = () => {
   settingsPopup.value = false;
   importInfo.value.dataStr = "";
   importInfo.value.fileName = "";
-  if (importFileInput.value) {
-    importFileInput.value.value = "";
-  }
   importExportInfo.value.show = true;
 };
 
@@ -699,33 +607,10 @@ const exportAllData = () => {
   showToast("备份文件已导出");
 };
 
-const selectImportFile = () => {
-  importFileInput.value?.click();
-};
-
-const onImportFileChange = async (event: Event) => {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  importInfo.value.dataStr = "";
-  importInfo.value.fileName = "";
-
-  if (!file) return;
-
-  const isJsonFile = file.type === "application/json" || file.name.toLowerCase().endsWith(".json");
-  if (!isJsonFile) {
-    showToast("请选择 JSON 备份文件");
-    input.value = "";
-    return;
-  }
-
-  try {
-    importInfo.value.dataStr = await file.text();
-    importInfo.value.fileName = file.name;
-    showToast("备份文件已读取");
-  } catch {
-    showToast("文件读取失败");
-    input.value = "";
-  }
+const onImportFileLoaded = (payload: { dataStr: string; fileName: string }) => {
+  importInfo.value.dataStr = payload.dataStr;
+  importInfo.value.fileName = payload.fileName;
+  showToast("备份文件已读取");
 };
 
 const resetAllData = () => {
@@ -764,9 +649,6 @@ const importData = () => {
     importExportInfo.value.show = false;
     importInfo.value.dataStr = "";
     importInfo.value.fileName = "";
-    if (importFileInput.value) {
-      importFileInput.value.value = "";
-    }
     showToast("总数据导入成功");
   } catch {
     showToast("导入失败，请检查备份文件");
@@ -1509,273 +1391,6 @@ onUnmounted(() => {
   background: var(--swipe-delete-bg);
 }
 
-.popup-body {
-  max-height: 82vh;
-  padding: 18px 16px 22px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.popup-body::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-.settings-grid {
-  margin-top: 16px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.theme-panel {
-  margin-top: 16px;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--surface-soft);
-}
-
-.theme-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.theme-panel-head strong {
-  color: var(--text-strong);
-}
-
-.theme-panel-head span {
-  flex: 0 0 auto;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.theme-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.theme-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: var(--surface);
-  text-align: left;
-}
-
-.theme-option.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-ring);
-}
-
-.theme-swatch {
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
-}
-
-.theme-option > span:last-child {
-  min-width: 0;
-}
-
-.theme-option strong,
-.theme-option em {
-  display: block;
-}
-
-.theme-option strong {
-  color: var(--text-strong);
-  font-size: 13px;
-}
-
-.theme-option em {
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 11px;
-  font-style: normal;
-  line-height: 1.2;
-}
-
-.settings-item,
-.settings-item {
-  text-align: left;
-}
-
-.settings-item-feature {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  background: var(--settings-card-bg);
-}
-
-.settings-item-feature.danger {
-  background: var(--settings-danger-bg);
-}
-
-.settings-item-icon {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: 0 8px 18px rgba(31, 107, 123, 0.1);
-}
-
-.settings-item-feature.danger .settings-item-icon {
-  color: var(--danger-text);
-  box-shadow: 0 8px 18px rgba(208, 95, 82, 0.12);
-}
-
-.file-input {
-  display: none;
-}
-
-.file-upload-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px dashed var(--divider);
-  border-radius: 12px;
-  background: var(--surface-soft);
-  text-align: left;
-}
-
-.file-upload-card > span:last-child {
-  min-width: 0;
-}
-
-.file-upload-card strong,
-.file-upload-card em {
-  display: block;
-}
-
-.file-upload-card strong {
-  color: var(--text-main);
-  font-size: 14px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.file-upload-card em {
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-style: normal;
-  line-height: 1.35;
-}
-
-.settings-item strong,
-.settings-item span {
-  display: block;
-}
-
-.settings-item strong {
-  font-size: 14px;
-  color: var(--text-main);
-}
-
-.settings-item span {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.settings-item-feature > span:last-child {
-  min-width: 0;
-  margin-top: 0;
-}
-
-.settings-item-feature em {
-  display: block;
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-style: normal;
-  line-height: 1.35;
-}
-
-.import-export-popup :deep(.el-textarea__inner) {
-  min-height: 150px !important;
-  border: 0;
-  border-radius: 12px;
-  background: var(--field-bg);
-  color: var(--text-main);
-  box-shadow: none;
-}
-
-.import-export-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 14px 0 12px;
-  padding: 14px;
-  border-radius: 10px;
-  background: var(--stat-income-bg);
-  color: #ffffff;
-}
-
-.import-export-card strong,
-.import-export-card span {
-  display: block;
-}
-
-.import-export-card strong {
-  font-size: 16px;
-}
-
-.import-export-card span {
-  margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.8;
-}
-
-.submit-button {
-  width: 100%;
-  margin-top: 28px;
-  border: 0;
-  color: #ffffff;
-  background: var(--submit-btn-bg);
-  box-shadow: var(--submit-btn-shadow);
-}
-
-.submit-button:hover,
-.submit-button:focus {
-  color: #ffffff;
-  background: var(--submit-btn-bg);
-}
-
-.submit-button.is-disabled,
-.submit-button.is-disabled:hover,
-.submit-button.is-disabled:focus {
-  border: 0;
-  color: rgba(255, 255, 255, 0.72);
-  background: var(--submit-btn-bg);
-  box-shadow: none;
-  opacity: 0.48;
-}
-
 .van-field {
   background: var(--field-bg);
   border-radius: 12px;
@@ -1808,10 +1423,6 @@ onUnmounted(() => {
 
   .warning-materials-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .settings-grid {
-    grid-template-columns: minmax(0, 1fr);
   }
 
 }
