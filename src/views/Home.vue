@@ -141,113 +141,36 @@
       <el-empty v-else description="还没有订单记录" :image-size="84" />
     </section>
 
-    <van-popup v-model:show="materialsPopup.show" position="bottom" round destroy-on-close>
-      <div class="popup-body manage-popup-body">
-        <div class="popup-head MB12">
-          <div>
-            <h3>{{ materialsPopup.tab === "materials" ? "备料管理" : "货品管理" }}</h3>
-            <p>{{ materialsPopupDescription }}</p>
-          </div>
-          <button
-            class="popup-create-btn"
-            type="button"
-            @click="materialsPopup.tab === 'materials' ? openMaterialEditor() : openProductEditor()"
-          >
-            <el-icon><Plus /></el-icon>
-            <span>{{ materialsPopupCreateText }}</span>
-          </button>
-        </div>
+    <MaterialManagePopup
+      v-if="materialsPopup.tab === 'materials'"
+      v-model:show="materialsPopup.show"
+      :description="materialsPopupDescription"
+      :create-text="materialsPopupCreateText"
+      :groups="materialManageGroups"
+      :material-status-class="materialStatusClass"
+      :material-status-text="materialStatusText"
+      :material-related-summary="materialRelatedSummary"
+      :material-craftable-count="materialCraftableCount"
+      @create="openMaterialEditor"
+      @toggle-group="toggleMaterialGroup"
+      @edit="openMaterialEditor"
+      @remove="removeMaterial"
+    />
 
-        <template v-if="materialsPopup.tab === 'materials'">
-          <div class="manage-list-scroll">
-            <section
-              v-for="group in materialManageGroups"
-              :key="group.key"
-              class="material-group"
-              :class="{ collapsed: group.collapsed }"
-            >
-              <button
-                class="material-group-head"
-                type="button"
-                @click="toggleMaterialGroup(group.key)"
-              >
-                <span>{{ group.title }}</span>
-                <small>{{ group.items.length }}项</small>
-              </button>
-
-              <div v-if="!group.collapsed" class="material-group-list">
-                <van-swipe-cell
-                  v-for="item in group.items"
-                  :key="item.id"
-                  class="manage-swipe-cell"
-                >
-                  <div
-                    class="material-row"
-                    :class="materialStatusClass(item)"
-                  >
-                    <div class="material-info">
-                      <div class="material-title-row">
-                        <strong>{{ item.name }}</strong>
-                        <span class="material-status" :class="materialStatusClass(item)">
-                          {{ materialStatusText(item) }}
-                        </span>
-                      </div>
-                      <small>{{ materialRelatedSummary(item.id) }}</small>
-                    </div>
-
-                    <div class="material-metrics">
-                      <div class="material-metric">
-                        <span>{{ item.num }}</span>
-                        <small>库存</small>
-                      </div>
-                      <div class="material-metric">
-                        <strong>{{ materialCraftableCount(item.id) }}</strong>
-                        <small>可制</small>
-                      </div>
-                    </div>
-                  </div>
-                  <template #right>
-                    <van-button square type="primary" class="swipe-btn" text="编辑" @click="openMaterialEditor(item)" />
-                    <van-button square type="danger" class="swipe-btn" text="删除" @click="removeMaterial(item.id)" />
-                  </template>
-                </van-swipe-cell>
-              </div>
-            </section>
-          </div>
-        </template>
-
-        <template v-else>
-          <div class="manage-list-scroll">
-            <van-swipe-cell v-for="product in productsList" :key="product.id" class="manage-swipe-cell">
-              <div class="product-row">
-                <div class="product-main">
-                  <div class="product-title-row">
-                    <div class="product-title-block">
-                      <strong>{{ product.name }}</strong>
-                      <button
-                        class="product-status"
-                        :class="productStatusClass(product.status)"
-                        type="button"
-                        @click.stop="toggleProductStatus(product)"
-                      >
-                        {{ product.status === "active" ? "正常" : "停产" }}
-                      </button>
-                    </div>
-                    <span class="product-count">可制 {{ craftableCountForProduct(product) }}</span>
-                  </div>
-                  <p>收入金额 ¥{{ product.defaultValue || 0 }}</p>
-                  <small>{{ recipePreview(product) }}</small>
-                </div>
-              </div>
-              <template #right>
-                <van-button square type="primary" class="swipe-btn" text="编辑" @click="openProductEditor(product)" />
-                <van-button square type="danger" class="swipe-btn" text="删除" @click="removeProduct(product.id)" />
-              </template>
-            </van-swipe-cell>
-          </div>
-        </template>
-      </div>
-    </van-popup>
+    <ProductManagePopup
+      v-else
+      v-model:show="materialsPopup.show"
+      :description="materialsPopupDescription"
+      :create-text="materialsPopupCreateText"
+      :products="productsList"
+      :product-status-class="productStatusClass"
+      :craftable-count-for-product="craftableCountForProduct"
+      :recipe-preview="recipePreview"
+      @create="openProductEditor"
+      @toggle-status="toggleProductStatus"
+      @edit="openProductEditor"
+      @remove="removeProduct"
+    />
 
     <MaterialEditorPopup
       v-model:show="materialEditor.show"
@@ -398,8 +321,10 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { LStorage } from "@/utils/localStorage.ts";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
+import MaterialManagePopup from "@/components/MaterialManagePopup.vue";
 import OrderEditorPopup from "@/components/OrderEditorPopup.vue";
 import ProductEditorPopup from "@/components/ProductEditorPopup.vue";
+import ProductManagePopup from "@/components/ProductManagePopup.vue";
 import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
 import type { ThemeKey } from "@/config/themes";
@@ -431,7 +356,7 @@ import {
 } from "@/utils/stockData.ts";
 import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
-import { Delete, Download, Plus, Setting, Top, Upload } from "@element-plus/icons-vue";
+import { Delete, Download, Setting, Top, Upload } from "@element-plus/icons-vue";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const SCROLL_TOP_THRESHOLD = 240;
@@ -1318,28 +1243,6 @@ onUnmounted(() => {
   color: var(--text-subtle);
 }
 
-.popup-create-btn {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  gap: 4px;
-  flex: 0 0 auto;
-  margin-top: 2px;
-  padding: 6px 9px;
-  border: 1px solid var(--divider);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
-  box-shadow: 0 4px 10px rgba(38, 56, 88, 0.06);
-}
-
-.popup-create-btn .el-icon {
-  font-size: 11px;
-}
-
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1621,60 +1524,6 @@ onUnmounted(() => {
   display: none;
 }
 
-.manage-popup-body {
-  display: flex;
-  flex-direction: column;
-  height: 75vh;
-  overflow: hidden;
-}
-
-.manage-popup-body .popup-head {
-  flex: 0 0 auto;
-}
-
-.manage-list-scroll {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1 1 auto;
-  min-height: 0;
-  padding-right: 2px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.manage-list-scroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-.manage-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.manage-tab {
-  padding: 10px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--surface-muted);
-  color: var(--text-subtle);
-  font-weight: 600;
-}
-
-.manage-tab.active {
-  background: var(--accent);
-  color: #ffffff;
-}
-
-.materials-list,
-.products-list,
-.settings-grid,
 .settings-grid {
   margin-top: 16px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1760,13 +1609,6 @@ onUnmounted(() => {
 }
 
 .settings-item,
-.product-row {
-  padding: 14px 16px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--surface-soft);
-}
-
 .settings-item {
   text-align: left;
 }
@@ -1909,218 +1751,6 @@ onUnmounted(() => {
   opacity: 0.8;
 }
 
-.material-row,
-.product-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  gap: 12px;
-  align-items: center;
-}
-
-.material-row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px 12px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  background: var(--surface-soft);
-}
-
-.material-group {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.material-group-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 2px 4px;
-  border: 0;
-  background: transparent;
-  color: var(--text-main);
-  font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-}
-
-.material-group-head::after {
-  content: "收起";
-  color: var(--text-muted);
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.material-group.collapsed .material-group-head::after {
-  content: "展开";
-}
-
-.material-group-head small {
-  margin-left: auto;
-  color: var(--text-subtle);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.material-group-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.manage-swipe-cell {
-  flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: 10px;
-  background: var(--surface-soft);
-}
-
-.material-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.material-info strong,
-.product-main strong {
-  display: block;
-  font-size: 16px;
-  line-height: 1.2;
-  color: var(--text-main);
-}
-
-.material-status {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--surface-muted);
-  font-size: 12px;
-  flex: 0 0 auto;
-}
-
-.material-status.status-safe {
-  color: var(--accent);
-  background: var(--header-icon-bg);
-}
-
-.material-status.status-warning {
-  color: var(--warning-text);
-  background: var(--warning-bg);
-}
-
-.material-status.status-danger {
-  color: var(--danger-text);
-  background: var(--danger-bg);
-}
-
-.material-status.status-unlinked {
-  color: var(--text-muted);
-  background: var(--surface-muted);
-}
-
-.material-info small,
-.product-main p,
-.product-main small {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-subtle);
-}
-
-.product-main small {
-  text-align: justify;
-  text-justify: inter-ideograph;
-}
-
-.material-metrics {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.material-metric {
-  min-width: 48px;
-  text-align: center;
-}
-
-.material-metric span,
-.material-metric strong,
-.material-metric small {
-  display: block;
-}
-
-.material-metric span,
-.material-metric strong {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--accent-strong);
-  line-height: 1;
-}
-
-.material-metric small {
-  margin-top: 3px;
-  font-size: 11px;
-  color: var(--text-subtle);
-}
-
-.material-metric:last-child span,
-.material-metric:last-child strong {
-  color: var(--text-muted);
-}
-
-.product-row {
-  background: var(--surface-soft);
-}
-
-.product-main {
-  min-width: 0;
-}
-
-.product-title-block {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.product-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.product-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px 8px;
-  border: 0;
-  border-radius: 999px;
-  line-height: 1.2;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.product-status.status-active {
-  color: var(--accent);
-  background: var(--header-icon-bg);
-}
-
-.product-status.status-inactive {
-  color: var(--warning-text);
-  background: var(--warning-bg);
-}
-
-.product-count {
-  font-size: 12px;
-  color: var(--accent-strong);
-  font-weight: 600;
-}
-
 .submit-button {
   width: 100%;
   margin-top: 28px;
@@ -2176,7 +1806,7 @@ onUnmounted(() => {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-    .warning-materials-list {
+  .warning-materials-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2184,13 +1814,5 @@ onUnmounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .material-row,
-  .product-row {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-  }
-
-  .material-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
 }
 </style>
