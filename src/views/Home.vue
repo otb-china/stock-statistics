@@ -551,67 +551,40 @@
 
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import type { RSA } from "otb-toolkit/src/types";
 import { LStorage } from "@/utils/localStorage.ts";
 import DatePicker from "@/components/Date.vue";
 import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
 import type { ThemeKey } from "@/config/themes";
+import type {
+  BackupData,
+  EditorType,
+  ManageTab,
+  Material,
+  MaterialGroupKey,
+  Order,
+  OrderEditorType,
+  OrderMonth,
+  Product,
+} from "@/types/stock";
+import {
+  assertValidBackupData,
+  buildDefaultProducts,
+  createEmptyMaterialForm,
+  createEmptyOrderForm,
+  createEmptyProductForm,
+  createId,
+  defaultMaterialNames,
+  legacyMaterialId,
+  normalizeMaterials,
+  normalizeOrders,
+  normalizeProducts,
+  resolveBackupData,
+  sumOrderValue,
+} from "@/utils/stockData.ts";
 import dayjs from "dayjs";
 import { showConfirmDialog, showToast } from "vant";
-import { sort } from "otb-toolkit/src/utils/data.ts";
 import { Delete, Download, Plus, Setting, Top, Upload } from "@element-plus/icons-vue";
-
-type ManageTab = "materials" | "products";
-type MaterialGroupKey = "danger" | "warning" | "safe" | "unlinked";
-type EditorType = "add" | "edit";
-type OrderEditorType = "add" | "upd";
-
-interface Material extends RSA {
-  id: string;
-  name: string;
-  num: number;
-}
-
-interface ProductRecipe extends RSA {
-  materialId: string;
-  quantity: number;
-}
-
-interface Product extends RSA {
-  id: string;
-  name: string;
-  defaultValue: number;
-  status: "active" | "inactive";
-  recipe: ProductRecipe[];
-}
-
-interface Order extends RSA {
-  id: string;
-  title: string;
-  value: number;
-  orderDate: string;
-}
-
-interface OrderMonth {
-  month: string;
-  value: number;
-}
-
-interface BackupData extends RSA {
-  materials?: RSA[];
-  products?: RSA[];
-  orders?: RSA[];
-  data?: RSA[];
-  productData?: RSA[];
-  orderData?: RSA[];
-}
-
-interface ResolvedBackupData {
-  materials: RSA[];
-  products: RSA[];
-  orders: RSA[];
-}
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const SCROLL_TOP_THRESHOLD = 240;
@@ -631,33 +604,6 @@ const MATERIAL_GROUP_RANK: Record<MaterialGroupKey, number> = {
   safe: 2,
   unlinked: 3,
 };
-
-function createEmptyMaterialForm(): Material {
-  return {
-    id: "",
-    name: "",
-    num: 0,
-  };
-}
-
-function createEmptyProductForm(): Product {
-  return {
-    id: "",
-    name: "",
-    defaultValue: 0,
-    status: "active",
-    recipe: [],
-  };
-}
-
-function createEmptyOrderForm(): Order {
-  return {
-    id: "",
-    title: "",
-    value: 0,
-    orderDate: "",
-  };
-}
 
 const headerSection = ref<HTMLElement | null>(null);
 const ordersSection = ref<HTMLElement | null>(null);
@@ -713,59 +659,6 @@ const orderInfo = ref({
   editingId: "",
   checkedMonth: "",
 });
-
-const defaultMaterialNames = [
-  "风扇",
-  "塑料盒",
-  "钢丝软管",
-  "直法兰",
-  "2.0包装箱",
-  "2.0饮料瓶",
-  "花瓶",
-  "6型号盖",
-  "90度弯头",
-  "45度弯头",
-  "50管",
-  "内50软管",
-  "3.0包装箱",
-  "3.0矿泉水桶",
-  "3.0吸管",
-];
-
-const defaultProductConfigs = [
-  {
-    name: "吸尘器 2.0",
-    defaultValue: 45,
-    recipe: [
-      { name: "风扇", quantity: 1 },
-      { name: "塑料盒", quantity: 2 },
-      { name: "钢丝软管", quantity: 2 },
-      { name: "直法兰", quantity: 1 },
-      { name: "2.0包装箱", quantity: 1 },
-      { name: "2.0饮料瓶", quantity: 1 },
-    ],
-  },
-  {
-    name: "吸尘器 3.0",
-    defaultValue: 65,
-    recipe: [
-      { name: "风扇", quantity: 1 },
-      { name: "塑料盒", quantity: 1 },
-      { name: "直法兰", quantity: 1 },
-      { name: "花瓶", quantity: 1 },
-      { name: "90度弯头", quantity: 3 },
-      { name: "45度弯头", quantity: 1 },
-      { name: "50管", quantity: 1 },
-      { name: "内50软管", quantity: 1 },
-      { name: "6型号盖", quantity: 1 },
-      { name: "3.0矿泉水桶", quantity: 1 },
-      { name: "3.0吸管", quantity: 1 },
-    ],
-  },
-];
-
-const createId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const legacyMaterialId = (name: string) => `material-${encodeURIComponent(name)}`;
 
 const setTheme = (theme: ThemeKey) => {
   currentTheme.value = theme;
@@ -898,10 +791,6 @@ function countMaterialsByGroup() {
     safe: 0,
     unlinked: 0,
   });
-}
-
-function sumOrderValue(list: Order[]) {
-  return list.reduce((total, item) => total + Number(item.value), 0);
 }
 
 function productByName(name: string) {
@@ -1086,49 +975,6 @@ const resetAllData = () => {
     showToast("数据已重置");
   }).catch(() => {
   });
-};
-
-const resolveBackupList = (parsedData: BackupData, primaryKey: keyof BackupData, legacyKey: keyof BackupData) => {
-  const primaryValue = parsedData[primaryKey];
-  const legacyValue = parsedData[legacyKey];
-  if (Array.isArray(primaryValue)) return primaryValue;
-  if (Array.isArray(legacyValue)) return legacyValue;
-  return null;
-};
-
-const resolveBackupData = (parsedData: BackupData): ResolvedBackupData => {
-  const materials = resolveBackupList(parsedData, "materials", "data");
-  const products = resolveBackupList(parsedData, "products", "productData");
-  const orders = resolveBackupList(parsedData, "orders", "orderData");
-
-  if (!materials || !products || !orders) {
-    throw new Error("备份数据不完整");
-  }
-
-  return { materials, products, orders };
-};
-
-const assertValidBackupData = ({ materials, products, orders }: ResolvedBackupData) => {
-  const normalizedMaterials = normalizeMaterials(materials);
-  const normalizedProducts = normalizeProducts(products);
-  const normalizedOrders = normalizeOrders(orders);
-
-  if (
-    normalizedMaterials.length !== materials.length
-    || normalizedProducts.length !== products.length
-    || normalizedOrders.length !== orders.length
-  ) {
-    throw new Error("备份字段不完整");
-  }
-
-  const materialIds = new Set(normalizedMaterials.map((item) => item.id));
-  const hasInvalidRecipe = normalizedProducts.some((product) => {
-    return product.recipe.some((recipe) => !materialIds.has(recipe.materialId));
-  });
-
-  if (hasInvalidRecipe) {
-    throw new Error("货品配方引用了不存在的备料");
-  }
 };
 
 const importData = () => {
@@ -1488,15 +1334,6 @@ const removeProduct = (id: string) => {
   });
 };
 
-const normalizeMaterials = (list: RSA[] | undefined): Material[] => {
-  const source = Array.isArray(list) ? list : [];
-  return source.map((item) => ({
-    id: String(item.id || legacyMaterialId(String(item.name || ""))),
-    name: String(item.name || ""),
-    num: Number(item.num || 0),
-  })).filter((item) => item.name);
-};
-
 const seedMissingMaterials = () => {
   defaultMaterialNames.forEach((name) => {
     if (!data.value.some((item) => item.name === name)) {
@@ -1507,50 +1344,6 @@ const seedMissingMaterials = () => {
       });
     }
   });
-};
-
-const buildDefaultProducts = (): Product[] => {
-  return defaultProductConfigs.map((product) => ({
-    id: createId("product"),
-    name: product.name,
-    defaultValue: product.defaultValue,
-    status: "active" as const,
-    recipe: product.recipe.map((item) => ({
-      materialId: legacyMaterialId(item.name),
-      quantity: item.quantity,
-    })),
-  }));
-};
-
-const normalizeProducts = (list: RSA[] | undefined): Product[] => {
-  const source = Array.isArray(list) ? list : [];
-  return source.map((item): Product => {
-    const status: Product["status"] = item.status === "inactive" ? "inactive" : "active";
-    return {
-      id: String(item.id || createId("product")),
-      name: String(item.name || ""),
-      defaultValue: Number(item.defaultValue || item.value || 0),
-      status,
-      recipe: Array.isArray(item.recipe)
-        ? item.recipe
-          .map((recipe: RSA): ProductRecipe => ({
-            materialId: String(recipe.materialId || ""),
-            quantity: Number(recipe.quantity || 1),
-          }))
-          .filter((recipe) => recipe.materialId)
-        : [],
-    };
-  }).filter((item) => item.name);
-};
-
-const normalizeOrders = (list: RSA[] | undefined): Order[] => {
-  const source = Array.isArray(list) ? list : [];
-  return sort(source.map((item) => ({
-    id: String(item.id || createId("order")),
-    title: String(item.title || ""),
-    value: Number(item.value || 0),
-    orderDate: String(item.orderDate || ""),
-  })), "desc", "orderDate");
 };
 
 const init = () => {
