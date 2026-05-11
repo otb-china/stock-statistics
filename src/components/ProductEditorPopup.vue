@@ -108,32 +108,6 @@ const canSubmit = computed(() => props.form.name.trim() && props.form.recipe.len
 </script>
 
 <style lang="scss" scoped>
-.popup-body {
-  max-height: 82vh;
-  padding: 18px 16px 22px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.popup-body::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-.popup-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.popup-head h3 {
-  margin: 0;
-  color: var(--text-strong);
-}
-
 .editor-card,
 .recipe-card {
   margin-top: 14px;
@@ -356,31 +330,6 @@ const canSubmit = computed(() => props.form.name.trim() && props.form.recipe.len
 .recipe-card :deep(.el-input__inner) {
   color: var(--text-main);
   font-weight: 600;
-}
-
-.submit-button {
-  width: 100%;
-  margin-top: 28px;
-  border: 0;
-  color: #ffffff;
-  background: var(--submit-btn-bg);
-  box-shadow: var(--submit-btn-shadow);
-}
-
-.submit-button:hover,
-.submit-button:focus {
-  color: #ffffff;
-  background: var(--submit-btn-bg);
-}
-
-.submit-button.is-disabled,
-.submit-button.is-disabled:hover,
-.submit-button.is-disabled:focus {
-  border: 0;
-  color: rgba(255, 255, 255, 0.72);
-  background: var(--submit-btn-bg);
-  box-shadow: none;
-  opacity: 0.48;
 }
 
 @media (max-width: 720px) {

@@ -591,8 +591,7 @@ onUnmounted(() => {
 
 .page-header,
 .hero-main,
-.section-row,
-.popup-head {
+.section-row {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -609,8 +608,7 @@ onUnmounted(() => {
 
 .page-header h1,
 .hero-card h1,
-.section-row h2,
-.popup-head h3 {
+.section-row h2 {
   margin: 0;
   color: var(--text-strong);
 }
@@ -636,12 +634,6 @@ onUnmounted(() => {
 .header-icon.danger {
   background: var(--danger-bg);
   color: var(--danger-text);
-}
-
-.popup-head p {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-subtle);
 }
 
 .hero-stats {
@@ -892,22 +884,6 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 700;
   color: var(--accent-strong);
-}
-
-.swipe-btn {
-  height: 100%;
-  min-width: 60px;
-  border: 0;
-  color: #ffffff;
-  font-weight: 700;
-}
-
-.swipe-btn.van-button--primary {
-  background: var(--swipe-edit-bg);
-}
-
-.swipe-btn.van-button--danger {
-  background: var(--swipe-delete-bg);
 }
 
 .van-field {

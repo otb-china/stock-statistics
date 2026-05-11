@@ -92,32 +92,6 @@ const popupShow = computed({
 </script>
 
 <style lang="scss" scoped>
-.popup-body {
-  max-height: 82vh;
-  padding: 18px 16px 22px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.popup-body::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
-}
-
-.popup-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.popup-head h3 {
-  margin: 0;
-  color: var(--text-strong);
-}
-
 .theme-panel {
   margin-top: 16px;
   padding: 14px;
@@ -224,25 +198,7 @@ const popupShow = computed({
   background: var(--settings-danger-bg);
 }
 
-.settings-item-icon {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--accent);
-  box-shadow: 0 8px 18px rgba(31, 107, 123, 0.1);
-}
-
-.settings-item-feature.danger .settings-item-icon {
-  color: var(--danger-text);
-  box-shadow: 0 8px 18px rgba(208, 95, 82, 0.12);
-}
-
-.settings-item strong,
+.settings-item-feature.danger .settings-item strong,
 .settings-item span {
   display: block;
 }
