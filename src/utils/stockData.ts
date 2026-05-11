@@ -9,56 +9,6 @@ import type {
   ResolvedBackupData,
 } from "@/types/stock";
 
-export const defaultMaterialNames = [
-  "风扇",
-  "塑料盒",
-  "钢丝软管",
-  "直法兰",
-  "2.0包装箱",
-  "2.0饮料瓶",
-  "花瓶",
-  "6型号盖",
-  "90度弯头",
-  "45度弯头",
-  "50管",
-  "内50软管",
-  "3.0包装箱",
-  "3.0矿泉水桶",
-  "3.0吸管",
-];
-
-export const defaultProductConfigs = [
-  {
-    name: "吸尘器 2.0",
-    defaultValue: 45,
-    recipe: [
-      { name: "风扇", quantity: 1 },
-      { name: "塑料盒", quantity: 2 },
-      { name: "钢丝软管", quantity: 2 },
-      { name: "直法兰", quantity: 1 },
-      { name: "2.0包装箱", quantity: 1 },
-      { name: "2.0饮料瓶", quantity: 1 },
-    ],
-  },
-  {
-    name: "吸尘器 3.0",
-    defaultValue: 65,
-    recipe: [
-      { name: "风扇", quantity: 1 },
-      { name: "塑料盒", quantity: 1 },
-      { name: "直法兰", quantity: 1 },
-      { name: "花瓶", quantity: 1 },
-      { name: "90度弯头", quantity: 3 },
-      { name: "45度弯头", quantity: 1 },
-      { name: "50管", quantity: 1 },
-      { name: "内50软管", quantity: 1 },
-      { name: "6型号盖", quantity: 1 },
-      { name: "3.0矿泉水桶", quantity: 1 },
-      { name: "3.0吸管", quantity: 1 },
-    ],
-  },
-];
-
 export const createId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 export const legacyMaterialId = (name: string) => `material-${encodeURIComponent(name)}`;
@@ -92,19 +42,6 @@ export function createEmptyOrderForm(): Order {
 
 export function sumOrderValue(list: Order[]) {
   return list.reduce((total, item) => total + Number(item.value), 0);
-}
-
-export function buildDefaultProducts(): Product[] {
-  return defaultProductConfigs.map((product) => ({
-    id: createId("product"),
-    name: product.name,
-    defaultValue: product.defaultValue,
-    status: "active" as const,
-    recipe: product.recipe.map((item) => ({
-      materialId: legacyMaterialId(item.name),
-      quantity: item.quantity,
-    })),
-  }));
 }
 
 export function normalizeMaterials(list: RSA[] | undefined): Material[] {

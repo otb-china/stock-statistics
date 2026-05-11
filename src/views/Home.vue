@@ -252,9 +252,6 @@ import type {
   Product,
 } from "@/types/stock";
 import {
-  buildDefaultProducts,
-  defaultMaterialNames,
-  legacyMaterialId,
   normalizeMaterials,
   normalizeOrders,
   normalizeProducts,
@@ -507,31 +504,15 @@ const openMaterialsPopup = (tab: ManageTab = "materials") => {
   materialsPopup.value.show = true;
 };
 
-const seedMissingMaterials = () => {
-  defaultMaterialNames.forEach((name) => {
-    if (!data.value.some((item) => item.name === name)) {
-      data.value.push({
-        id: legacyMaterialId(name),
-        name,
-        num: 0,
-      });
-    }
-  });
-};
-
 const init = () => {
   const storedTheme = themeStorage.getter();
   currentTheme.value = isThemeKey(storedTheme) ? storedTheme : DEFAULT_THEME;
 
   const storedMaterials = LStorage.data.getter();
   data.value = normalizeMaterials(storedMaterials);
-  if (!Array.isArray(storedMaterials)) {
-    seedMissingMaterials();
-  }
 
   const rawStoredProducts = LStorage.productData.getter();
-  const storedProducts = normalizeProducts(rawStoredProducts);
-  products.value = Array.isArray(rawStoredProducts) ? storedProducts : buildDefaultProducts();
+  products.value = normalizeProducts(rawStoredProducts);
 
   orderInfo.value.data = normalizeOrders(LStorage.orderData.getter());
   initOrderMonthData();
