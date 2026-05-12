@@ -58,7 +58,9 @@
             <strong>可制 {{ craftableCountForProduct(product) }}</strong>
           </div>
         </div>
-        <div v-else class="craftable-empty">当前没有可制作的正常货品</div>
+        <div v-else class="craftable-empty">
+          {{ !data.length ? "还没有配置备料" : (products.length ? "当前没有可制作的正常货品" : "还没有配置货品") }}
+        </div>
       </div>
 
       <div class="craftable-card warning-materials-card">
@@ -138,7 +140,16 @@
         </van-cell>
       </van-cell-group>
 
-      <el-empty v-else description="还没有订单记录" :image-size="84" />
+      <div v-else class="orders-empty">
+        <strong>还没有订单记录</strong>
+        <span>
+          {{
+            !data.length
+              ? "先配置备料，再配置货品，之后就可以记录订单。"
+              : (products.length ? "新增订单后，这里会按月份汇总收入。" : "先配置货品，再开始记录订单。")
+          }}
+        </span>
+      </div>
     </section>
 
     <MaterialManagePopup
@@ -346,7 +357,8 @@ const {
   orderPreviewLimit,
   dateFormat: DATE_FORMAT,
   craftableCountForProduct,
-  openProductsManage: () => openMaterialsPopup("products"),
+  openMaterialEditor: () => openMaterialEditor(),
+  openProductEditor: () => openProductEditor(),
 });
 
 const {
@@ -388,7 +400,9 @@ const {
   removeRecipeItem,
   submitProductEditor,
   removeProduct,
-} = useProductEditor(data, products);
+} = useProductEditor(data, products, {
+  openMaterialEditor: () => openMaterialEditor(),
+});
 
 const productsList = computed(() => {
   return [...products.value].sort((a, b) => craftableCountForProduct(b) - craftableCountForProduct(a));
@@ -649,6 +663,10 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
+.craftable-empty {
+  line-height: 1.35;
+}
+
 .craftable-list {
   display: grid;
   gap: 8px;
@@ -842,6 +860,25 @@ onUnmounted(() => {
 
 .orders-panel :deep(.van-cell-group) {
   margin-bottom: 0;
+}
+
+.orders-empty {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 24px 12px 28px;
+  text-align: center;
+}
+
+.orders-empty strong {
+  color: var(--text-strong);
+  font-size: 15px;
+}
+
+.orders-empty span {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .summary-title {

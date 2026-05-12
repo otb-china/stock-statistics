@@ -13,7 +13,13 @@
       </div>
 
       <div class="manage-list-scroll">
+        <div v-if="!groups.length" class="manage-empty">
+          <strong>还没有备料</strong>
+          <span>新增备料后，可以在货品配方里选择并计算库存。</span>
+        </div>
+
         <section
+          v-else
           v-for="group in groups"
           :key="group.key"
           class="material-group"

@@ -4,7 +4,15 @@ import { LStorage } from "@/utils/localStorage.ts";
 import { createEmptyProductForm, createId } from "@/utils/stockData.ts";
 import type { EditorType, Material, Product } from "@/types/stock";
 
-export function useProductEditor(materials: Ref<Material[]>, products: Ref<Product[]>) {
+interface UseProductEditorOptions {
+  openMaterialEditor?: () => void;
+}
+
+export function useProductEditor(
+  materials: Ref<Material[]>,
+  products: Ref<Product[]>,
+  options: UseProductEditorOptions = {},
+) {
   const productEditor = ref({
     show: false,
     type: "add" as EditorType,
@@ -16,6 +24,12 @@ export function useProductEditor(materials: Ref<Material[]>, products: Ref<Produ
   }
 
   function openProductEditor(product?: Product) {
+    if (!product && !materials.value.length) {
+      showToast("请先新增备料");
+      options.openMaterialEditor?.();
+      return;
+    }
+
     productEditor.value.type = product ? "edit" : "add";
     productEditor.value.form = product
       ? {

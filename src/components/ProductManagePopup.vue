@@ -13,7 +13,12 @@
       </div>
 
       <div class="manage-list-scroll">
-        <van-swipe-cell v-for="product in products" :key="product.id" class="manage-swipe-cell">
+        <div v-if="!products.length" class="manage-empty">
+          <strong>还没有货品</strong>
+          <span>新增货品并配置配方后，订单会自动带出金额和备料扣减。</span>
+        </div>
+
+        <van-swipe-cell v-else v-for="product in products" :key="product.id" class="manage-swipe-cell">
           <div class="product-row">
             <div class="product-main">
               <div class="product-title-row">

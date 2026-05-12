@@ -152,3 +152,27 @@ html::-webkit-scrollbar {
   color: var(--danger-text);
   box-shadow: 0 8px 18px rgba(208, 95, 82, 0.12);
 }
+
+.manage-empty {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: 220px;
+  padding: 20px 14px;
+  border: 1px dashed var(--divider);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  text-align: center;
+}
+
+.manage-empty strong {
+  color: var(--text-strong);
+  font-size: 15px;
+}
+
+.manage-empty span {
+  max-width: 240px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}

@@ -13,7 +13,8 @@ interface UseOrderActionsOptions {
   orderPreviewLimit: number;
   dateFormat: string;
   craftableCountForProduct: (product: Product) => number;
-  openProductsManage: () => void;
+  openMaterialEditor: () => void;
+  openProductEditor: () => void;
 }
 
 export function useOrderActions(options: UseOrderActionsOptions) {
@@ -99,10 +100,16 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   }
 
   function openCreateOrder() {
+    if (!options.materials.value.length) {
+      showToast("请先新增备料");
+      options.openMaterialEditor();
+      return;
+    }
+
     const availableProducts = options.activeProducts.value;
     if (!availableProducts.length) {
-      showToast("请先配置正常状态的货品");
-      options.openProductsManage();
+      showToast("请先新增货品");
+      options.openProductEditor();
       return;
     }
     const firstProduct = availableProducts[0];
