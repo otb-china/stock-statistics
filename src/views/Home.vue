@@ -1,6 +1,6 @@
 <template>
   <div class="home-page" :style="themeStyle">
-    <header ref="headerSection" class="page-header" :class="{ scrolled: showScrollTop }">
+    <header class="page-header" :class="{ scrolled: isScrolled }">
       <div class="brand">
         <img class="brand-logo" src="@/assets/logo.svg" alt="" />
         <div>
@@ -20,7 +20,7 @@
 
     <main class="page-main">
       <section class="overview">
-        <button class="income-card" type="button" @click="scrollToOrders">
+        <div class="income-card">
           <span class="income-label">本月收入</span>
           <strong class="income-value"><small>¥</small>{{ currentMonthIncome }}</strong>
           <span class="income-meta">
@@ -29,7 +29,7 @@
             <span>共 {{ orderInfo.data.length }} 单</span>
           </span>
           <span class="income-deco" aria-hidden="true"></span>
-        </button>
+        </div>
 
         <div class="overview-stats">
           <StatCard
@@ -112,7 +112,7 @@
         </div>
       </section>
 
-      <section ref="ordersSection" class="panel orders-panel">
+      <section class="panel orders-panel">
         <div class="panel-head">
           <h2><span class="panel-mark"></span>订单记录</h2>
           <span class="panel-count">{{ OrderData.length }} 条</span>
@@ -262,10 +262,10 @@
             <strong>{{ restockTotal ?? restockMaterial.num }}</strong>
           </div>
         </div>
-        <label class="form-field restock-field">
+        <div class="form-field restock-field">
           <span class="form-label">本次补货数量</span>
-          <el-input-number id="restock-quantity" v-model="restock.quantity" :min="0" />
-        </label>
+          <el-input-number id="restock-quantity" v-model="restock.quantity" :min="0" aria-label="本次补货数量" />
+        </div>
         <div class="restock-steps">
           <button v-for="step in [5, 10, 20, 50]" :key="step" type="button" @click="restock.quantity = (restock.quantity || 0) + step">+{{ step }}</button>
         </div>
@@ -375,7 +375,6 @@ import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const SCROLL_TOP_THRESHOLD = 240;
-const TOP_SCROLL_GAP = 10;
 const ORDER_PREVIEW_LIMIT = 10;
 
 const MATERIAL_GROUP_META = [
@@ -392,9 +391,8 @@ const MATERIAL_GROUP_RANK: Record<MaterialGroupKey, number> = {
   unlinked: 3,
 };
 
-const headerSection = ref<HTMLElement | null>(null);
-const ordersSection = ref<HTMLElement | null>(null);
 const showScrollTop = ref(false);
+const isScrolled = ref(false);
 const ordersExpanded = ref(false);
 const orderPreviewLimit = ORDER_PREVIEW_LIMIT;
 const currentTheme = ref<ThemeKey>(DEFAULT_THEME);
@@ -650,15 +648,7 @@ const scrollToTop = () => {
 
 const updateScrollTopVisibility = () => {
   showScrollTop.value = window.scrollY > SCROLL_TOP_THRESHOLD;
-};
-
-const scrollToOrders = () => {
-  if (!ordersSection.value) return;
-  const headerHeight = headerSection.value?.offsetHeight || 0;
-  window.scrollTo({
-    top: Math.max(0, ordersSection.value.getBoundingClientRect().top + window.scrollY - headerHeight - TOP_SCROLL_GAP),
-    behavior: "smooth",
-  });
+  isScrolled.value = window.scrollY > 2;
 };
 
 const openMaterialsPopup = (tab: ManageTab = "materials") => {
@@ -685,11 +675,9 @@ onUnmounted(() => {
 .home-page {
   position: relative;
   min-height: 100vh;
+  overflow-x: clip;
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
-  background:
-    radial-gradient(120% 60% at 100% 0%, var(--accent-ring) 0%, transparent 60%),
-    var(--page-bg);
-  background-attachment: fixed;
+  background: var(--page-bg);
   color: var(--text-main);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -715,14 +703,25 @@ onUnmounted(() => {
   max-width: 720px;
   margin: 0 auto;
   padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: padding 0.2s ease;
+}
+
+.page-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 -100vw;
+  z-index: -1;
+  background: var(--page-bg);
+  transition: box-shadow 0.2s ease;
 }
 
 .page-header.scrolled {
-  background: color-mix(in srgb, var(--page-bg) 82%, transparent);
-  backdrop-filter: saturate(160%) blur(16px);
-  -webkit-backdrop-filter: saturate(160%) blur(16px);
-  box-shadow: 0 1px 0 var(--divider);
+  padding-top: calc(10px + env(safe-area-inset-top));
+  padding-bottom: 10px;
+}
+
+.page-header.scrolled::before {
+  box-shadow: 0 1px 0 var(--divider), 0 6px 16px rgba(20, 40, 60, 0.06);
 }
 
 .brand {
@@ -793,21 +792,12 @@ onUnmounted(() => {
   align-items: flex-start;
   overflow: hidden;
   padding: 18px 18px 16px;
-  border: 0;
   border-radius: 20px;
   background: var(--stat-income-bg);
   color: var(--stat-income-text);
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
   box-shadow: var(--submit-btn-shadow);
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.15s ease;
 }
 
-.income-card:active {
-  transform: scale(0.985);
-}
 
 .income-label {
   font-size: 13px;

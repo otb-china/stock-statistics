@@ -32,7 +32,7 @@
 
       <div class="form-stack order-fields">
         <div class="form-row">
-          <label class="form-field">
+          <div class="form-field">
             <span class="form-label">件数</span>
             <el-input-number
               :model-value="form.quantity || undefined"
@@ -41,7 +41,7 @@
               aria-label="件数"
               @update:model-value="emit('quantity-change', $event ?? 0)"
             />
-          </label>
+          </div>
           <label class="form-field">
             <span class="form-label">订单总金额</span>
             <van-field
