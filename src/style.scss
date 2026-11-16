@@ -649,3 +649,10 @@ body {
   max-width: none;
   font-size: 24px;
 }
+
+.el-input-number__increase,
+.el-input-number__decrease {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}

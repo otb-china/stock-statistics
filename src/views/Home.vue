@@ -114,8 +114,14 @@
 
       <section class="panel orders-panel">
         <div class="panel-head">
-          <h2><span class="panel-mark"></span>订单记录</h2>
-          <span class="panel-count">{{ OrderData.length }} 条</span>
+          <h2>
+            <span class="panel-mark"></span>订单记录
+            <span class="panel-count">{{ OrderData.length }} 条</span>
+          </h2>
+          <button class="order-add-btn" type="button" @click="openCreateOrder">
+            <el-icon><Plus /></el-icon>
+            <span>新增订单</span>
+          </button>
         </div>
 
         <div class="month-filter" v-if="orderInfo.monthData.length">
@@ -193,11 +199,6 @@
         </div>
       </section>
     </main>
-
-    <button class="fab" type="button" aria-label="新增订单" @click="openCreateOrder">
-      <el-icon><Plus /></el-icon>
-      <span>新增订单</span>
-    </button>
 
     <MaterialManagePopup
       v-if="materialsPopup.tab === 'materials'"
@@ -676,7 +677,7 @@ onUnmounted(() => {
   position: relative;
   min-height: 100vh;
   overflow-x: clip;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
   background: var(--page-bg);
   color: var(--text-main);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
@@ -1305,37 +1306,32 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-/* floating action */
-.fab {
-  position: fixed;
-  left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom));
-  z-index: 30;
+/* order add */
+.order-add-btn {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
-  gap: 6px;
-  padding: 14px 24px;
+  gap: 4px;
+  padding: 7px 14px;
   border: 0;
   border-radius: 999px;
   background: var(--create-btn-bg);
   color: #ffffff;
   font: inherit;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.04em;
   cursor: pointer;
-  box-shadow: var(--create-btn-shadow), 0 2px 0 rgba(255, 255, 255, 0.2) inset;
-  transform: translateX(-50%);
+  box-shadow: var(--create-btn-shadow);
   transition: transform 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.fab:active {
-  transform: translateX(-50%) scale(0.96);
+.order-add-btn:active {
+  transform: scale(0.95);
 }
 
-.fab .el-icon {
-  font-size: 18px;
+.order-add-btn .el-icon {
+  font-size: 15px;
 }
 
 /* restock popup */

@@ -21,3 +21,19 @@ const pinia = createPinia()
 app.use(pinia).use(router).use(ElementPlus).use(Vant)
 
 app.mount('#app')
+
+const STEPPER_SELECTOR = ".el-input-number__increase, .el-input-number__decrease"
+
+function guardStepperFocus(event: Event) {
+  const target = event.target as HTMLElement | null
+  const button = target?.closest?.(STEPPER_SELECTOR)
+  if (!button) return
+  if (event.type === "mousedown") event.preventDefault()
+  const active = document.activeElement as HTMLElement | null
+  if (active && active !== document.body && button.closest(".el-input-number")?.contains(active)) {
+    active.blur()
+  }
+}
+
+document.addEventListener("pointerdown", guardStepperFocus, true)
+document.addEventListener("mousedown", guardStepperFocus, true)
