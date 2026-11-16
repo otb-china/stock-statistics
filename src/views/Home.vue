@@ -1,12 +1,14 @@
 <template>
   <div class="home-page" :style="themeStyle">
-    <header ref="headerSection" class="page-header">
-      <div>
-        <p class="hero-tag">Stock Statistics</p>
-        <h1>备料统计</h1>
+    <header ref="headerSection" class="page-header" :class="{ scrolled: showScrollTop }">
+      <div class="brand">
+        <img class="brand-logo" src="@/assets/logo.svg" alt="" />
+        <div>
+          <h1>备料统计</h1>
+          <p>{{ todayText }}</p>
+        </div>
       </div>
       <div class="header-actions">
-        <el-button class="create-order-btn" round size="small" @click="openCreateOrder">新增订单</el-button>
         <button v-if="showScrollTop" class="header-icon" type="button" aria-label="返回顶部" @click="scrollToTop">
           <el-icon><Top /></el-icon>
         </button>
@@ -16,174 +18,186 @@
       </div>
     </header>
 
-    <section class="hero-card">
-      <div class="hero-main">
-        <div>
-          <p class="hero-tag">Overview</p>
-        </div>
-      </div>
+    <main class="page-main">
+      <section class="overview">
+        <button class="income-card" type="button" @click="scrollToOrders">
+          <span class="income-label">本月收入</span>
+          <strong class="income-value"><small>¥</small>{{ currentMonthIncome }}</strong>
+          <span class="income-meta">
+            <span>累计 ¥{{ orderTotal }}</span>
+            <span class="income-dot"></span>
+            <span>共 {{ orderInfo.data.length }} 单</span>
+          </span>
+          <span class="income-deco" aria-hidden="true"></span>
+        </button>
 
-      <div class="hero-stats">
-        <StatCard
-          title="收入"
-          :value="`¥${orderTotal}`"
-          :footer="`共 ${orderInfo.data.length} 单`"
-          variant="income"
-          @click="scrollToOrders"
-        />
-        <StatCard
-          title="备料"
-          :value="materialsSummary.totalKinds"
-          :footer="materialsSummary.footerText"
-          variant="materials"
-          @click="openMaterialsPopup('materials')"
-        />
-        <StatCard
-          title="货品"
-          :value="products.length"
-          :footer="productsSummary.footerText"
-          variant="goods"
-          @click="openMaterialsPopup('products')"
-        />
-      </div>
-
-      <div class="craftable-card">
-        <div class="craftable-head">
-          <strong>可制作货品</strong>
-          <span>{{ craftableProducts.length }}种</span>
+        <div class="overview-stats">
+          <StatCard
+            title="备料"
+            :value="materialsSummary.totalKinds"
+            unit="种"
+            :footer="materialsSummary.footerText || (data.length ? '库存充足' : '去配置备料')"
+            :alert="materialsSummary.dangerKinds > 0 ? 'danger' : (materialsSummary.warningKinds > 0 ? 'warning' : undefined)"
+            variant="materials"
+            @click="openMaterialsPopup('materials')"
+          />
+          <StatCard
+            title="货品"
+            :value="products.length"
+            unit="款"
+            :footer="productsSummary.footerText || '去配置货品'"
+            variant="goods"
+            @click="openMaterialsPopup('products')"
+          />
         </div>
+      </section>
 
-        <div class="craftable-list" v-if="craftableProducts.length">
-          <button v-for="product in craftableProducts" :key="product.id" class="craftable-row record-edit" type="button" @click="openProductEditor(product)">
-            <span class="bolder">{{ product.name }}</span>
-            <small v-if="sharedMaterials(product)">共用 {{ sharedMaterials(product) }}</small>
-            <strong>可制 {{ craftableCountForProduct(product) }}</strong>
-          </button>
-          <p v-if="craftableProducts.some(sharedMaterials)" class="shared-stock-note">可制数量按单款计算。共用备料的货品会消耗同一份库存。</p>
+      <section v-if="warningMaterials.length" class="panel warning-panel">
+        <div class="panel-head">
+          <h2><span class="panel-mark is-danger"></span>库存预警</h2>
+          <span class="panel-count">{{ warningMaterials.length }} 项</span>
         </div>
-        <div v-else class="craftable-empty">
-          {{ !data.length ? "还没有配置备料" : (products.length ? "当前没有可制作的正常货品" : "还没有配置货品") }}
-        </div>
-      </div>
-
-      <div class="craftable-card warning-materials-card">
-        <div class="craftable-head">
-          <strong>预警备料</strong>
-          <span>{{ warningMaterials.length }}项</span>
-        </div>
-
-        <div class="warning-materials-list" v-if="warningMaterials.length">
+        <div class="warning-list">
           <button
             v-for="item in warningMaterials"
             :key="item.id"
-            class="warning-material-row"
+            class="warning-item"
+            :class="materialStatusClass(item)"
             type="button"
             @click="openRestock(item)"
           >
-            <span class="warning-material-title">
+            <span class="warning-info">
               <b>{{ item.name }}</b>
-              <small class="restock-label">补库存</small>
+              <small>库存 {{ item.num }} · {{ materialStatus(item) === "danger" ? "缺货" : "预警" }}</small>
             </span>
-            <div class="warning-material-meta">
-              <small>库存 {{ item.num }}</small>
-              <strong :class="materialStatusClass(item)">
-                {{ materialStatus(item) === "danger" ? "缺货" : "预警" }}
-              </strong>
-            </div>
+            <span class="warning-action">
+              <el-icon><Plus /></el-icon>补货
+            </span>
           </button>
         </div>
-        <div v-else class="craftable-empty">当前没有预警或缺货备料</div>
-      </div>
-    </section>
+      </section>
 
-    <section ref="ordersSection" class="orders-panel">
-      <div class="section-row">
-        <div>
-          <p class="section-tag">Orders</p>
-          <h2>订单记录</h2>
+      <section class="panel">
+        <div class="panel-head">
+          <h2><span class="panel-mark"></span>可制作货品</h2>
+          <span class="panel-count">{{ craftableProducts.length }} 种</span>
         </div>
-        <div class="orders-head-actions">
-          <el-button class="create-order-btn" round size="small" @click="openCreateOrder">新增订单</el-button>
-        </div>
-      </div>
 
-      <div class="month-filter" v-if="orderInfo.monthData.length">
-        <button
-          class="month-chip"
-          :class="{ active: !orderInfo.checkedMonth }"
-          :aria-pressed="!orderInfo.checkedMonth"
-          type="button"
-          @click="monthChange('')"
-        >
-          <span>全部</span>
-          <strong>¥{{ orderTotal }}</strong>
-        </button>
-        <button
-          v-for="item in orderInfo.monthData"
-          :key="item.month"
-          class="month-chip"
-          :class="{ active: orderInfo.checkedMonth === item.month }"
-          :aria-pressed="orderInfo.checkedMonth === item.month"
-          type="button"
-          @click="monthChange(item.month)"
-        >
-          <span>{{ item.month }}</span>
-          <strong>¥{{ item.value }}</strong>
-        </button>
-      </div>
-
-      <el-input
-        v-if="orderInfo.data.length"
-        v-model="orderSearch"
-        class="order-search"
-        placeholder="按货品名称筛选订单"
-        aria-label="按货品名称筛选订单"
-        clearable
-      />
-      <van-cell-group inset v-if="OrderData.length">
-        <van-cell class="summary-cell">
-          <template #title>
-            <span class="summary-title">货品订单</span>
-          </template>
-          <template #value>
-            <div class="summary-actions">
-              <span class="summary-count">{{ OrderData.length }}条</span>
-            </div>
-          </template>
-        </van-cell>
-
-        <div v-for="item in visibleOrders" :key="item.id" class="order-record-row record-row">
-          <button class="order-record-edit record-edit" type="button" @click="beforeUpd(item)">
-            <span>
-              <strong>{{ item.title }} × {{ item.quantity }}</strong>
-              <small>{{ item.orderDate }}</small>
+        <div v-if="craftableProducts.length" class="craftable-list">
+          <button
+            v-for="product in craftableProducts"
+            :key="product.id"
+            class="craftable-row"
+            type="button"
+            @click="openProductEditor(product)"
+          >
+            <span class="craftable-main">
+              <span class="craftable-name">{{ product.name }}</span>
+              <small v-if="sharedMaterials(product)">共用 {{ sharedMaterials(product) }}</small>
+              <span class="craftable-bar">
+                <i :style="{ width: craftableRatio(product) }"></i>
+              </span>
             </span>
-            <span>¥{{ item.value }}</span>
+            <span class="craftable-count">
+              <strong>{{ craftableCountForProduct(product) }}</strong>
+              <small>可制</small>
+            </span>
           </button>
-          <RowActions :label="item.title + '订单'" :actions="[
-            { name: '删除订单', color: '#c63535', callback: () => del(item) },
-          ]" />
+          <p v-if="craftableProducts.some(sharedMaterials)" class="panel-note">
+            可制数量按单款计算，共用备料的货品会消耗同一份库存。
+          </p>
+        </div>
+        <div v-else class="panel-empty">
+          {{ !data.length ? "还没有配置备料" : (products.length ? "当前没有可制作的正常货品" : "还没有配置货品") }}
+        </div>
+      </section>
+
+      <section ref="ordersSection" class="panel orders-panel">
+        <div class="panel-head">
+          <h2><span class="panel-mark"></span>订单记录</h2>
+          <span class="panel-count">{{ OrderData.length }} 条</span>
         </div>
 
-        <van-cell v-if="OrderData.length > orderPreviewLimit" class="orders-toggle-cell" center>
-          <button class="orders-toggle-btn" type="button" @click="ordersExpanded = !ordersExpanded">
+        <div class="month-filter" v-if="orderInfo.monthData.length">
+          <button
+            class="month-chip"
+            :class="{ active: !orderInfo.checkedMonth }"
+            :aria-pressed="!orderInfo.checkedMonth"
+            type="button"
+            @click="monthChange('')"
+          >
+            <span>全部</span>
+            <strong>¥{{ orderTotal }}</strong>
+          </button>
+          <button
+            v-for="item in orderInfo.monthData"
+            :key="item.month"
+            class="month-chip"
+            :class="{ active: orderInfo.checkedMonth === item.month }"
+            :aria-pressed="orderInfo.checkedMonth === item.month"
+            type="button"
+            @click="monthChange(item.month)"
+          >
+            <span>{{ formatMonth(item.month) }}</span>
+            <strong>¥{{ item.value }}</strong>
+          </button>
+        </div>
+
+        <el-input
+          v-if="orderInfo.data.length"
+          v-model="orderSearch"
+          class="order-search"
+          placeholder="按货品名称筛选订单"
+          aria-label="按货品名称筛选订单"
+          :prefix-icon="Search"
+          clearable
+        />
+
+        <div v-if="OrderData.length" class="order-list">
+          <div v-for="item in visibleOrders" :key="item.id" class="order-row record-row">
+            <button class="order-edit record-edit" type="button" @click="beforeUpd(item)">
+              <span class="order-avatar" aria-hidden="true">{{ item.title.slice(0, 1) }}</span>
+              <span class="order-info">
+                <strong>{{ item.title }}<em>× {{ item.quantity }}</em></strong>
+                <small>{{ item.orderDate }}</small>
+              </span>
+              <span class="order-amount">¥{{ item.value }}</span>
+            </button>
+            <RowActions :label="item.title + '订单'" :actions="[
+              { name: '删除订单', color: '#c63535', callback: () => del(item) },
+            ]" />
+          </div>
+
+          <button
+            v-if="OrderData.length > orderPreviewLimit"
+            class="orders-toggle-btn"
+            type="button"
+            @click="ordersExpanded = !ordersExpanded"
+          >
             {{ ordersExpanded ? "收起订单" : `展开剩余 ${collapsedOrdersCount} 条` }}
+            <el-icon :class="{ flipped: ordersExpanded }"><ArrowDown /></el-icon>
           </button>
-        </van-cell>
-      </van-cell-group>
+        </div>
 
-      <div v-else class="orders-empty">
-        <strong>{{ orderSearch.trim() ? "没有匹配的订单" : "还没有订单记录" }}</strong>
-        <span v-if="!orderSearch.trim()">
-          {{
-            !data.length
-              ? "先配置备料，再配置货品，之后就可以记录订单。"
-              : (products.length ? "新增订单后，这里会按月份汇总收入。" : "先配置货品，再开始记录订单。")
-          }}
-        </span>
-        <button v-if="!orderInfo.data.length" class="orders-toggle-btn" type="button" @click="openImportExport">导入备份</button>
-      </div>
-    </section>
+        <div v-else class="orders-empty">
+          <span class="orders-empty-icon"><el-icon><Tickets /></el-icon></span>
+          <strong>{{ orderSearch.trim() ? "没有匹配的订单" : "还没有订单记录" }}</strong>
+          <span v-if="!orderSearch.trim()">
+            {{
+              !data.length
+                ? "先配置备料，再配置货品，之后就可以记录订单。"
+                : (products.length ? "新增订单后，这里会按月份汇总收入。" : "先配置货品，再开始记录订单。")
+            }}
+          </span>
+          <button v-if="!orderInfo.data.length" class="ghost-btn" type="button" @click="openImportExport">导入备份</button>
+        </div>
+      </section>
+    </main>
+
+    <button class="fab" type="button" aria-label="新增订单" @click="openCreateOrder">
+      <el-icon><Plus /></el-icon>
+      <span>新增订单</span>
+    </button>
 
     <MaterialManagePopup
       v-if="materialsPopup.tab === 'materials'"
@@ -341,8 +355,10 @@ import type {
   ManageTab,
   Material,
   MaterialGroupKey,
+  Product,
 } from "@/types/stock";
-import { Setting, Top } from "@element-plus/icons-vue";
+import { ArrowDown, Plus, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
+import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const SCROLL_TOP_THRESHOLD = 240;
@@ -559,6 +575,26 @@ const craftableProducts = computed(() => {
     .sort((a, b) => craftableCountForProduct(b) - craftableCountForProduct(a));
 });
 
+const maxCraftableCount = computed(() => {
+  return Math.max(1, ...craftableProducts.value.map((item) => craftableCountForProduct(item)));
+});
+
+const currentMonthIncome = computed(() => {
+  const month = dayjs().format("YYYY-MM");
+  return orderInfo.value.monthData.find((item) => item.month === month)?.value ?? 0;
+});
+
+const todayText = dayjs().format("M月D日") + " · " + ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dayjs().day()];
+
+function craftableRatio(product: Product) {
+  return `${Math.round((craftableCountForProduct(product) / maxCraftableCount.value) * 100)}%`;
+}
+
+function formatMonth(month: string) {
+  const [year, value] = month.split("-");
+  return year === dayjs().format("YYYY") ? `${Number(value)}月` : `${year}.${value}`;
+}
+
 const warningMaterials = computed(() => {
   return materialsList.value.filter((item) => {
     const status = materialGroupKey(item);
@@ -634,64 +670,75 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .home-page {
+  position: relative;
   min-height: 100vh;
-  padding: 10px;
-  background: var(--page-bg);
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(120% 60% at 100% 0%, var(--accent-ring) 0%, transparent 60%),
+    var(--page-bg);
+  background-attachment: fixed;
   color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.page-header,
-.hero-card,
-.orders-panel {
-  margin-bottom: 10px;
-  background: var(--surface);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-}
-
-.home-page > section:last-of-type {
-  margin-bottom: 0;
-}
-
-.page-header,
-.hero-card,
-.orders-panel {
-  padding: 14px;
+.page-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 4px 14px 0;
 }
 
 .page-header {
   position: sticky;
   top: 0;
   z-index: 20;
-  backdrop-filter: blur(12px);
-  border-radius: 0;
-  margin: -10px -10px 10px;
-  padding: 14px 14px 12px;
-  box-shadow: var(--header-shadow);
-}
-
-.page-header,
-.hero-main,
-.section-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.page-header.scrolled {
+  background: color-mix(in srgb, var(--page-bg) 82%, transparent);
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  box-shadow: 0 1px 0 var(--divider);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
-.hero-tag,
-.section-tag {
-  margin: 0 0 4px;
-  font-size: 11px;
-  color: var(--text-muted);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+.brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  box-shadow: 0 6px 14px rgba(20, 40, 60, 0.14);
 }
 
-.page-header h1,
-.hero-card h1,
-.section-row h2 {
+.brand h1 {
   margin: 0;
   color: var(--text-strong);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.brand p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .header-actions {
@@ -704,162 +751,591 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--header-icon-bg);
-  color: var(--accent);
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-strong);
+  font-size: 17px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(20, 40, 60, 0.04);
+  transition: transform 0.15s ease;
 }
 
-.header-icon.danger {
-  background: var(--danger-bg);
-  color: var(--danger-text);
+.header-icon:active {
+  transform: scale(0.94);
 }
 
-.hero-stats {
+/* overview */
+.overview {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.income-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
+  padding: 18px 18px 16px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--stat-income-bg);
+  color: var(--stat-income-text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: var(--submit-btn-shadow);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease;
+}
+
+.income-card:active {
+  transform: scale(0.985);
+}
+
+.income-label {
+  font-size: 13px;
+  opacity: 0.82;
+}
+
+.income-value {
+  margin-top: 8px;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.income-value small {
+  margin-right: 3px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.income-meta {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 12px;
 }
 
-.craftable-card {
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--surface-soft);
+.income-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
 }
 
-.craftable-head {
+.income-deco {
+  position: absolute;
+  top: -40px;
+  right: -30px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+}
+
+.income-deco::after {
+  content: "";
+  position: absolute;
+  right: 40px;
+  bottom: -70px;
+  width: 90px;
+  height: 90px;
+  border: 14px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+}
+
+.overview-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* panels */
+.panel {
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-.craftable-head strong {
+.panel-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
   color: var(--text-strong);
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.craftable-head span,
-.craftable-empty {
-  font-size: 12px;
+.panel-mark {
+  width: 4px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+.panel-mark.is-danger {
+  background: var(--danger-text);
+}
+
+.panel-count {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-muted);
   color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.craftable-empty {
-  line-height: 1.35;
+.panel-note,
+.panel-empty {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.craftable-list {
+.panel-empty {
+  padding: 18px 0 6px;
+  text-align: center;
+}
+
+/* warning */
+.warning-panel {
+  background: linear-gradient(180deg, var(--danger-bg) 0%, var(--surface) 64px);
+}
+
+.warning-list {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px;
 }
 
-.warning-materials-list {
+.warning-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--divider);
+  border-left: 3px solid var(--warning-text);
+  border-radius: 12px;
+  background: var(--surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.warning-item.status-danger {
+  border-left-color: var(--danger-text);
+}
+
+.warning-item:active {
+  transform: scale(0.98);
+}
+
+.warning-info {
+  min-width: 0;
+}
+
+.warning-info b,
+.warning-info small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.warning-info b {
+  color: var(--text-strong);
+  font-size: 14px;
+}
+
+.warning-info small {
+  margin-top: 3px;
+  color: var(--warning-text);
+  font-size: 12px;
+}
+
+.warning-item.status-danger .warning-info small {
+  color: var(--danger-text);
+}
+
+.warning-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--header-icon-bg);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* craftable */
+.craftable-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
 .craftable-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--surface);
+  gap: 14px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease;
 }
 
-.craftable-row small {
+.craftable-row:active {
+  transform: scale(0.985);
+}
+
+.craftable-main {
   flex: 1;
-  color: var(--text-muted);
+  min-width: 0;
 }
 
-.craftable-row strong {
-  flex-shrink: 0;
+.craftable-name {
+  display: block;
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.shared-stock-note {
-  margin: 2px 0 0;
+.craftable-main small {
+  display: block;
+  margin-top: 2px;
   color: var(--text-muted);
   font-size: 12px;
 }
 
-.order-search {
-  margin: 4px 0 12px;
-}
-
-.order-record-row {
-  border-radius: 0;
-  border-bottom: 1px solid var(--divider);
-  background: var(--surface);
-}
-
-.order-record-edit {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-}
-
-.order-record-edit small {
+.craftable-bar {
   display: block;
-  color: var(--text-muted);
+  height: 5px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-muted);
 }
 
-.craftable-row span {
-  color: var(--text-main);
+.craftable-bar i {
+  display: block;
+  height: 100%;
+  min-width: 6px;
+  border-radius: inherit;
+  background: var(--submit-btn-bg);
 }
 
-.craftable-row strong {
+.craftable-count {
+  flex-shrink: 0;
+  min-width: 44px;
+  text-align: center;
+}
+
+.craftable-count strong {
+  display: block;
   color: var(--accent-strong);
+  font-size: 22px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
-.warning-materials-card {
-  margin-top: 10px;
+.craftable-count small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
-.warning-material-row {
-  display: grid;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: 8px;
+/* orders */
+.month-filter {
+  display: flex;
+  gap: 8px;
+  margin: 0 -16px 12px;
+  padding: 0 16px 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.month-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.month-chip {
+  flex: 0 0 auto;
+  min-width: 84px;
+  padding: 9px 12px;
+  border: 1px solid var(--divider);
+  border-radius: 14px;
   background: var(--surface);
+  color: var(--text-main);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-.warning-material-row span,
-.warning-material-row small,
-.warning-material-row strong {
+.month-chip span,
+.month-chip strong {
   display: block;
 }
 
-.warning-material-row span {
-  color: var(--text-main);
-  line-height: 1.25;
+.month-chip span {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
-.warning-material-row .warning-material-title {
+.month-chip strong {
+  margin-top: 3px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.month-chip.active {
+  border-color: transparent;
+  background: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 6px 14px var(--accent-ring);
+}
+
+.month-chip.active span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.order-search {
+  margin-bottom: 10px;
+}
+
+.order-search :deep(.el-input__wrapper) {
+  border-radius: 12px;
+  background: var(--field-bg);
+  box-shadow: none;
+}
+
+.order-search :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.order-list {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  overflow-wrap: anywhere;
+  flex-direction: column;
 }
 
-.warning-material-row .restock-label {
+.order-row {
+  border-radius: 0;
+  background: transparent;
+}
+
+.order-row + .order-row {
+  border-top: 1px solid var(--divider);
+}
+
+.order-edit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.order-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--header-icon-bg);
   color: var(--accent-strong);
+  font-size: 15px;
+  font-weight: 700;
 }
 
+.order-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-info strong {
+  display: block;
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.order-info em {
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.order-info small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.order-amount {
+  flex-shrink: 0;
+  color: var(--text-strong);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-row :deep(.row-actions-button) {
+  min-width: 32px;
+  margin-right: -6px;
+  color: var(--text-muted);
+}
+
+.orders-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.orders-toggle-btn .el-icon {
+  transition: transform 0.2s ease;
+}
+
+.orders-toggle-btn .el-icon.flipped {
+  transform: rotate(180deg);
+}
+
+.orders-empty {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 20px 12px 16px;
+  text-align: center;
+}
+
+.orders-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--header-icon-bg);
+  color: var(--accent);
+  font-size: 24px;
+}
+
+.orders-empty-icon .el-icon {
+  font-size: 24px;
+}
+
+.orders-empty strong {
+  color: var(--text-strong);
+  font-size: 15px;
+}
+
+.orders-empty span {
+  max-width: 260px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ghost-btn {
+  margin-top: 4px;
+  padding: 7px 16px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* floating action */
+.fab {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--create-btn-bg);
+  color: #ffffff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: var(--create-btn-shadow), 0 2px 0 rgba(255, 255, 255, 0.2) inset;
+  transform: translateX(-50%);
+  transition: transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fab:active {
+  transform: translateX(-50%) scale(0.96);
+}
+
+.fab .el-icon {
+  font-size: 18px;
+}
+
+/* restock popup */
 .restock-fields {
   display: grid;
   gap: 10px;
@@ -875,206 +1351,14 @@ onUnmounted(() => {
   color: var(--accent-strong);
 }
 
-.warning-material-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.warning-material-row small {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.warning-material-row strong {
-  flex: 0 0 auto;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-.warning-material-row strong.status-warning {
-  color: var(--warning-text);
-  background: var(--warning-bg);
-}
-
-.warning-material-row strong.status-danger {
-  color: var(--danger-text);
-  background: var(--danger-bg);
-}
-
-.orders-head-actions {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.create-order-btn {
-  border: 0;
-  color: #ffffff;
-  background: var(--create-btn-bg);
-  box-shadow: var(--create-btn-shadow);
-}
-
-.create-order-btn:hover,
-.create-order-btn:focus {
-  color: #ffffff;
-  background: var(--create-btn-bg);
-}
-
-.orders-panel {
-  padding-bottom: 0;
-  overflow: hidden;
-}
-
-.month-filter {
-  display: flex;
-  gap: 8px;
-  margin: 10px 0 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.month-filter::-webkit-scrollbar {
-  display: none;
-}
-
-.month-chip {
-  flex: 0 0 auto;
-  min-width: 88px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 10px;
-  background: var(--surface-muted);
-  text-align: left;
-  color: var(--text-main);
-}
-
-.month-chip span,
-.month-chip strong {
-  display: block;
-}
-
-.month-chip span {
-  font-size: 11px;
-}
-
-.month-chip strong {
-  margin-top: 3px;
-  font-size: 14px;
-}
-
-.month-chip.active {
-  background: var(--accent);
-  color: #ffffff;
-}
-
-.summary-cell :deep(.van-cell__value) {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.summary-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.summary-toggle {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.summary-count {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.orders-toggle-cell :deep(.van-cell__value) {
-  text-align: center;
-}
-
-.orders-toggle-btn {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.orders-panel :deep(.van-cell-group--inset) {
-  margin: 0;
-  border-radius: 10px;
-}
-
-.orders-panel :deep(.van-cell-group) {
-  margin-bottom: 0;
-}
-
-.orders-empty {
-  display: grid;
-  place-items: center;
-  gap: 8px;
-  padding: 24px 12px 28px;
-  text-align: center;
-}
-
-.orders-empty strong {
-  color: var(--text-strong);
-  font-size: 15px;
-}
-
-.orders-empty span {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.summary-title {
-  font-weight: 600;
-  color: var(--text-strong);
-}
-
-.van-field {
-  background: var(--field-bg);
-  border-radius: 12px;
-}
-
-.home-page :deep(.van-cell),
-.home-page :deep(.van-cell-group) {
-  background: var(--surface);
-  color: var(--text-main);
-}
-
-.home-page :deep(.van-cell::after) {
-  border-color: var(--divider);
-}
-
-.home-page :deep(.van-field__control),
-.home-page :deep(.van-field__label) {
-  color: var(--text-main);
-}
-
 .home-page :deep(.van-popup) {
   background: var(--surface);
   color: var(--text-main);
 }
 
-@media (max-width: 720px) {
-  .hero-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+@media (min-width: 640px) {
+  .overview {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   }
-
-  .warning-materials-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
 }
 </style>

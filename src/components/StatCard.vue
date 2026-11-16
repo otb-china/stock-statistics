@@ -1,17 +1,25 @@
 <template>
   <button class="stat-card" :class="variant" type="button" @click="$emit('click')">
-    <span class="stat-title">{{ title }}</span>
-    <strong>{{ value }}</strong>
-    <small :class="{ 'stat-empty-footer': !footer }">{{ footer || "占位" }}</small>
+    <span class="stat-head">
+      <span class="stat-title">{{ title }}</span>
+      <span v-if="alert" class="stat-alert" :class="alert && `is-${alert}`" aria-hidden="true"></span>
+      <el-icon class="stat-arrow"><ArrowRight /></el-icon>
+    </span>
+    <strong>{{ value }}<small v-if="unit">{{ unit }}</small></strong>
+    <span class="stat-footer" :class="alert && `is-${alert}`">{{ footer }}</span>
   </button>
 </template>
 
 <script lang="ts" setup>
+import { ArrowRight } from "@element-plus/icons-vue";
+
 defineProps<{
   title: string;
   value: string | number;
+  unit?: string;
   footer?: string;
-  variant: "income" | "materials" | "goods";
+  alert?: "warning" | "danger";
+  variant: "materials" | "goods";
 }>();
 
 defineEmits<{
@@ -23,90 +31,105 @@ defineEmits<{
 .stat-card {
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   box-sizing: border-box;
-  min-height: 92px;
-  padding: 10px;
+  min-width: 0;
+  padding: 14px;
   border: 0;
-  border-radius: 10px;
-  color: #ffffff;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text-strong);
+  font: inherit;
   text-align: left;
   line-height: 1.2;
+  cursor: pointer;
+  box-shadow: var(--shadow);
   -webkit-tap-highlight-color: transparent;
-  transition: none;
+  transition: transform 0.15s ease;
 }
 
-.stat-card:active,
-.stat-card:focus,
+.stat-card:active {
+  transform: scale(0.97);
+}
+
 .stat-card:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
-.stat-card.income {
-  background: var(--stat-income-bg, linear-gradient(135deg, #0f766e 0%, #22a06b 100%));
-  color: var(--stat-income-text, #ffffff);
-  box-shadow: var(--stat-income-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.18));
-}
-
-.stat-card.materials {
-  background: var(--stat-materials-bg, linear-gradient(135deg, #eef5f4 0%, #e2eceb 100%));
-  color: var(--stat-materials-text, #26535a);
-  box-shadow: var(--stat-light-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.78));
-}
-
-.stat-card.goods {
-  background: var(--stat-goods-bg, linear-gradient(135deg, #f2f7ed 0%, #e5efd9 100%));
-  color: var(--stat-goods-text, #526b1f);
-  box-shadow: var(--stat-light-shadow, inset 0 1px 0 rgba(255, 255, 255, 0.72));
-}
-
-.stat-card.income:active,
-.stat-card.income:focus,
-.stat-card.income:focus-visible {
-  background: var(--stat-income-bg, linear-gradient(135deg, #0f766e 0%, #22a06b 100%));
-  color: var(--stat-income-text, #ffffff);
-}
-
-.stat-card.materials:active,
-.stat-card.materials:focus,
-.stat-card.materials:focus-visible {
-  background: var(--stat-materials-bg, linear-gradient(135deg, #eef5f4 0%, #e2eceb 100%));
-  color: var(--stat-materials-text, #26535a);
-}
-
-.stat-card.goods:active,
-.stat-card.goods:focus,
-.stat-card.goods:focus-visible {
-  background: var(--stat-goods-bg, linear-gradient(135deg, #f2f7ed 0%, #e5efd9 100%));
-  color: var(--stat-goods-text, #526b1f);
-}
-
-.stat-title,
-.stat-card strong,
-.stat-card small {
-  display: block;
+.stat-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .stat-title {
-  margin-bottom: 8px;
-  font-size: 12px;
-  opacity: 0.82;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.stat-title::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--stat-materials-text);
+}
+
+.goods .stat-title::before {
+  background: var(--stat-goods-text);
+}
+
+.stat-alert {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning-text);
+  box-shadow: 0 0 0 3px var(--warning-bg);
+}
+
+.stat-alert.is-danger {
+  background: var(--danger-text);
+  box-shadow: 0 0 0 3px var(--danger-bg);
+}
+
+.stat-arrow {
+  margin-left: auto;
+  color: var(--text-subtle);
+  font-size: 13px;
 }
 
 .stat-card strong {
-  margin-top: 6px;
-  font-size: 24px;
+  margin-top: 12px;
+  font-size: 28px;
+  font-weight: 700;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
-.stat-card small {
-  margin-top: 8px;
+.stat-card strong small {
+  margin-left: 3px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.stat-footer {
+  margin-top: 10px;
+  overflow: hidden;
+  color: var(--text-muted);
   font-size: 12px;
-  text-align: right;
-  opacity: 0.82;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.stat-empty-footer {
-  visibility: hidden;
+.stat-footer.is-warning {
+  color: var(--warning-text);
+}
+
+.stat-footer.is-danger {
+  color: var(--danger-text);
 }
 </style>
