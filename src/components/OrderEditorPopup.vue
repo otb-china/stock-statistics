@@ -1,63 +1,70 @@
 <template>
   <van-popup v-model:show="popupShow" position="bottom" destroy-on-close round>
     <div class="popup-body order-popup">
-      <div class="popup-head order-popup-head">
-        <div>
-          <p class="section-tag">Order</p>
-          <h3>{{ type === "add" ? "新增订单" : "编辑订单" }}</h3>
-          <p>{{ type === "add" ? "选择货品后会自动带出收入金额。" : "调整订单信息后保存。" }}</p>
+      <div class="popup-head">
+        <div class="popup-title">
+          <span class="popup-icon"><el-icon><Tickets /></el-icon></span>
+          <div>
+            <h3>{{ type === "add" ? "新增订单" : "编辑订单" }}</h3>
+            <p>{{ type === "add" ? "选择货品后会自动带出收入金额。" : "调整订单信息后保存。" }}</p>
+          </div>
         </div>
       </div>
 
+      <div class="form-section-head first">
+        <strong>选择货品</strong>
+      </div>
       <div class="order-product-list">
         <button
           v-for="product in products"
           :key="product.id"
           class="order-product-card"
-          :class="{ active: form.title === product.name }"
+          :class="{ active: form.title === product.name, empty: craftableCountForProduct(product) <= 0 }"
           type="button"
+          :aria-pressed="form.title === product.name"
           @click="emit('product-change', product.name)"
         >
-          <span>
-            <strong>{{ product.name }}</strong>
-          </span>
-          <em>可制 {{ craftableCountForProduct(product) }}</em>
+          <span class="product-check"><el-icon><Check /></el-icon></span>
+          <strong>{{ product.name }}</strong>
+          <em>¥{{ product.defaultValue || 0 }} · 可制 {{ craftableCountForProduct(product) }}</em>
         </button>
       </div>
 
-      <div class="order-form-card">
-        <label class="order-field">
-          <span>件数</span>
-          <el-input-number
-            :model-value="form.quantity || undefined"
-            :min="1"
-            :step="1"
-            aria-label="件数"
-            @update:model-value="emit('quantity-change', $event ?? 0)"
-          />
-        </label>
-        <label class="order-field">
-          <span>订单总金额</span>
-          <van-field
-            :model-value="Number.isFinite(form.value) ? form.value : ''"
-            class="order-control"
-            type="number"
-            placeholder="请输入收入金额"
-            right-icon="edit"
-            clearable
-            @update:model-value="emit('value-change', $event)"
-          />
-        </label>
+      <div class="form-stack order-fields">
+        <div class="form-row">
+          <label class="form-field">
+            <span class="form-label">件数</span>
+            <el-input-number
+              :model-value="form.quantity || undefined"
+              :min="1"
+              :step="1"
+              aria-label="件数"
+              @update:model-value="emit('quantity-change', $event ?? 0)"
+            />
+          </label>
+          <label class="form-field">
+            <span class="form-label">订单总金额</span>
+            <van-field
+              :model-value="Number.isFinite(form.value) ? form.value : ''"
+              type="number"
+              placeholder="收入金额"
+              clearable
+              @update:model-value="emit('value-change', $event)"
+            >
+              <template #left-icon><span class="currency">¥</span></template>
+            </van-field>
+          </label>
+        </div>
 
-        <label class="order-field">
-          <span>下单日期</span>
+        <div class="form-field">
+          <span class="form-label">下单日期</span>
           <DatePicker
-            class-name="order-control date-control"
-            placeholder="下单日期"
+            class-name="date-control"
+            placeholder="选择下单日期"
             :default-date="form.orderDate"
             @date-change="emit('date-change', $event)"
           />
-        </label>
+        </div>
       </div>
 
       <div v-if="type === 'add'" class="sync-card" :class="{ active: calculationModel }">
@@ -67,11 +74,13 @@
         </div>
         <el-switch v-model="calculationModel" :disabled="!canSyncCalculation" aria-label="扣减备料库存" />
       </div>
-      <div v-else-if="form.deductedMaterials?.length" class="sync-card">
-        <span>修改件数时，会按原扣料明细补扣或返还备料。</span>
+      <div v-else-if="form.deductedMaterials?.length" class="info-tip">
+        <el-icon><InfoFilled /></el-icon>
+        <p>修改件数时，会按原扣料明细补扣或返还备料。</p>
       </div>
-      <div v-else-if="form.deductedMaterials === undefined" class="sync-card">
-        <span>历史订单缺少扣料明细。修改件数只更新订单记录。</span>
+      <div v-else-if="form.deductedMaterials === undefined" class="info-tip warning">
+        <el-icon><WarningFilled /></el-icon>
+        <p>历史订单缺少扣料明细，修改件数只更新订单记录。</p>
       </div>
 
       <el-button
@@ -90,6 +99,7 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import DatePicker from "@/components/Date.vue";
+import { Check, InfoFilled, Tickets, WarningFilled } from "@element-plus/icons-vue";
 import type { Order, OrderEditorType, Product } from "@/types/stock";
 
 const props = defineProps<{
@@ -125,127 +135,97 @@ const calculationModel = computed({
 </script>
 
 <style lang="scss" scoped>
-.section-tag {
-  margin: 0 0 4px;
-  font-size: 11px;
-  color: var(--text-muted);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.order-popup {
-  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-soft) 100%);
-}
-
-.order-popup-head {
-  align-items: flex-start;
-  padding: 2px 2px 14px;
-}
-
-.order-popup-head > div:first-child {
-  min-width: 0;
+.form-section-head.first {
+  margin-top: 0;
 }
 
 .order-product-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
+  max-height: 228px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.order-product-list::-webkit-scrollbar {
+  display: none;
 }
 
 .order-product-card {
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  min-height: 52px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: var(--surface);
-  text-align: left;
-  box-shadow: 0 8px 18px rgba(38, 56, 88, 0.05);
-}
-
-.order-product-card span,
-.order-product-card strong {
-  display: block;
-}
-
-.order-product-card span {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   min-width: 0;
+  padding: 12px 34px 12px 12px;
+  border: 1.5px solid var(--divider);
+  border-radius: 14px;
+  background: var(--surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .order-product-card strong {
-  color: var(--text-main);
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-strong);
   font-size: 14px;
-  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .order-product-card em {
-  flex: 0 0 auto;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: var(--header-icon-bg);
-  color: var(--accent-strong);
-  font-size: 11px;
+  color: var(--text-muted);
+  font-size: 12px;
   font-style: normal;
-  font-weight: 700;
+}
+
+.order-product-card.empty em {
+  color: var(--danger-text);
+}
+
+.product-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--divider);
+  border-radius: 50%;
+  color: transparent;
+  font-size: 11px;
 }
 
 .order-product-card.active {
-  border-color: var(--accent-border);
-  background: var(--settings-card-bg);
+  border-color: var(--accent);
+  background: var(--header-icon-bg);
 }
 
 .order-product-card.active strong {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
-.order-form-card,
-.sync-card {
-  margin-top: 12px;
-  padding: 14px;
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: 0 8px 18px rgba(38, 56, 88, 0.05);
+.order-product-card.active .product-check {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
 }
 
-.order-field {
-  display: block;
+.order-fields {
+  margin-top: 18px;
 }
 
-.order-field + .order-field {
-  margin-top: 12px;
-}
-
-.order-field > span {
-  display: block;
-  margin-bottom: 7px;
+.currency {
+  margin-right: 2px;
   color: var(--text-muted);
-  font-size: 12px;
-}
-
-.order-form-card :deep(.van-field) {
-  margin-bottom: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--divider);
-  border-radius: 10px;
-  background: var(--field-bg);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
-}
-
-.order-form-card :deep(.van-field__control) {
-  font-size: 16px;
   font-weight: 600;
-}
-
-.order-form-card :deep(.van-icon) {
-  color: var(--accent);
-}
-
-.order-form-card :deep(.date-control .van-field) {
-  cursor: pointer;
 }
 
 .sync-card {
@@ -253,12 +233,17 @@ const calculationModel = computed({
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid transparent;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1.5px solid var(--divider);
+  border-radius: 14px;
+  background: var(--surface);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .sync-card.active {
   border-color: var(--accent-border);
-  background: var(--settings-card-bg);
+  background: var(--header-icon-bg);
 }
 
 .sync-card strong,
@@ -267,7 +252,7 @@ const calculationModel = computed({
 }
 
 .sync-card strong {
-  color: var(--text-main);
+  color: var(--text-strong);
   font-size: 14px;
 }
 
@@ -275,12 +260,6 @@ const calculationModel = computed({
   margin-top: 4px;
   color: var(--text-muted);
   font-size: 12px;
-  line-height: 1.35;
-}
-
-@media (max-width: 720px) {
-  .order-product-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  line-height: 1.45;
 }
 </style>

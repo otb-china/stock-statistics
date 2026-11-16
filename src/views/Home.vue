@@ -243,18 +243,31 @@
     <van-popup v-model:show="restock.show" position="bottom" round destroy-on-close>
       <form v-if="restockMaterial" class="popup-body" @submit.prevent="submitRestock">
         <div class="popup-head">
-          <div>
-            <h3>补库存</h3>
-            <p>{{ restockMaterial.name }}</p>
+          <div class="popup-title">
+            <span class="popup-icon"><el-icon><Plus /></el-icon></span>
+            <div>
+              <h3>补库存</h3>
+              <p>{{ restockMaterial.name }}</p>
+            </div>
           </div>
         </div>
-        <div class="restock-fields">
-          <label for="restock-quantity">本次补货数量</label>
+        <div class="restock-preview" aria-live="polite">
+          <div>
+            <small>当前库存</small>
+            <strong>{{ restockMaterial.num }}</strong>
+          </div>
+          <el-icon><Right /></el-icon>
+          <div :class="{ ready: restockTotal !== null }">
+            <small>补货后</small>
+            <strong>{{ restockTotal ?? restockMaterial.num }}</strong>
+          </div>
+        </div>
+        <label class="form-field restock-field">
+          <span class="form-label">本次补货数量</span>
           <el-input-number id="restock-quantity" v-model="restock.quantity" :min="0" />
-          <p aria-live="polite">
-            当前库存 {{ restockMaterial.num }}
-            <strong v-if="restockTotal !== null"> → 补货后 {{ restockTotal }}</strong>
-          </p>
+        </label>
+        <div class="restock-steps">
+          <button v-for="step in [5, 10, 20, 50]" :key="step" type="button" @click="restock.quantity = (restock.quantity || 0) + step">+{{ step }}</button>
         </div>
         <el-button class="submit-button" type="primary" native-type="submit" :disabled="restockTotal === null">确认补库存</el-button>
       </form>
@@ -357,7 +370,7 @@ import type {
   MaterialGroupKey,
   Product,
 } from "@/types/stock";
-import { ArrowDown, Plus, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
+import { ArrowDown, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -1336,19 +1349,79 @@ onUnmounted(() => {
 }
 
 /* restock popup */
-.restock-fields {
+.restock-preview {
   display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   gap: 10px;
-  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--surface-soft);
+}
+
+.restock-preview > div {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.restock-preview > div.ready {
+  background: var(--stat-income-bg);
+  color: #ffffff;
+}
+
+.restock-preview small,
+.restock-preview strong {
+  display: block;
+}
+
+.restock-preview small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.restock-preview .ready small {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.restock-preview strong {
+  margin-top: 4px;
+  color: var(--text-strong);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+
+.restock-preview .ready strong {
+  color: #ffffff;
+}
+
+.restock-preview > .el-icon {
+  color: var(--text-subtle);
+  font-size: 18px;
+}
+
+.restock-field {
+  margin-top: 18px;
+}
+
+.restock-steps {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.restock-steps button {
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  background: var(--surface);
   color: var(--text-main);
-}
-
-.restock-fields p {
-  margin: 0;
-}
-
-.restock-fields strong {
-  color: var(--accent-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .home-page :deep(.van-popup) {

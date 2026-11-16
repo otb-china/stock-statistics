@@ -2,17 +2,12 @@
   <van-popup v-model:show="popupShow" position="bottom" destroy-on-close round>
     <div class="popup-body import-export-popup">
       <div class="popup-head">
-        <div>
-          <p class="section-tag">Data</p>
-          <h3>导入总数据</h3>
-          <p>导入会覆盖当前数据。覆盖前的数据会保留在最近可恢复备份中。</p>
-        </div>
-      </div>
-
-      <div class="import-export-card">
-        <div>
-          <strong>当前数据</strong>
-          <span>{{ summary }}</span>
+        <div class="popup-title">
+          <span class="popup-icon"><el-icon><Upload /></el-icon></span>
+          <div>
+            <h3>导入总数据</h3>
+            <p>用备份文件覆盖当前全部数据</p>
+          </div>
         </div>
       </div>
 
@@ -24,22 +19,31 @@
         @change="onFileChange"
       />
 
-      <button class="file-upload-card" type="button" @click="selectFile">
-        <span class="settings-item-icon">
-          <el-icon><Upload /></el-icon>
-        </span>
-        <span>
-          <strong>{{ fileName || "选择备份文件" }}</strong>
-          <em>支持导出的 .json 备份文件</em>
-        </span>
+      <button class="file-upload-card" :class="{ selected: fileName }" type="button" @click="selectFile">
+        <span class="empty-icon"><el-icon><component :is="fileName ? Document : Upload" /></el-icon></span>
+        <strong>{{ fileName || "点击选择备份文件" }}</strong>
+        <em>{{ fileName ? "点击重新选择" : "支持导出的 .json 备份文件" }}</em>
       </button>
-      <div v-if="preview" class="import-export-card" aria-live="polite">
-        <div>
-          <strong>备份文件内容</strong>
-          <span>{{ preview }}</span>
+
+      <div class="compare-card">
+        <div class="compare-item">
+          <small>当前数据</small>
+          <span>{{ summary }}</span>
+        </div>
+        <el-icon class="compare-arrow"><Bottom /></el-icon>
+        <div class="compare-item" :class="{ ready: preview }">
+          <small>导入后</small>
+          <span>{{ preview || "选择文件后在这里预览" }}</span>
         </div>
       </div>
-      <p v-if="error" class="import-error" role="alert">{{ error }}</p>
+
+      <p v-if="error" class="info-tip warning import-error" role="alert">
+        <el-icon><WarningFilled /></el-icon>{{ error }}
+      </p>
+      <div v-else class="info-tip">
+        <el-icon><InfoFilled /></el-icon>
+        <p>导入会覆盖当前数据，覆盖前的数据会保留为最近可恢复备份。</p>
+      </div>
 
       <el-button
         type="primary"
@@ -56,7 +60,7 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { Upload } from "@element-plus/icons-vue";
+import { Bottom, Document, InfoFilled, Upload, WarningFilled } from "@element-plus/icons-vue";
 
 const props = defineProps<{
   show: boolean;
@@ -120,85 +124,97 @@ const onFileChange = async (event: Event) => {
 </script>
 
 <style lang="scss" scoped>
-.import-error {
-  color: var(--danger-text);
-}
-
-.section-tag {
-  margin: 0 0 4px;
-  color: var(--text-muted);
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .file-input {
   display: none;
 }
 
 .file-upload-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
   width: 100%;
-  margin-top: 14px;
-  padding: 14px;
-  border: 1px dashed var(--divider);
-  border-radius: 12px;
+  padding: 22px 14px;
+  border: 1.5px dashed var(--accent-border);
+  border-radius: 16px;
   background: var(--surface-soft);
-  text-align: left;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
 }
 
-.file-upload-card > span:last-child {
-  min-width: 0;
-}
-
-.file-upload-card strong,
-.file-upload-card em {
-  display: block;
+.file-upload-card.selected {
+  border-style: solid;
+  background: var(--header-icon-bg);
 }
 
 .file-upload-card strong {
-  color: var(--text-main);
-  font-size: 14px;
+  max-width: 100%;
+  margin-top: 4px;
   overflow: hidden;
+  color: var(--text-strong);
+  font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .file-upload-card em {
-  margin-top: 4px;
   color: var(--text-muted);
   font-size: 12px;
   font-style: normal;
-  line-height: 1.35;
 }
 
-.import-export-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 14px 0 12px;
-  padding: 14px;
-  border-radius: 10px;
-  background: var(--stat-income-bg);
-  color: #ffffff;
+.compare-card {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--divider);
+  border-radius: 16px;
 }
 
-.import-export-card strong,
-.import-export-card span {
+.compare-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.compare-item small,
+.compare-item span {
   display: block;
 }
 
-.import-export-card strong {
-  font-size: 16px;
+.compare-item small {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
-.import-export-card span {
-  margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.8;
+.compare-item span {
+  margin-top: 3px;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
+.compare-item.ready {
+  background: var(--header-icon-bg);
+}
+
+.compare-item.ready span {
+  color: var(--accent-strong);
+}
+
+.compare-item:not(.ready):last-child span {
+  color: var(--text-subtle);
+  font-weight: 400;
+}
+
+.compare-arrow {
+  justify-self: center;
+  color: var(--text-subtle);
+}
+
+.import-error {
+  align-items: center;
+}
 </style>

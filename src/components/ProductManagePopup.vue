@@ -2,9 +2,12 @@
   <van-popup v-model:show="popupShow" position="bottom" round destroy-on-close>
     <div class="popup-body manage-popup-body">
       <div class="popup-head MB12">
-        <div>
-          <h3>货品管理</h3>
-          <p>{{ description }}</p>
+        <div class="popup-title">
+          <span class="popup-icon"><el-icon><Goods /></el-icon></span>
+          <div>
+            <h3>货品管理</h3>
+            <p>{{ description }}</p>
+          </div>
         </div>
         <button class="popup-create-btn" type="button" @click="emit('create')">
           <el-icon><Plus /></el-icon>
@@ -12,11 +15,15 @@
         </button>
       </div>
 
-      <el-input v-model="search" class="manage-search" placeholder="搜索货品名称" aria-label="搜索货品名称" clearable />
+      <el-input v-model="search" class="manage-search" placeholder="搜索货品名称" aria-label="搜索货品名称" :prefix-icon="Search" clearable />
       <div class="manage-list-scroll">
         <div v-if="!visibleProducts.length" class="manage-empty">
+          <span class="empty-icon"><el-icon><component :is="search.trim() ? Search : Goods" /></el-icon></span>
           <strong>{{ search.trim() ? "没有匹配的货品" : "还没有货品" }}</strong>
           <span v-if="!search.trim()">新增货品并配置配方后，订单会自动带出金额和备料扣减。</span>
+          <button v-if="!search.trim()" class="pill-button" type="button" @click="emit('create')">
+            <el-icon><Plus /></el-icon>{{ createText }}
+          </button>
         </div>
 
         <div v-else v-for="product in visibleProducts" :key="product.id" class="record-row">
@@ -29,10 +36,14 @@
                     {{ product.status === "active" ? "正常" : "停产" }}
                   </span>
                 </span>
-                <span class="product-count">可制 {{ craftableCountForProduct(product) }}</span>
+                <span class="product-count" :class="{ zero: craftableCountForProduct(product) <= 0 }">
+                  <strong>{{ craftableCountForProduct(product) }}</strong>可制
+                </span>
               </span>
-              <small>默认单价 ¥{{ product.defaultValue || 0 }}</small>
-              <small>{{ recipePreview(product) }}</small>
+              <span class="product-meta">
+                <b>¥{{ product.defaultValue || 0 }}</b>
+                <small>{{ recipePreview(product) }}</small>
+              </span>
             </span>
           </button>
           <RowActions :label="product.name" :actions="[
@@ -48,7 +59,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import RowActions from "@/components/RowActions.vue";
-import { Plus } from "@element-plus/icons-vue";
+import { Goods, Plus, Search } from "@element-plus/icons-vue";
 import type { Product } from "@/types/stock";
 
 const props = defineProps<{
@@ -83,43 +94,15 @@ const popupShow = computed({
 
 <style lang="scss" scoped>
 .product-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 12px;
+  padding: 14px 4px 14px 14px;
   border: 0;
-  border-radius: 10px;
-  background: var(--surface-soft);
+  border-radius: 14px;
+  background: transparent;
 }
 
 .product-main {
+  display: block;
   min-width: 0;
-}
-
-.product-main strong {
-  display: block;
-  color: var(--text-main);
-  font-size: 16px;
-  line-height: 1.2;
-}
-
-.product-main small {
-  display: block;
-  margin-top: 4px;
-  color: var(--text-subtle);
-  font-size: 12px;
-}
-
-.product-main small {
-  text-align: justify;
-  text-justify: inter-ideograph;
-}
-
-.product-title-block {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .product-title-row {
@@ -129,16 +112,29 @@ const popupShow = computed({
   gap: 8px;
 }
 
-.product-status {
-  display: inline-flex;
+.product-title-block {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 3px 8px;
-  border: 0;
+  gap: 8px;
+  min-width: 0;
+}
+
+.product-title-block strong {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 15px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-status {
+  flex: 0 0 auto;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.5;
 }
 
 .product-status.status-active {
@@ -152,10 +148,43 @@ const popupShow = computed({
 }
 
 .product-count {
-  color: var(--accent-strong);
-  font-size: 12px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
+.product-count strong {
+  color: var(--accent-strong);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
 
+.product-count.zero strong {
+  color: var(--danger-text);
+}
+
+.product-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+.product-meta b {
+  flex: 0 0 auto;
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.product-meta small {
+  overflow: hidden;
+  color: var(--text-subtle);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>

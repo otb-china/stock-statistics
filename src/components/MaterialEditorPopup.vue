@@ -1,43 +1,58 @@
 <template>
   <van-popup v-model:show="popupShow" position="bottom" round destroy-on-close>
     <div class="popup-body">
-      <div class="popup-head MB12">
-        <div>
-          <h3>{{ type === "add" ? "新增备料" : "编辑备料" }}</h3>
+      <div class="popup-head">
+        <div class="popup-title">
+          <span class="popup-icon"><el-icon><Box /></el-icon></span>
+          <div>
+            <h3>{{ type === "add" ? "新增备料" : "编辑备料" }}</h3>
+            <p>{{ type === "add" ? "录入备料名称和当前库存。" : "修改库存会记录为盘点调整。" }}</p>
+          </div>
         </div>
       </div>
 
-      <div class="editor-card material-editor-card">
-        <label class="editor-field">
-          <span>备料名称</span>
-          <el-input v-model="form.name" placeholder="备料名称" />
+      <div class="form-stack">
+        <label class="form-field">
+          <span class="form-label">备料名称</span>
+          <el-input v-model="form.name" placeholder="例如：珍珠、包装盒" maxlength="30" clearable />
         </label>
 
-        <label class="editor-field">
-          <span>库存数量</span>
-          <el-input-number v-model="form.num" :min="0" :max="100000" class="editor-number" />
-        </label>
+        <div class="form-field">
+          <span class="form-label">
+            库存数量
+            <small v-if="type === 'edit' && originalNum !== null && form.num !== originalNum">
+              原库存 {{ originalNum }} → {{ form.num }}
+            </small>
+          </span>
+          <el-input-number v-model="form.num" :min="0" :max="100000" aria-label="库存数量" />
+          <div class="quick-steps">
+            <button v-for="step in quickSteps" :key="step" type="button" @click="addStock(step)">+{{ step }}</button>
+          </div>
+        </div>
       </div>
 
-      <el-button v-if="type === 'edit'" class="history-link" plain @click="emit('history', form)">
-        查看库存流水
-      </el-button>
+      <button v-if="type === 'edit'" class="link-row" type="button" @click="emit('history', form)">
+        <el-icon><Tickets /></el-icon>
+        <span>查看库存流水</span>
+        <el-icon><ArrowRight /></el-icon>
+      </button>
 
       <el-button
         type="primary"
         size="large"
         class="submit-button"
-        :disabled="!form.name"
+        :disabled="!form.name.trim()"
         @click="emit('submit')"
       >
-        提交
+        {{ type === "add" ? "添加备料" : "保存修改" }}
       </el-button>
     </div>
   </van-popup>
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
+import { ArrowRight, Box, Tickets } from "@element-plus/icons-vue";
 import type { EditorType, Material } from "@/types/stock";
 
 const props = defineProps<{
@@ -52,104 +67,45 @@ const emit = defineEmits<{
   history: [item: Material];
 }>();
 
+const quickSteps = [1, 5, 10, 50];
+const originalNum = ref<number | null>(null);
+
+watch(() => props.show, (show) => {
+  if (show) originalNum.value = props.type === "edit" ? props.form.num : null;
+}, { immediate: true });
+
 const popupShow = computed({
   get: () => props.show,
   set: (value: boolean) => emit("update:show", value),
 });
+
+function addStock(step: number) {
+  props.form.num = Math.min(100000, Number(((props.form.num || 0) + step).toPrecision(15)));
+}
 </script>
 
 <style lang="scss" scoped>
-.history-link { margin-top: 12px; }
-.history-link + .submit-button { margin-left: 0; }
-.editor-card {
-  margin-top: 14px;
-  padding: 12px;
-  border: 1px solid var(--divider);
-  border-radius: 14px;
-  background: var(--surface-soft);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+.quick-steps {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-.material-editor-card {
-  display: grid;
-  gap: 12px;
-}
-
-.editor-field {
-  display: block;
-}
-
-.editor-field > span {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.editor-number {
-  width: 100%;
-}
-
-.editor-card :deep(.el-input__wrapper) {
-  border: 1px solid var(--divider);
-  background: var(--surface);
-  box-shadow: none;
-}
-
-.editor-card :deep(.el-input__wrapper.is-focus),
-.editor-card :deep(.el-input__wrapper:hover),
-.editor-card :deep(.el-input__wrapper:focus-within) {
-  border-color: var(--divider);
-  box-shadow: none;
-}
-
-.editor-card :deep(.el-input__wrapper) {
-  min-height: 38px;
-  border-radius: 10px;
-}
-
-.editor-card :deep(.el-input-number) {
-  height: 38px;
+.quick-steps button {
+  flex: 1;
+  padding: 8px 0;
   border: 1px solid var(--divider);
   border-radius: 10px;
   background: var(--surface);
-  overflow: hidden;
-}
-
-.editor-card :deep(.el-input-number .el-input__wrapper) {
-  height: 100%;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.editor-card :deep(.el-input-number.is-focus),
-.editor-card :deep(.el-input-number:hover),
-.editor-card :deep(.el-input-number:focus-within) {
-  border-color: var(--divider);
-}
-
-.editor-card :deep(.el-input-number .el-input__wrapper.is-focus),
-.editor-card :deep(.el-input-number .el-input__wrapper:focus-within) {
-  border-color: transparent;
-  box-shadow: none !important;
-}
-
-.editor-card :deep(.el-input-number .el-input__inner:focus) {
-  outline: none;
-  box-shadow: none;
-}
-
-.editor-card :deep(.el-input-number__decrease),
-.editor-card :deep(.el-input-number__increase) {
-  border-color: var(--divider);
-  background: var(--surface-soft);
-  color: var(--text-muted);
-}
-
-.editor-card :deep(.el-input__inner) {
   color: var(--text-main);
+  font: inherit;
+  font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
 }
 
+.quick-steps button:active {
+  background: var(--header-icon-bg);
+  color: var(--accent-strong);
+}
 </style>

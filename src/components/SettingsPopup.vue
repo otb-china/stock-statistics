@@ -2,13 +2,17 @@
   <van-popup v-model:show="popupShow" position="bottom" round destroy-on-close>
     <div class="popup-body">
       <div class="popup-head">
-        <div>
-          <h3>更多操作</h3>
+        <div class="popup-title">
+          <span class="popup-icon"><el-icon><Setting /></el-icon></span>
+          <div>
+            <h3>设置</h3>
+            <p>界面主题与数据备份</p>
+          </div>
         </div>
       </div>
 
-      <div class="theme-panel">
-        <div class="theme-panel-head">
+      <div class="settings-section">
+        <div class="settings-section-head">
           <strong>界面主题</strong>
           <span>{{ currentThemeName }}</span>
         </div>
@@ -18,64 +22,69 @@
             :key="theme.key"
             class="theme-option"
             :class="{ active: currentTheme === theme.key }"
+            :aria-pressed="currentTheme === theme.key"
             type="button"
             @click="emit('set-theme', theme.key)"
           >
-            <span class="theme-swatch" :style="{ background: theme.swatch }"></span>
-            <span>
-              <strong>{{ theme.name }}</strong>
-              <em>{{ theme.caption }}</em>
+            <span class="theme-preview" :style="{ background: theme.swatch }">
+              <span class="theme-check"><el-icon><Check /></el-icon></span>
             </span>
+            <strong>{{ theme.name }}</strong>
+            <em>{{ theme.caption }}</em>
           </button>
         </div>
       </div>
 
-      <div class="settings-grid">
-        <button class="settings-item settings-item-feature" type="button" @click="emit('export')">
-          <span class="settings-item-icon">
-            <el-icon><Download /></el-icon>
-          </span>
-          <span>
-            <strong>导出总数据</strong>
-            <em>{{ lastExport }}</em>
-          </span>
-        </button>
+      <div class="settings-section">
+        <div class="settings-section-head">
+          <strong>数据管理</strong>
+          <span class="muted">数据仅保存在本机浏览器</span>
+        </div>
+        <div class="settings-list">
+          <button class="settings-row" type="button" @click="emit('export')">
+            <span class="settings-row-icon"><el-icon><Download /></el-icon></span>
+            <span class="settings-row-text">
+              <strong>导出总数据</strong>
+              <em>{{ lastExport }}</em>
+            </span>
+            <el-icon class="settings-row-arrow"><ArrowRight /></el-icon>
+          </button>
 
-        <button v-if="recoverySummary" class="settings-item settings-item-feature" type="button" @click="emit('restore')">
-          <span class="settings-item-icon"><el-icon><RefreshLeft /></el-icon></span>
-          <span>
-            <strong>恢复最近备份</strong>
-            <em>{{ recoverySummary }}</em>
-          </span>
-        </button>
+          <button class="settings-row" type="button" @click="emit('open-import')">
+            <span class="settings-row-icon"><el-icon><Upload /></el-icon></span>
+            <span class="settings-row-text">
+              <strong>导入总数据</strong>
+              <em>上传备份文件后恢复全部数据</em>
+            </span>
+            <el-icon class="settings-row-arrow"><ArrowRight /></el-icon>
+          </button>
 
-        <button class="settings-item settings-item-feature" type="button" @click="emit('open-import')">
-          <span class="settings-item-icon">
-            <el-icon><Upload /></el-icon>
-          </span>
-          <span>
-            <strong>导入总数据</strong>
-            <em>上传备份文件后恢复全部数据</em>
-          </span>
-        </button>
-
-        <button class="settings-item settings-item-feature danger" type="button" @click="emit('reset')">
-          <span class="settings-item-icon">
-            <el-icon><Delete /></el-icon>
-          </span>
-          <span>
-            <strong>重置数据</strong>
-            <em>清空备料、货品、订单和库存流水</em>
-          </span>
-        </button>
+          <button v-if="recoverySummary" class="settings-row" type="button" @click="emit('restore')">
+            <span class="settings-row-icon"><el-icon><RefreshLeft /></el-icon></span>
+            <span class="settings-row-text">
+              <strong>恢复最近备份</strong>
+              <em>{{ recoverySummary }}</em>
+            </span>
+            <el-icon class="settings-row-arrow"><ArrowRight /></el-icon>
+          </button>
+        </div>
       </div>
+
+      <button class="settings-row danger-row" type="button" @click="emit('reset')">
+        <span class="settings-row-icon"><el-icon><Delete /></el-icon></span>
+        <span class="settings-row-text">
+          <strong>重置数据</strong>
+          <em>清空备料、货品、订单和库存流水</em>
+        </span>
+        <el-icon class="settings-row-arrow"><ArrowRight /></el-icon>
+      </button>
     </div>
   </van-popup>
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { Delete, Download, RefreshLeft, Upload } from "@element-plus/icons-vue";
+import { ArrowRight, Check, Delete, Download, RefreshLeft, Setting, Upload } from "@element-plus/icons-vue";
 import type { ThemeKey, ThemeOption } from "@/config/themes";
 
 const props = defineProps<{
@@ -103,14 +112,11 @@ const popupShow = computed({
 </script>
 
 <style lang="scss" scoped>
-.theme-panel {
-  margin-top: 16px;
-  padding: 14px;
-  border-radius: 12px;
-  background: var(--surface-soft);
+.settings-section + .settings-section {
+  margin-top: 20px;
 }
 
-.theme-panel-head {
+.settings-section-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -118,130 +124,174 @@ const popupShow = computed({
   margin-bottom: 10px;
 }
 
-.theme-panel-head strong {
+.settings-section-head strong {
   color: var(--text-strong);
+  font-size: 15px;
 }
 
-.theme-panel-head span {
-  flex: 0 0 auto;
+.settings-section-head span {
   color: var(--accent);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.settings-section-head span.muted {
+  color: var(--text-subtle);
+  font-weight: 400;
 }
 
 .theme-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .theme-option {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
-  padding: 10px;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  padding: 8px 8px 10px;
+  border: 1.5px solid var(--divider);
+  border-radius: 16px;
   background: var(--surface);
+  font: inherit;
   text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .theme-option.active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-ring);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
-.theme-swatch {
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
-}
-
-.theme-option > span:last-child {
-  min-width: 0;
-}
-
-.theme-option strong,
-.theme-option em {
+.theme-preview {
+  position: relative;
   display: block;
+  width: 100%;
+  height: 54px;
+  border-radius: 10px;
+}
+
+.theme-check {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: var(--accent);
+  font-size: 12px;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.theme-option.active .theme-check {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .theme-option strong {
+  margin: 8px 2px 0;
   color: var(--text-strong);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .theme-option em {
-  margin-top: 3px;
+  margin: 2px 2px 0;
   color: var(--text-muted);
   font-size: 11px;
   font-style: normal;
-  line-height: 1.2;
 }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.settings-item {
-  padding: 14px 16px;
-  border: 0;
-  border-radius: 10px;
+.settings-list {
+  overflow: hidden;
+  border-radius: 16px;
   background: var(--surface-soft);
-  text-align: left;
 }
 
-.settings-item-feature {
+.settings-row {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  background: var(--settings-card-bg);
+  padding: 14px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.settings-item-feature.danger {
-  background: var(--settings-danger-bg);
+.settings-list .settings-row + .settings-row {
+  border-top: 1px solid var(--divider);
 }
 
-.settings-item-feature.danger .settings-item strong,
-.settings-item span {
+.settings-row:active {
+  background: var(--surface-muted);
+}
+
+.settings-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 18px;
+  box-shadow: 0 1px 3px rgba(20, 40, 60, 0.06);
+}
+
+.settings-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-text strong,
+.settings-row-text em {
   display: block;
 }
 
-.settings-item strong {
-  color: var(--text-main);
+.settings-row-text strong {
+  color: var(--text-strong);
   font-size: 14px;
 }
 
-.settings-item span {
-  margin-top: 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.settings-item-feature > span:last-child {
-  min-width: 0;
-  margin-top: 0;
-}
-
-.settings-item-feature em {
-  display: block;
-  margin-top: 4px;
+.settings-row-text em {
+  margin-top: 3px;
+  overflow: hidden;
   color: var(--text-muted);
   font-size: 12px;
   font-style: normal;
-  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-@media (max-width: 720px) {
-  .settings-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+.settings-row-arrow {
+  flex: 0 0 auto;
+  color: var(--text-subtle);
+}
+
+.danger-row {
+  margin-top: 12px;
+  border-radius: 16px;
+  background: var(--danger-bg);
+}
+
+.danger-row .settings-row-icon {
+  color: var(--danger-text);
+}
+
+.danger-row .settings-row-text strong {
+  color: var(--danger-text);
 }
 </style>

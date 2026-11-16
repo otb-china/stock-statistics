@@ -2,9 +2,12 @@
   <van-popup v-model:show="popupShow" position="bottom" round destroy-on-close>
     <div class="popup-body manage-popup-body">
       <div class="popup-head MB12">
-        <div>
-          <h3>备料管理</h3>
-          <p>{{ description }}</p>
+        <div class="popup-title">
+          <span class="popup-icon"><el-icon><Box /></el-icon></span>
+          <div>
+            <h3>备料管理</h3>
+            <p>{{ description }}</p>
+          </div>
         </div>
         <button class="popup-create-btn" type="button" @click="emit('create')">
           <el-icon><Plus /></el-icon>
@@ -12,11 +15,15 @@
         </button>
       </div>
 
-      <el-input v-model="search" class="manage-search" placeholder="搜索备料名称" aria-label="搜索备料名称" clearable />
+      <el-input v-model="search" class="manage-search" placeholder="搜索备料名称" aria-label="搜索备料名称" :prefix-icon="Search" clearable />
       <div class="manage-list-scroll">
         <div v-if="!visibleGroups.length" class="manage-empty">
+          <span class="empty-icon"><el-icon><component :is="search.trim() ? Search : Box" /></el-icon></span>
           <strong>{{ search.trim() ? "没有匹配的备料" : "还没有备料" }}</strong>
           <span v-if="!search.trim()">新增备料后，可以在货品配方里选择并计算库存。</span>
+          <button v-if="!search.trim()" class="pill-button" type="button" @click="emit('create')">
+            <el-icon><Plus /></el-icon>{{ createText }}
+          </button>
         </div>
 
         <section
@@ -28,6 +35,7 @@
         >
           <div v-if="search.trim()" class="material-group-label">{{ group.title }} · {{ group.items.length }}项</div>
           <button v-else class="material-group-head" type="button" @click="emit('toggle-group', group.key)">
+            <span class="group-dot" :class="`dot-${group.key}`"></span>
             <span>{{ group.title }}</span>
             <small>{{ group.items.length }}项</small>
           </button>
@@ -72,7 +80,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import RowActions from "@/components/RowActions.vue";
-import { Plus } from "@element-plus/icons-vue";
+import { Box, Plus, Search } from "@element-plus/icons-vue";
 import type { Material, MaterialGroupKey } from "@/types/stock";
 
 interface MaterialManageGroup {
@@ -126,9 +134,9 @@ const popupShow = computed({
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px 12px;
   align-items: center;
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--surface-soft);
+  padding: 14px 4px 14px 14px;
+  border-radius: 14px;
+  background: transparent;
 }
 
 .material-group {
@@ -160,6 +168,23 @@ const popupShow = computed({
 
 .material-group.collapsed .material-group-head::after {
   content: "展开";
+}
+
+.group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-subtle);
+}
+
+.group-dot.dot-danger { background: var(--danger-text); }
+.group-dot.dot-warning { background: var(--warning-text); }
+.group-dot.dot-safe { background: var(--accent); }
+
+.material-group-head {
+  justify-content: flex-start !important;
+  padding: 4px 4px 0 !important;
+  font-size: 13px !important;
 }
 
 .material-group-head small {
@@ -194,8 +219,8 @@ const popupShow = computed({
 
 .material-info strong {
   display: block;
-  color: var(--text-main);
-  font-size: 16px;
+  color: var(--text-strong);
+  font-size: 15px;
   line-height: 1.2;
 }
 
@@ -256,8 +281,9 @@ const popupShow = computed({
 
 .material-metric span,
 .material-metric strong {
-  color: var(--accent-strong);
+  color: var(--text-strong);
   font-size: 18px;
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
   line-height: 1;
 }
@@ -270,7 +296,12 @@ const popupShow = computed({
 
 .material-metric:last-child span,
 .material-metric:last-child strong {
-  color: var(--text-muted);
+  color: var(--accent-strong);
+}
+
+.material-metrics {
+  padding-left: 12px;
+  border-left: 1px solid var(--divider);
 }
 
 @media (max-width: 720px) {

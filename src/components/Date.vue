@@ -80,9 +80,8 @@ const onRightIconClick = () => {
 
 <style scoped lang="scss">
 .van-field {
-  margin-bottom: 10px;
-  border: 1px solid var(--divider, #eef1f5);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--field-bg, #f7f8fa);
+  cursor: pointer;
 }
 </style>
