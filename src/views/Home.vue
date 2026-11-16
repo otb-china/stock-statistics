@@ -690,38 +690,27 @@ onUnmounted(() => {
   gap: 14px;
   max-width: 720px;
   margin: 0 auto;
-  padding: 4px 14px 0;
+  padding: calc(72px + env(safe-area-inset-top)) 14px 0;
 }
 
 .page-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
-  transition: padding 0.2s ease;
-}
-
-.page-header::before {
-  content: "";
-  position: absolute;
-  inset: 0 -100vw;
-  z-index: -1;
+  box-sizing: border-box;
+  height: calc(68px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(16px, calc(50% - 344px)) 0;
   background: var(--page-bg);
   transition: box-shadow 0.2s ease;
 }
 
 .page-header.scrolled {
-  padding-top: calc(10px + env(safe-area-inset-top));
-  padding-bottom: 10px;
-}
-
-.page-header.scrolled::before {
   box-shadow: 0 1px 0 var(--divider), 0 6px 16px rgba(20, 40, 60, 0.06);
 }
 
