@@ -12,45 +12,42 @@
         </button>
       </div>
 
+      <el-input v-model="search" class="manage-search" placeholder="搜索货品名称" aria-label="搜索货品名称" clearable />
       <div class="manage-list-scroll">
-        <div v-if="!products.length" class="manage-empty">
-          <strong>还没有货品</strong>
-          <span>新增货品并配置配方后，订单会自动带出金额和备料扣减。</span>
+        <div v-if="!visibleProducts.length" class="manage-empty">
+          <strong>{{ search.trim() ? "没有匹配的货品" : "还没有货品" }}</strong>
+          <span v-if="!search.trim()">新增货品并配置配方后，订单会自动带出金额和备料扣减。</span>
         </div>
 
-        <van-swipe-cell v-else v-for="product in products" :key="product.id" class="manage-swipe-cell">
-          <div class="product-row">
-            <div class="product-main">
-              <div class="product-title-row">
-                <div class="product-title-block">
+        <div v-else v-for="product in visibleProducts" :key="product.id" class="record-row">
+          <button class="product-row record-edit" type="button" @click="emit('edit', product)">
+            <span class="product-main">
+              <span class="product-title-row">
+                <span class="product-title-block">
                   <strong>{{ product.name }}</strong>
-                  <button
-                    class="product-status"
-                    :class="productStatusClass(product.status)"
-                    type="button"
-                    @click.stop="emit('toggle-status', product)"
-                  >
+                  <span class="product-status" :class="productStatusClass(product.status)">
                     {{ product.status === "active" ? "正常" : "停产" }}
-                  </button>
-                </div>
+                  </span>
+                </span>
                 <span class="product-count">可制 {{ craftableCountForProduct(product) }}</span>
-              </div>
-              <p>收入金额 ¥{{ product.defaultValue || 0 }}</p>
+              </span>
+              <small>默认单价 ¥{{ product.defaultValue || 0 }}</small>
               <small>{{ recipePreview(product) }}</small>
-            </div>
-          </div>
-          <template #right>
-            <van-button square type="primary" class="swipe-btn" text="编辑" @click="emit('edit', product)" />
-            <van-button square type="danger" class="swipe-btn" text="删除" @click="emit('remove', product.id)" />
-          </template>
-        </van-swipe-cell>
+            </span>
+          </button>
+          <RowActions :label="product.name" :actions="[
+            { name: product.status === 'active' ? '设为停产' : '恢复销售', callback: () => emit('toggle-status', product) },
+            { name: '删除货品', color: '#c63535', callback: () => emit('remove', product.id) },
+          ]" />
+        </div>
       </div>
     </div>
   </van-popup>
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import RowActions from "@/components/RowActions.vue";
 import { Plus } from "@element-plus/icons-vue";
 import type { Product } from "@/types/stock";
 
@@ -72,6 +69,12 @@ const emit = defineEmits<{
   remove: [id: string];
 }>();
 
+const search = ref("");
+const visibleProducts = computed(() => {
+  const query = search.value.trim().toLowerCase();
+  return props.products.filter((product) => product.name.toLowerCase().includes(query));
+});
+
 const popupShow = computed({
   get: () => props.show,
   set: (value: boolean) => emit("update:show", value),
@@ -79,19 +82,12 @@ const popupShow = computed({
 </script>
 
 <style lang="scss" scoped>
-.manage-popup-body .manage-swipe-cell {
-  flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: 10px;
-  background: var(--surface-soft);
-}
-
 .product-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-items: center;
-  padding: 14px 16px;
+  padding: 12px;
   border: 0;
   border-radius: 10px;
   background: var(--surface-soft);
@@ -108,7 +104,6 @@ const popupShow = computed({
   line-height: 1.2;
 }
 
-.product-main p,
 .product-main small {
   display: block;
   margin-top: 4px;
@@ -162,9 +157,5 @@ const popupShow = computed({
   font-weight: 600;
 }
 
-@media (max-width: 720px) {
-  .product-row {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-  }
-}
+
 </style>

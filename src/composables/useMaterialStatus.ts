@@ -1,5 +1,6 @@
 import { computed, type Ref } from "vue";
 import type { Material, MaterialGroupKey, Product } from "@/types/stock";
+import { recipeQuantities } from "@/utils/stockData";
 
 export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Product[]>) {
   const materialsMap = computed(() => {
@@ -10,14 +11,33 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     return products.value.filter((item) => item.status === "active");
   });
 
+  function materialCapacity(materialId: string, quantity: number) {
+    const material = materialsMap.value.get(materialId);
+    if (!material || !Number.isFinite(material.num) || !Number.isFinite(quantity) || quantity <= 0) return 0;
+    return Math.max(0, Math.floor(Number((material.num / quantity).toPrecision(15))));
+  }
+
+  function productCapacity(product: Product) {
+    const details = Array.from(recipeQuantities(product.recipe), ([materialId, quantity]) => ({
+      name: materialsMap.value.get(materialId)?.name ?? "缺失备料",
+      count: materialCapacity(materialId, quantity),
+      shared: activeRelatedProducts(materialId).some((item) => item.id !== product.id),
+    }));
+    const maxCount = details.length ? Math.min(...details.map((item) => item.count)) : 0;
+    return { details, maxCount };
+  }
+
   function craftableCountForProduct(product: Product) {
-    if (!product.recipe.length) return 0;
-    const counts = product.recipe.map((recipe) => {
-      const material = materialsMap.value.get(recipe.materialId);
-      if (!material || recipe.quantity <= 0) return 0;
-      return Math.floor(Number(material.num || 0) / Number(recipe.quantity));
-    });
-    return Math.min(...counts);
+    return productCapacity(product).maxCount;
+  }
+
+  function limitingMaterials(product: Product) {
+    const { details, maxCount } = productCapacity(product);
+    return details.filter((item) => item.count === maxCount).map((item) => item.name).join("、");
+  }
+
+  function sharedMaterials(product: Product) {
+    return productCapacity(product).details.filter((item) => item.shared).map((item) => item.name).join("、");
   }
 
   function activeRelatedProducts(materialId: string) {
@@ -29,9 +49,7 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     const list = activeRelatedProducts(materialId);
     if (!material || !list.length) return 0;
     const counts = list.map((product) => {
-      const recipeItem = product.recipe.find((item) => item.materialId === materialId);
-      if (!recipeItem || Number(recipeItem.quantity) <= 0) return 0;
-      return Math.floor(Number(material.num || 0) / Number(recipeItem.quantity));
+      return materialCapacity(materialId, recipeQuantities(product.recipe).get(materialId) ?? 0);
     });
     return Math.min(...counts);
   }
@@ -83,6 +101,8 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     materialsMap,
     activeProducts,
     craftableCountForProduct,
+    limitingMaterials,
+    sharedMaterials,
     activeRelatedProducts,
     materialCraftableCount,
     materialStatus,

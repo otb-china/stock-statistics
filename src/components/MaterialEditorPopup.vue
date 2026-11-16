@@ -19,6 +19,10 @@
         </label>
       </div>
 
+      <el-button v-if="type === 'edit'" class="history-link" plain @click="emit('history', form)">
+        查看库存流水
+      </el-button>
+
       <el-button
         type="primary"
         size="large"
@@ -45,6 +49,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   "update:show": [value: boolean];
   submit: [];
+  history: [item: Material];
 }>();
 
 const popupShow = computed({
@@ -54,6 +59,8 @@ const popupShow = computed({
 </script>
 
 <style lang="scss" scoped>
+.history-link { margin-top: 12px; }
+.history-link + .submit-button { margin-left: 0; }
 .editor-card {
   margin-top: 14px;
   padding: 12px;

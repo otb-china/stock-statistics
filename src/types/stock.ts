@@ -29,6 +29,42 @@ export interface Order extends RSA {
   title: string;
   value: number;
   orderDate: string;
+  quantity: number;
+  deductedMaterials?: ProductRecipe[];
+}
+
+export const stockMovementLabels = {
+  initial: "初始库存",
+  restock: "补库存",
+  adjustment: "盘点调整",
+  deduction: "订单扣料",
+  return: "订单返料",
+  removal: "删除备料",
+} as const;
+
+export type StockMovementReason = keyof typeof stockMovementLabels;
+
+export interface StockMovement {
+  id: string;
+  materialId: string;
+  materialName: string;
+  timestamp: string;
+  reason: StockMovementReason;
+  delta: number;
+  balance: number;
+  orderId?: string;
+  orderTitle?: string;
+}
+
+export interface StockData {
+  materials: Material[];
+  products: Product[];
+  orders: Order[];
+  movements: StockMovement[];
+}
+
+export interface StockBackup extends StockData {
+  createdAt: string;
 }
 
 export interface OrderMonth {
@@ -49,4 +85,5 @@ export interface ResolvedBackupData {
   materials: RSA[];
   products: RSA[];
   orders: RSA[];
+  movements: StockMovement[];
 }

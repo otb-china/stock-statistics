@@ -5,11 +5,11 @@
         <div>
           <p class="section-tag">Data</p>
           <h3>导入总数据</h3>
-          <p>选择导出的备份文件，会同时覆盖备料、货品和订单。</p>
+          <p>导入会覆盖当前数据。覆盖前的数据会保留在最近可恢复备份中。</p>
         </div>
       </div>
 
-      <div v-if="hasOverwriteData" class="import-export-card">
+      <div class="import-export-card">
         <div>
           <strong>当前数据</strong>
           <span>{{ summary }}</span>
@@ -30,18 +30,25 @@
         </span>
         <span>
           <strong>{{ fileName || "选择备份文件" }}</strong>
-          <em>{{ hasFile ? "文件已读取，点击下方按钮导入" : "支持导出的 .json 备份文件" }}</em>
+          <em>支持导出的 .json 备份文件</em>
         </span>
       </button>
+      <div v-if="preview" class="import-export-card" aria-live="polite">
+        <div>
+          <strong>备份文件内容</strong>
+          <span>{{ preview }}</span>
+        </div>
+      </div>
+      <p v-if="error" class="import-error" role="alert">{{ error }}</p>
 
       <el-button
         type="primary"
         size="large"
         class="submit-button"
-        :disabled="!hasFile"
+        :disabled="!preview || reading"
         @click="emit('import')"
       >
-        导入总数据
+        覆盖并导入
       </el-button>
     </div>
   </van-popup>
@@ -53,10 +60,10 @@ import { Upload } from "@element-plus/icons-vue";
 
 const props = defineProps<{
   show: boolean;
-  hasOverwriteData: boolean;
   summary: string;
   fileName: string;
-  hasFile: boolean;
+  preview: string;
+  error: string;
 }>();
 
 const emit = defineEmits<{
@@ -67,10 +74,18 @@ const emit = defineEmits<{
 }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
+const reading = ref(false);
+let selection = 0;
 
 const popupShow = computed({
   get: () => props.show,
-  set: (value: boolean) => emit("update:show", value),
+  set: (value: boolean) => {
+    if (!value) {
+      selection++;
+      reading.value = false;
+    }
+    emit("update:show", value);
+  },
 });
 
 const selectFile = () => {
@@ -82,25 +97,33 @@ const onFileChange = async (event: Event) => {
   const file = input.files?.[0];
 
   if (!file) return;
+  const currentSelection = ++selection;
+  input.value = "";
+  reading.value = false;
 
   const isJsonFile = file.type === "application/json" || file.name.toLowerCase().endsWith(".json");
   if (!isJsonFile) {
-    input.value = "";
     emit("file-error", "请选择 JSON 备份文件");
     return;
   }
 
   try {
+    reading.value = true;
     const dataStr = await file.text();
-    emit("file-loaded", { dataStr, fileName: file.name });
+    if (currentSelection === selection && props.show) emit("file-loaded", { dataStr, fileName: file.name });
   } catch {
-    input.value = "";
-    emit("file-error", "文件读取失败");
+    if (currentSelection === selection && props.show) emit("file-error", "文件读取失败");
+  } finally {
+    if (currentSelection === selection) reading.value = false;
   }
 };
 </script>
 
 <style lang="scss" scoped>
+.import-error {
+  color: var(--danger-text);
+}
+
 .section-tag {
   margin: 0 0 4px;
   color: var(--text-muted);

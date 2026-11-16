@@ -6,10 +6,11 @@
         <h1>备料统计</h1>
       </div>
       <div class="header-actions">
-        <button v-if="showScrollTop" class="header-icon" type="button" @click="scrollToTop">
+        <el-button class="create-order-btn" round size="small" @click="openCreateOrder">新增订单</el-button>
+        <button v-if="showScrollTop" class="header-icon" type="button" aria-label="返回顶部" @click="scrollToTop">
           <el-icon><Top /></el-icon>
         </button>
-        <button class="header-icon" type="button" @click="settingsPopup = true">
+        <button class="header-icon" type="button" aria-label="更多操作" @click="settingsPopup = true">
           <el-icon><Setting /></el-icon>
         </button>
       </div>
@@ -53,10 +54,12 @@
         </div>
 
         <div class="craftable-list" v-if="craftableProducts.length">
-          <div v-for="product in craftableProducts" :key="product.id" class="craftable-row">
+          <button v-for="product in craftableProducts" :key="product.id" class="craftable-row record-edit" type="button" @click="openProductEditor(product)">
             <span class="bolder">{{ product.name }}</span>
+            <small v-if="sharedMaterials(product)">共用 {{ sharedMaterials(product) }}</small>
             <strong>可制 {{ craftableCountForProduct(product) }}</strong>
-          </div>
+          </button>
+          <p v-if="craftableProducts.some(sharedMaterials)" class="shared-stock-note">可制数量按单款计算。共用备料的货品会消耗同一份库存。</p>
         </div>
         <div v-else class="craftable-empty">
           {{ !data.length ? "还没有配置备料" : (products.length ? "当前没有可制作的正常货品" : "还没有配置货品") }}
@@ -70,15 +73,24 @@
         </div>
 
         <div class="warning-materials-list" v-if="warningMaterials.length">
-          <div v-for="item in warningMaterials" :key="item.id" class="warning-material-row">
-            <span class="bolder MB6">{{ item.name }}</span>
+          <button
+            v-for="item in warningMaterials"
+            :key="item.id"
+            class="warning-material-row"
+            type="button"
+            @click="openRestock(item)"
+          >
+            <span class="warning-material-title">
+              <b>{{ item.name }}</b>
+              <small class="restock-label">补库存</small>
+            </span>
             <div class="warning-material-meta">
               <small>库存 {{ item.num }}</small>
               <strong :class="materialStatusClass(item)">
                 {{ materialStatus(item) === "danger" ? "缺货" : "预警" }}
               </strong>
             </div>
-          </div>
+          </button>
         </div>
         <div v-else class="craftable-empty">当前没有预警或缺货备料</div>
       </div>
@@ -97,10 +109,22 @@
 
       <div class="month-filter" v-if="orderInfo.monthData.length">
         <button
+          class="month-chip"
+          :class="{ active: !orderInfo.checkedMonth }"
+          :aria-pressed="!orderInfo.checkedMonth"
+          type="button"
+          @click="monthChange('')"
+        >
+          <span>全部</span>
+          <strong>¥{{ orderTotal }}</strong>
+        </button>
+        <button
           v-for="item in orderInfo.monthData"
           :key="item.month"
           class="month-chip"
           :class="{ active: orderInfo.checkedMonth === item.month }"
+          :aria-pressed="orderInfo.checkedMonth === item.month"
+          type="button"
           @click="monthChange(item.month)"
         >
           <span>{{ item.month }}</span>
@@ -108,6 +132,14 @@
         </button>
       </div>
 
+      <el-input
+        v-if="orderInfo.data.length"
+        v-model="orderSearch"
+        class="order-search"
+        placeholder="按货品名称筛选订单"
+        aria-label="按货品名称筛选订单"
+        clearable
+      />
       <van-cell-group inset v-if="OrderData.length">
         <van-cell class="summary-cell">
           <template #title>
@@ -120,18 +152,18 @@
           </template>
         </van-cell>
 
-        <van-swipe-cell v-for="item in visibleOrders" :key="item.id">
-          <van-cell
-            class="order-cell"
-            :title="item.title"
-            :label="item.orderDate"
-            :value="`¥${item.value}`"
-          />
-          <template #right>
-            <van-button square type="primary" class="swipe-btn" text="编辑" @click="beforeUpd(item)" />
-            <van-button square type="danger" class="swipe-btn" text="删除" @click="del(item)" />
-          </template>
-        </van-swipe-cell>
+        <div v-for="item in visibleOrders" :key="item.id" class="order-record-row record-row">
+          <button class="order-record-edit record-edit" type="button" @click="beforeUpd(item)">
+            <span>
+              <strong>{{ item.title }} × {{ item.quantity }}</strong>
+              <small>{{ item.orderDate }}</small>
+            </span>
+            <span>¥{{ item.value }}</span>
+          </button>
+          <RowActions :label="item.title + '订单'" :actions="[
+            { name: '删除订单', color: '#c63535', callback: () => del(item) },
+          ]" />
+        </div>
 
         <van-cell v-if="OrderData.length > orderPreviewLimit" class="orders-toggle-cell" center>
           <button class="orders-toggle-btn" type="button" @click="ordersExpanded = !ordersExpanded">
@@ -141,14 +173,15 @@
       </van-cell-group>
 
       <div v-else class="orders-empty">
-        <strong>还没有订单记录</strong>
-        <span>
+        <strong>{{ orderSearch.trim() ? "没有匹配的订单" : "还没有订单记录" }}</strong>
+        <span v-if="!orderSearch.trim()">
           {{
             !data.length
               ? "先配置备料，再配置货品，之后就可以记录订单。"
               : (products.length ? "新增订单后，这里会按月份汇总收入。" : "先配置货品，再开始记录订单。")
           }}
         </span>
+        <button v-if="!orderInfo.data.length" class="orders-toggle-btn" type="button" @click="openImportExport">导入备份</button>
       </div>
     </section>
 
@@ -166,6 +199,8 @@
       @toggle-group="toggleMaterialGroup"
       @edit="openMaterialEditor"
       @remove="removeMaterial"
+      @restock="openRestock"
+      @history="openStockHistory"
     />
 
     <ProductManagePopup
@@ -188,12 +223,42 @@
       :type="materialEditor.type"
       :form="materialEditor.form"
       @submit="submitMaterialEditor"
+      @history="openStockHistory"
+    />
+
+    <van-popup v-model:show="restock.show" position="bottom" round destroy-on-close>
+      <form v-if="restockMaterial" class="popup-body" @submit.prevent="submitRestock">
+        <div class="popup-head">
+          <div>
+            <h3>补库存</h3>
+            <p>{{ restockMaterial.name }}</p>
+          </div>
+        </div>
+        <div class="restock-fields">
+          <label for="restock-quantity">本次补货数量</label>
+          <el-input-number id="restock-quantity" v-model="restock.quantity" :min="0" />
+          <p aria-live="polite">
+            当前库存 {{ restockMaterial.num }}
+            <strong v-if="restockTotal !== null"> → 补货后 {{ restockTotal }}</strong>
+          </p>
+        </div>
+        <el-button class="submit-button" type="primary" native-type="submit" :disabled="restockTotal === null">确认补库存</el-button>
+      </form>
+    </van-popup>
+
+    <StockHistoryPopup
+      v-model:show="history.show"
+      :name="historyMaterial?.name ?? ''"
+      :balance="historyMaterial?.num ?? 0"
+      :movements="historyMovements"
     />
 
     <ProductEditorPopup
       v-model:show="productEditor.show"
       :type="productEditor.type"
       :form="productEditor.form"
+      :limiting-materials="limitingMaterials(productEditor.form)"
+      :shared-materials="sharedMaterials(productEditor.form)"
       :available-materials-for-recipe="availableMaterialsForRecipe"
       @add-recipe="addRecipeItem"
       @recipe-material-change="onRecipeMaterialChange"
@@ -206,20 +271,23 @@
       :theme-options="themeOptions"
       :current-theme="currentTheme"
       :current-theme-name="currentThemeOption.name"
+      :last-export="lastExport"
+      :recovery-summary="recoverySummary"
       @set-theme="setTheme"
       @export="exportAllData"
       @open-import="openImportExport"
       @reset="resetAllData"
+      @restore="restoreRecovery"
     />
 
     <ImportDataPopup
-      v-model:show="importExportInfo.show"
-      :has-overwrite-data="hasImportOverwriteData"
+      v-model:show="importShow"
       :summary="importExportSummary"
       :file-name="importInfo.fileName"
-      :has-file="Boolean(importInfo.dataStr)"
+      :preview="importPreview"
+      :error="importInfo.error"
       @file-loaded="onImportFileLoaded"
-      @file-error="showToast"
+      @file-error="onImportFileError"
       @import="importData"
     />
 
@@ -230,16 +298,29 @@
       :form="orderInfo.form"
       :products="activeOrderProducts"
       :can-sync-calculation="canSyncCalculation"
+      :deduction-message="deductionMessage"
       :craftable-count-for-product="craftableCountForProduct"
       @product-change="onProductChange"
       @date-change="setOrderDate"
+      @quantity-change="setOrderQuantity"
+      @value-change="setOrderValue"
       @submit="orderSubmit"
+    />
+    <van-action-sheet
+      v-model:show="deleteOrderShow"
+      :title="`删除「${deletingOrder?.title ?? ''}」订单`"
+      :description="deleteOrderDescription"
+      :actions="deleteOrderActions"
+      cancel-text="取消"
     />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import RowActions from "@/components/RowActions.vue";
+import StockHistoryPopup from "@/components/StockHistoryPopup.vue";
+import { useStockRecords } from "@/composables/useStockRecords";
 import { LStorage } from "@/utils/localStorage.ts";
 import ImportDataPopup from "@/components/ImportDataPopup.vue";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
@@ -260,14 +341,7 @@ import type {
   ManageTab,
   Material,
   MaterialGroupKey,
-  Product,
 } from "@/types/stock";
-import {
-  normalizeMaterials,
-  normalizeOrders,
-  normalizeProducts,
-} from "@/utils/stockData.ts";
-import { showToast } from "vant";
 import { Setting, Top } from "@element-plus/icons-vue";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -295,8 +369,19 @@ const showScrollTop = ref(false);
 const ordersExpanded = ref(false);
 const orderPreviewLimit = ORDER_PREVIEW_LIMIT;
 const currentTheme = ref<ThemeKey>(DEFAULT_THEME);
-const data = ref([] as Material[]);
-const products = ref([] as Product[]);
+const stock = useStockRecords();
+const data = computed(() => stock.records.value.data.materials);
+const products = computed(() => stock.records.value.data.products);
+const orders = computed(() => stock.records.value.data.orders);
+const history = ref({ show: false, materialId: "" });
+const historyMaterial = computed(() => data.value.find((item) => item.id === history.value.materialId));
+const historyMovements = computed(() => stock.records.value.data.movements
+  .filter((item) => item.materialId === history.value.materialId)
+  .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp)));
+
+function openStockHistory(item: Material) {
+  history.value = { show: true, materialId: item.id };
+}
 const settingsPopup = ref(false);
 const materialsPopup = ref({
   show: false,
@@ -323,6 +408,8 @@ const {
   activeProducts,
   craftableCountForProduct,
   materialCraftableCount,
+  limitingMaterials,
+  sharedMaterials,
   materialStatus,
   materialGroupKey,
   materialRelatedSummary,
@@ -336,14 +423,22 @@ const {
   calculation,
   orderInfo,
   OrderData,
+  orderSearch,
   visibleOrders,
   collapsedOrdersCount,
   orderTotal,
   activeOrderProducts,
   canSyncCalculation,
+  deductionMessage,
+  deletingOrder,
+  deleteOrderShow,
+  deleteOrderDescription,
+  deleteOrderActions,
   initOrderMonthData,
   monthChange,
   setOrderDate,
+  setOrderQuantity,
+  setOrderValue,
   onProductChange,
   openCreateOrder,
   orderSubmit,
@@ -353,45 +448,49 @@ const {
   materials: data,
   products,
   activeProducts,
+  orders,
+  commit: stock.commit,
   ordersExpanded,
   orderPreviewLimit,
   dateFormat: DATE_FORMAT,
-  craftableCountForProduct,
   openMaterialEditor: () => openMaterialEditor(),
   openProductEditor: () => openProductEditor(),
 });
 
 const {
-  importExportInfo,
+  importShow,
   importInfo,
+  importPreview,
   importExportSummary,
-  hasImportOverwriteData,
+  lastExport,
+  recoverySummary,
   openImportExport,
   exportAllData,
   onImportFileLoaded,
+  onImportFileError,
   resetAllData,
+  restoreRecovery,
   importData,
-} = useBackupActions({
-  materials: data,
-  products,
-  orderInfo,
-  ordersExpanded,
-  settingsPopup,
-  dateFormat: DATE_FORMAT,
-  initData: () => init(),
+} = useBackupActions(stock, settingsPopup, () => {
+  orderSearch.value = "";
+  monthChange("");
+  initOrderMonthData();
 });
 
 const {
   materialEditor,
-  saveMaterials,
+  restock,
+  restockMaterial,
+  restockTotal,
+  openRestock,
+  submitRestock,
   openMaterialEditor,
   submitMaterialEditor,
   removeMaterial,
-} = useMaterialEditor(data, products);
+} = useMaterialEditor(data, products, stock.commit);
 
 const {
   productEditor,
-  saveProducts,
   openProductEditor,
   addRecipeItem,
   toggleProductStatus,
@@ -400,7 +499,7 @@ const {
   removeRecipeItem,
   submitProductEditor,
   removeProduct,
-} = useProductEditor(data, products, {
+} = useProductEditor(data, products, stock.commit, {
   openMaterialEditor: () => openMaterialEditor(),
 });
 
@@ -518,23 +617,10 @@ const openMaterialsPopup = (tab: ManageTab = "materials") => {
   materialsPopup.value.show = true;
 };
 
-const init = () => {
-  const storedTheme = themeStorage.getter();
-  currentTheme.value = isThemeKey(storedTheme) ? storedTheme : DEFAULT_THEME;
-
-  const storedMaterials = LStorage.data.getter();
-  data.value = normalizeMaterials(storedMaterials);
-
-  const rawStoredProducts = LStorage.productData.getter();
-  products.value = normalizeProducts(rawStoredProducts);
-
-  orderInfo.value.data = normalizeOrders(LStorage.orderData.getter());
-  initOrderMonthData();
-  saveMaterials();
-  saveProducts();
-};
-
-init();
+const storedTheme = themeStorage.getter();
+currentTheme.value = isThemeKey(storedTheme) ? storedTheme : DEFAULT_THEME;
+initOrderMonthData();
+watch(orderSearch, () => { ordersExpanded.value = false; });
 
 onMounted(() => {
   updateScrollTopVisibility();
@@ -688,6 +774,44 @@ onUnmounted(() => {
   background: var(--surface);
 }
 
+.craftable-row small {
+  flex: 1;
+  color: var(--text-muted);
+}
+
+.craftable-row strong {
+  flex-shrink: 0;
+}
+
+.shared-stock-note {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.order-search {
+  margin: 4px 0 12px;
+}
+
+.order-record-row {
+  border-radius: 0;
+  border-bottom: 1px solid var(--divider);
+  background: var(--surface);
+}
+
+.order-record-edit {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.order-record-edit small {
+  display: block;
+  color: var(--text-muted);
+}
+
 .craftable-row span {
   color: var(--text-main);
 }
@@ -704,8 +828,12 @@ onUnmounted(() => {
   display: grid;
   gap: 10px;
   padding: 10px 12px;
+  border: 0;
   border-radius: 8px;
   background: var(--surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .warning-material-row span,
@@ -717,6 +845,34 @@ onUnmounted(() => {
 .warning-material-row span {
   color: var(--text-main);
   line-height: 1.25;
+}
+
+.warning-material-row .warning-material-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.warning-material-row .restock-label {
+  flex-shrink: 0;
+  color: var(--accent-strong);
+}
+
+.restock-fields {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  color: var(--text-main);
+}
+
+.restock-fields p {
+  margin: 0;
+}
+
+.restock-fields strong {
+  color: var(--accent-strong);
 }
 
 .warning-material-meta {
@@ -884,24 +1040,6 @@ onUnmounted(() => {
 .summary-title {
   font-weight: 600;
   color: var(--text-strong);
-}
-
-.order-cell :deep(.van-cell__title) {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-main);
-}
-
-.order-cell :deep(.van-cell__label) {
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--text-subtle);
-}
-
-.order-cell :deep(.van-cell__value) {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent-strong);
 }
 
 .van-field {

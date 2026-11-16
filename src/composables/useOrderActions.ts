@@ -1,29 +1,33 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue";
 import dayjs from "dayjs";
-import { showConfirmDialog, showToast } from "vant";
-import { LStorage } from "@/utils/localStorage.ts";
-import { createEmptyOrderForm, createId, sumOrderValue } from "@/utils/stockData.ts";
-import type { Material, Order, OrderEditorType, OrderMonth, Product } from "@/types/stock";
+import { showToast } from "vant";
+import type { useStockRecords } from "./useStockRecords";
+import { createEmptyOrderForm, createId, recipeQuantities, sumOrderValue } from "@/utils/stockData.ts";
+import type { Material, Order, OrderEditorType, OrderMonth, Product, ProductRecipe } from "@/types/stock";
 
 interface UseOrderActionsOptions {
   materials: Ref<Material[]>;
   products: Ref<Product[]>;
+  orders: Ref<Order[]>;
+  commit: ReturnType<typeof useStockRecords>["commit"];
   activeProducts: ComputedRef<Product[]>;
   ordersExpanded: Ref<boolean>;
   orderPreviewLimit: number;
   dateFormat: string;
-  craftableCountForProduct: (product: Product) => number;
   openMaterialEditor: () => void;
   openProductEditor: () => void;
 }
 
 export function useOrderActions(options: UseOrderActionsOptions) {
-  const calculation = ref(true);
+  const calculation = ref(false);
+  const orderSearch = ref("");
+  const unitPrice = ref(0);
+  const deletingOrderId = ref("");
   const orderInfo = ref({
     type: "add" as OrderEditorType,
     show: false,
     form: createEmptyOrderForm(),
-    data: [] as Order[],
+    get data() { return options.orders.value; },
     monthData: [] as OrderMonth[],
     editingId: "",
     checkedMonth: "",
@@ -31,10 +35,11 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   const OrderData = computed(() => {
     const checkedMonth = orderInfo.value.checkedMonth;
-    if (checkedMonth) {
-      return orderInfo.value.data.filter((item) => item.orderDate?.substring(0, 7) === checkedMonth);
-    }
-    return orderInfo.value.data;
+    const search = orderSearch.value.trim().toLowerCase();
+    return orderInfo.value.data.filter((item) =>
+      (!checkedMonth || item.orderDate?.substring(0, 7) === checkedMonth)
+      && (!search || item.title.toLowerCase().includes(search)),
+    );
   });
 
   const visibleOrders = computed(() => {
@@ -50,11 +55,72 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   const activeOrderProducts = computed(() => options.activeProducts.value);
 
-  const canSyncCalculation = computed(() => {
-    const product = selectedOrderProduct.value;
-    if (!product) return false;
-    return options.craftableCountForProduct(product) > 0;
+  const orderDeduction = computed(() => getOrderDeduction(selectedOrderProduct.value, orderInfo.value.form.quantity));
+  const canSyncCalculation = computed(() =>
+    orderDeduction.value.items.length > 0 && orderDeduction.value.shortages.length === 0,
+  );
+  const deductionMessage = computed(() => {
+    if (!Number.isSafeInteger(orderInfo.value.form.quantity) || orderInfo.value.form.quantity < 1) return "请输入有效件数。";
+    if (!orderDeduction.value.items.length) return "该货品缺少有效配方，可以仅记录订单。";
+    if (orderDeduction.value.shortages.length) return orderDeduction.value.shortages.join("、");
+    const preview = orderDeduction.value.items.map(({ materialId, quantity }) => {
+      const name = options.materials.value.find((item) => item.id === materialId)?.name;
+      return `${name} × ${quantity}`;
+    }).join("、");
+    return calculation.value ? `预计扣料 ${preview}` : "仅记录订单，不扣减库存。";
   });
+
+  const deletingOrder = computed(() => orderInfo.value.data.find((item) => item.id === deletingOrderId.value));
+  const deleteOrderShow = computed({
+    get: () => Boolean(deletingOrder.value),
+    set: (show: boolean) => {
+      if (!show) deletingOrderId.value = "";
+    },
+  });
+  const returnableMaterials = computed(() => {
+    const items = deletingOrder.value?.deductedMaterials;
+    if (!items?.length) return [];
+    const allAvailable = items.every((item) => options.materials.value.some((material) =>
+      material.id === item.materialId && Number.isFinite(material.num + item.quantity),
+    ));
+    return allAvailable ? items : [];
+  });
+  const deleteOrderDescription = computed(() => {
+    const order = deletingOrder.value;
+    if (!order) return "";
+    if (order.deductedMaterials === undefined) return "历史订单缺少扣料明细。如需补回备料，请核实后手动调整库存。";
+    if (!order.deductedMaterials.length) return "该订单没有扣减备料。";
+    if (!returnableMaterials.value.length) return "扣料明细中的备料已无法完整返还，请核实后手动调整库存。";
+    return `可返还 ${returnableMaterials.value.map((item) => {
+      const material = options.materials.value.find((entry) => entry.id === item.materialId);
+      return `${material?.name} × ${item.quantity}`;
+    }).join("、")}`;
+  });
+  const deleteOrderActions = computed(() => {
+    const actions = [{ name: "仅删除订单", color: "#c63535", callback: () => deleteOrder(false) }];
+    if (returnableMaterials.value.length) {
+      actions.unshift({ name: "删除并返料", color: "#c63535", callback: () => deleteOrder(true) });
+    }
+    return actions;
+  });
+
+  function getOrderDeduction(product: Product | undefined, count: number) {
+    if (!Number.isSafeInteger(count) || count < 1) return { items: [], shortages: [] };
+    const quantities = recipeQuantities(product?.recipe ?? []);
+    const items: ProductRecipe[] = [];
+    const shortages: string[] = [];
+    for (const [materialId, perItem] of quantities) {
+      const quantity = Number((perItem * count).toPrecision(15));
+      const material = options.materials.value.find((entry) => entry.id === materialId);
+      items.push({ materialId, quantity });
+      if (!material || !Number.isFinite(material.num) || !Number.isFinite(quantity)) {
+        shortages.push(`${material?.name ?? "配方备料"}不可用`);
+      } else if (material.num < quantity) {
+        shortages.push(`${material.name}缺 ${Number((quantity - material.num).toPrecision(12))}`);
+      }
+    }
+    return { items, shortages };
+  }
 
   function productByName(name: string) {
     return options.products.value.find((item) => item.name === name);
@@ -66,7 +132,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     for (const item of orderInfo.value.data) {
       if (item.orderDate) {
         const month = item.orderDate.substring(0, 7);
-        months[month] = (months[month] || 0) + Number(item.value);
+        months[month] = (months[month] || 0) + Math.round(Number(item.value) * 100);
       }
     }
 
@@ -74,8 +140,11 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       .sort((a, b) => b.localeCompare(a))
       .map((month) => ({
         month,
-        value: months[month],
+        value: months[month] / 100,
       }));
+    if (orderInfo.value.checkedMonth && !orderInfo.value.monthData.some((item) => item.month === orderInfo.value.checkedMonth)) {
+      monthChange("");
+    }
   }
 
   function monthChange(month: string) {
@@ -91,12 +160,31 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     const product = productByName(productName);
     if (product) {
       orderInfo.value.form.title = product.name;
-      orderInfo.value.form.value = product.defaultValue || 0;
-      calculation.value = options.craftableCountForProduct(product) > 0;
+      unitPrice.value = product.defaultValue || 0;
+      orderInfo.value.form.value = Number((unitPrice.value * orderInfo.value.form.quantity).toFixed(2));
+      calculation.value = canSyncCalculation.value;
     }
     if (!orderInfo.value.form.orderDate) {
       orderInfo.value.form.orderDate = dayjs(new Date()).format(options.dateFormat);
     }
+  }
+
+  function setOrderQuantity(quantity: number) {
+    const couldDeduct = canSyncCalculation.value;
+    orderInfo.value.form.quantity = quantity;
+    if (Number.isSafeInteger(quantity) && quantity > 0) {
+      orderInfo.value.form.value = Number((unitPrice.value * quantity).toFixed(2));
+    }
+    if (orderInfo.value.type === "add" && (!couldDeduct || !canSyncCalculation.value)) {
+      calculation.value = canSyncCalculation.value;
+    }
+  }
+
+  function setOrderValue(value: string) {
+    // Vant emits an empty string while the input is being edited.
+    orderInfo.value.form.value = value === "" ? Number.NaN : Number(value);
+    const quantity = orderInfo.value.form.quantity;
+    if (value !== "" && Number.isSafeInteger(quantity) && quantity > 0) unitPrice.value = Number(value) / quantity;
   }
 
   function openCreateOrder() {
@@ -114,126 +202,147 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     }
     const firstProduct = availableProducts[0];
     orderInfo.value.type = "add";
+    unitPrice.value = firstProduct.defaultValue || 0;
     orderInfo.value.form = {
       id: "",
       title: firstProduct.name,
-      value: firstProduct.defaultValue || 0,
+      value: unitPrice.value,
+      quantity: 1,
       orderDate: dayjs(new Date()).format(options.dateFormat),
     };
-    calculation.value = true;
+    calculation.value = canSyncCalculation.value;
     orderInfo.value.show = true;
   }
 
   function orderSubmit() {
-    const currentType = orderInfo.value.type;
-    const product = productByName(orderInfo.value.form.title);
-
-    if (currentType === "add") {
-      if (calculation.value && product) {
-        product.recipe.forEach((recipe) => {
-          const material = options.materials.value.find((item) => item.id === recipe.materialId);
-          if (material) {
-            material.num = Math.max(0, Number(material.num) - Number(recipe.quantity));
-          }
-        });
-        saveMaterials();
-      }
-
-      orderInfo.value.data.unshift({
-        ...orderInfo.value.form,
-        id: createId("order"),
-      });
+    if (!orderInfo.value.show) return;
+    const { type, form, editingId, data } = orderInfo.value;
+    const value = Number(Number(form.value).toFixed(2));
+    if (!Number.isSafeInteger(form.quantity) || form.quantity < 1) {
+      showToast("请输入大于 0 的整数件数");
+      return;
+    }
+    if (!form.title || !Number.isFinite(value) || value < 0 || !form.orderDate) {
+      showToast("请填写有效的金额和日期");
+      return;
     }
 
-    if (currentType === "upd") {
-      const index = orderInfo.value.data.findIndex((item) => item.id === orderInfo.value.editingId);
-      if (index >= 0) {
-        orderInfo.value.data.splice(index, 1, {
-          ...orderInfo.value.form,
-          id: orderInfo.value.editingId,
-        });
+    const nextOrders = [...data];
+    let changes: ProductRecipe[] = [];
+    let savedOrder: Order;
+    if (type === "add") {
+      if (calculation.value && !canSyncCalculation.value) {
+        calculation.value = false;
+        showToast("库存无法扣减，请确认后仅记录订单");
+        return;
       }
+      const deduction = calculation.value ? orderDeduction.value.items : [];
+      changes = deduction.map((item) => ({ ...item, quantity: -item.quantity }));
+      savedOrder = { ...form, value, id: createId("order"), deductedMaterials: deduction };
+      nextOrders.unshift(savedOrder);
+    } else {
+      const index = data.findIndex((item) => item.id === editingId);
+      if (index < 0) return;
+      const previous = data[index];
+      let deduction = previous.deductedMaterials;
+      if (deduction?.length && form.quantity !== previous.quantity) {
+        const previousDeduction = deduction;
+        const nextDeduction = previousDeduction.map((item) => ({
+          ...item,
+          quantity: Number((item.quantity / previous.quantity * form.quantity).toPrecision(15)),
+        }));
+        changes = previousDeduction.map((item, index) => ({
+          materialId: item.materialId,
+          quantity: Number((item.quantity - nextDeduction[index].quantity).toPrecision(15)),
+        }));
+        deduction = nextDeduction;
+      }
+      savedOrder = { ...form, value, id: previous.id, deductedMaterials: deduction };
+      nextOrders[index] = savedOrder;
     }
 
+    nextOrders.sort((a, b) => b.orderDate.localeCompare(a.orderDate));
+    if (!persistOrderChange(nextOrders, changes, savedOrder)) return;
     orderInfo.value.show = false;
-    saveOrders();
     orderInfo.value.form = createEmptyOrderForm();
+    const savedMonth = form.orderDate.substring(0, 7);
+    if (orderInfo.value.checkedMonth && orderInfo.value.checkedMonth !== savedMonth) monthChange(savedMonth);
     initOrderMonthData();
+    showToast(type === "add" ? "订单已记录" : "订单已保存");
   }
 
   function beforeUpd(item: Order) {
     orderInfo.value.type = "upd";
     orderInfo.value.editingId = item.id;
     orderInfo.value.form = { ...item };
+    unitPrice.value = item.value / item.quantity;
     calculation.value = false;
     orderInfo.value.show = true;
   }
 
-  function deleteOrder(id: string) {
-    orderInfo.value.data = orderInfo.value.data.filter((item) => item.id !== id);
-    saveOrders();
+  function deleteOrder(returnMaterials: boolean) {
+    const order = deletingOrder.value;
+    if (!order) return;
+    const items = returnMaterials ? returnableMaterials.value : [];
+    if (returnMaterials && !items.length) {
+      showToast("无法返还该订单的备料");
+      return;
+    }
+    const nextOrders = orderInfo.value.data.filter((item) => item.id !== order.id);
+    if (!persistOrderChange(nextOrders, items, order)) return;
+    deletingOrderId.value = "";
     initOrderMonthData();
-  }
-
-  function returnOrderMaterials(order: Order) {
-    const product = productByName(order.title);
-    if (!product?.recipe.length) return false;
-
-    product.recipe.forEach((recipe) => {
-      const material = options.materials.value.find((item) => item.id === recipe.materialId);
-      if (material) {
-        material.num = Number(material.num || 0) + Number(recipe.quantity || 0);
-      }
-    });
-    saveMaterials();
-    return true;
+    showToast(returnMaterials ? "订单已删除，备料已返还" : "订单已删除");
   }
 
   function del(order: Order) {
-    showConfirmDialog({
-      title: "删除订单",
-      message: `是否将「${order.title}」消耗的备料返还库存？`,
-      confirmButtonText: "返还备料",
-      cancelButtonText: "仅删除订单",
-    }).then(() => {
-      const returned = returnOrderMaterials(order);
-      deleteOrder(order.id);
-      showToast(returned ? "订单已删除，备料已返还" : "订单已删除，未找到可返还备料");
-    }).catch((action) => {
-      if (action !== "cancel") return;
-      deleteOrder(order.id);
-      showToast("订单已删除");
+    deletingOrderId.value = order.id;
+  }
+
+  function persistOrderChange(orders: Order[], changes: ProductRecipe[], order: Order) {
+    const stock = new Map(options.materials.value.map((item) => [item.id, item]));
+    const balances = new Map<string, number>();
+    for (const { materialId, quantity } of changes) {
+      const material = stock.get(materialId);
+      const balance = Number(((material?.num ?? 0) + quantity).toPrecision(15));
+      if (!material || !Number.isFinite(balance) || balance < 0) {
+        showToast(material ? `${material.name}库存不足，无法保存订单` : "原扣料明细中的备料已不存在，无法调整库存");
+        return false;
+      }
+      balances.set(materialId, balance);
+    }
+    if (!balances.size) return options.commit({ orders });
+    const materials = options.materials.value.map((item) => {
+      const balance = balances.get(item.id);
+      return balance === undefined ? item : { ...item, num: balance };
     });
-  }
-
-  function saveMaterials() {
-    LStorage.data.setter(options.materials.value);
-  }
-
-  function saveOrders() {
-    LStorage.orderData.setter(orderInfo.value.data);
+    return options.commit({ orders, materials }, { reason: changes[0].quantity < 0 ? "deduction" : "return", order });
   }
 
   return {
     calculation,
     orderInfo,
     OrderData,
+    orderSearch,
     visibleOrders,
     collapsedOrdersCount,
     orderTotal,
-    selectedOrderProduct,
     activeOrderProducts,
     canSyncCalculation,
-    productByName,
+    deductionMessage,
+    deletingOrder,
+    deleteOrderShow,
+    deleteOrderDescription,
+    deleteOrderActions,
     initOrderMonthData,
     monthChange,
     setOrderDate,
+    setOrderQuantity,
+    setOrderValue,
     onProductChange,
     openCreateOrder,
     orderSubmit,
     beforeUpd,
-    deleteOrder,
-    returnOrderMaterials,
     del,
   };
 }

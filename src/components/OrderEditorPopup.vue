@@ -27,14 +27,25 @@
 
       <div class="order-form-card">
         <label class="order-field">
-          <span>收入金额</span>
+          <span>件数</span>
+          <el-input-number
+            :model-value="form.quantity || undefined"
+            :min="1"
+            :step="1"
+            aria-label="件数"
+            @update:model-value="emit('quantity-change', $event ?? 0)"
+          />
+        </label>
+        <label class="order-field">
+          <span>订单总金额</span>
           <van-field
-            v-model="form.value"
+            :model-value="Number.isFinite(form.value) ? form.value : ''"
             class="order-control"
-            type="digit"
+            type="number"
             placeholder="请输入收入金额"
             right-icon="edit"
             clearable
+            @update:model-value="emit('value-change', $event)"
           />
         </label>
 
@@ -51,26 +62,26 @@
 
       <div v-if="type === 'add'" class="sync-card" :class="{ active: calculationModel }">
         <div>
-          <strong>同步计算备料</strong>
-          <span>
-            {{
-              canSyncCalculation
-                ? (calculationModel ? "提交后自动扣减所选货品库存" : "仅记录订单，不扣减库存")
-                : "当前货品可制 0，不能同步计算备料"
-            }}
-          </span>
+          <strong>扣减备料库存</strong>
+          <span>{{ deductionMessage }}</span>
         </div>
-        <el-switch v-model="calculationModel" :disabled="!canSyncCalculation" />
+        <el-switch v-model="calculationModel" :disabled="!canSyncCalculation" aria-label="扣减备料库存" />
+      </div>
+      <div v-else-if="form.deductedMaterials?.length" class="sync-card">
+        <span>修改件数时，会按原扣料明细补扣或返还备料。</span>
+      </div>
+      <div v-else-if="form.deductedMaterials === undefined" class="sync-card">
+        <span>历史订单缺少扣料明细。修改件数只更新订单记录。</span>
       </div>
 
       <el-button
         type="primary"
         size="large"
         class="submit-button"
-        :disabled="!(form.title && form.value)"
+        :disabled="!form.title || !Number.isFinite(form.value) || !Number.isSafeInteger(form.quantity) || form.quantity < 1 || !form.orderDate"
         @click="emit('submit')"
       >
-        提交
+        {{ type === "upd" ? "保存修改" : (calculationModel ? "记单并扣料" : "仅记订单") }}
       </el-button>
     </div>
   </van-popup>
@@ -88,6 +99,7 @@ const props = defineProps<{
   products: Product[];
   calculation: boolean;
   canSyncCalculation: boolean;
+  deductionMessage: string;
   craftableCountForProduct: (product: Product) => number;
 }>();
 
@@ -96,6 +108,8 @@ const emit = defineEmits<{
   "update:calculation": [value: boolean];
   "product-change": [productName: string];
   "date-change": [date: string];
+  "quantity-change": [quantity: number];
+  "value-change": [value: string];
   submit: [];
 }>();
 
@@ -105,7 +119,7 @@ const popupShow = computed({
 });
 
 const calculationModel = computed({
-  get: () => props.calculation,
+  get: () => props.canSyncCalculation && props.calculation,
   set: (value: boolean) => emit("update:calculation", value),
 });
 </script>

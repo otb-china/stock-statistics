@@ -1,5 +1,6 @@
 import type { RSA } from "otb-toolkit/src/types";
 import { sort } from "otb-toolkit/src/utils/data.ts";
+import { stockMovementLabels } from "@/types/stock";
 import type {
   BackupData,
   Material,
@@ -7,11 +8,21 @@ import type {
   Product,
   ProductRecipe,
   ResolvedBackupData,
+  StockMovement,
 } from "@/types/stock";
 
 export const createId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 export const legacyMaterialId = (name: string) => `material-${encodeURIComponent(name)}`;
+
+export function recipeQuantities(recipe: ProductRecipe[]) {
+  const quantities = new Map<string, number>();
+  for (const item of recipe) {
+    if (!item.materialId || !Number.isFinite(item.quantity) || item.quantity <= 0) return new Map<string, number>();
+    quantities.set(item.materialId, Number(((quantities.get(item.materialId) ?? 0) + item.quantity).toPrecision(15)));
+  }
+  return quantities;
+}
 
 export function createEmptyMaterialForm(): Material {
   return {
@@ -37,11 +48,12 @@ export function createEmptyOrderForm(): Order {
     title: "",
     value: 0,
     orderDate: "",
+    quantity: 1,
   };
 }
 
 export function sumOrderValue(list: Order[]) {
-  return list.reduce((total, item) => total + Number(item.value), 0);
+  return list.reduce((total, item) => total + Math.round(Number(item.value) * 100), 0) / 100;
 }
 
 export function normalizeMaterials(list: RSA[] | undefined): Material[] {
@@ -81,7 +93,22 @@ export function normalizeOrders(list: RSA[] | undefined): Order[] {
     title: String(item.title || ""),
     value: Number(item.value || 0),
     orderDate: String(item.orderDate || ""),
+    quantity: Number.isSafeInteger(item.quantity) && item.quantity > 0 ? item.quantity : 1,
+    deductedMaterials: isValidDeduction(item.deductedMaterials) ? item.deductedMaterials : undefined,
   })), "desc", "orderDate");
+}
+
+function isValidDeduction(value: unknown): value is ProductRecipe[] {
+  if (!Array.isArray(value)) return false;
+  const materialIds = new Set<string>();
+  for (const item of value) {
+    if (
+      !item || typeof item.materialId !== "string" || !item.materialId
+      || materialIds.has(item.materialId) || !Number.isFinite(item.quantity) || item.quantity <= 0
+    ) return false;
+    materialIds.add(item.materialId);
+  }
+  return true;
 }
 
 export function resolveBackupList(parsedData: BackupData, primaryKey: keyof BackupData, legacyKey: keyof BackupData) {
@@ -101,10 +128,32 @@ export function resolveBackupData(parsedData: BackupData): ResolvedBackupData {
     throw new Error("备份数据不完整");
   }
 
-  return { materials, products, orders };
+  const movements: unknown = parsedData.movements ?? [];
+  if (!Array.isArray(movements) || !movements.every(isStockMovement)) {
+    throw new Error("库存流水格式有误");
+  }
+  return { materials, products, orders, movements };
+}
+
+function isStockMovement(value: unknown): value is StockMovement {
+  if (!value || typeof value !== "object") return false;
+  const item = value as StockMovement;
+  return typeof item.id === "string" && typeof item.materialId === "string"
+    && typeof item.materialName === "string" && typeof item.timestamp === "string"
+    && Number.isFinite(Date.parse(item.timestamp))
+    && Object.prototype.hasOwnProperty.call(stockMovementLabels, item.reason)
+    && Number.isFinite(item.delta) && Number.isFinite(item.balance)
+    && (item.orderId === undefined || typeof item.orderId === "string")
+    && (item.orderTitle === undefined || typeof item.orderTitle === "string");
 }
 
 export function assertValidBackupData({ materials, products, orders }: ResolvedBackupData) {
+  if (orders.some((order) => order?.deductedMaterials !== undefined && !isValidDeduction(order.deductedMaterials))) {
+    throw new Error("订单扣料明细无效");
+  }
+  if (orders.some((order) => order?.quantity !== undefined && (!Number.isSafeInteger(order.quantity) || order.quantity <= 0))) {
+    throw new Error("订单数量无效");
+  }
   const normalizedMaterials = normalizeMaterials(materials);
   const normalizedProducts = normalizeProducts(products);
   const normalizedOrders = normalizeOrders(orders);

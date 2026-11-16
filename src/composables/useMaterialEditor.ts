@@ -1,22 +1,40 @@
-import { ref, type Ref } from "vue";
+import { computed, ref, type Ref } from "vue";
 import { showConfirmDialog, showToast } from "vant";
-import { LStorage } from "@/utils/localStorage.ts";
+import type { useStockRecords } from "./useStockRecords";
 import { createEmptyMaterialForm, createId } from "@/utils/stockData.ts";
 import type { EditorType, Material, Product } from "@/types/stock";
 
-export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Product[]>) {
+export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Product[]>, commit: ReturnType<typeof useStockRecords>["commit"]) {
   const materialEditor = ref({
     show: false,
     type: "add" as EditorType,
     form: createEmptyMaterialForm(),
   });
+  const restock = ref({ show: false, materialId: "", quantity: 0 });
+  const restockMaterial = computed(() => materials.value.find((item) => item.id === restock.value.materialId));
+  const restockTotal = computed(() => {
+    const material = restockMaterial.value;
+    const quantity = restock.value.quantity;
+    if (!material || !Number.isFinite(quantity) || quantity <= 0) return null;
+    const total = Number((material.num + quantity).toPrecision(15));
+    return Number.isFinite(total) && total > material.num ? total : null;
+  });
 
-  function saveMaterials() {
-    LStorage.data.setter(materials.value);
+  function openRestock(item: Material) {
+    restock.value = { show: true, materialId: item.id, quantity: 0 };
   }
 
-  function saveProducts() {
-    LStorage.productData.setter(products.value);
+  function submitRestock() {
+    const material = restockMaterial.value;
+    const total = restockTotal.value;
+    if (!restock.value.show || !material || total === null) return;
+
+    const nextMaterials = materials.value.map((item) =>
+      item.id === material.id ? { ...item, num: total } : item,
+    );
+    if (!commit({ materials: nextMaterials }, { reason: "restock" })) return;
+    restock.value.show = false;
+    showToast(`已补库存，${material.name}当前库存 ${total}`);
   }
 
   function openMaterialEditor(item?: Material) {
@@ -40,24 +58,18 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
       return;
     }
 
-    if (materialEditor.value.type === "add") {
-      materials.value.push({
-        id: createId("material"),
-        name,
-        num: Number(materialEditor.value.form.num || 0),
-      });
-    } else {
-      const index = materials.value.findIndex((item) => item.id === materialEditor.value.form.id);
-      if (index >= 0) {
-        materials.value.splice(index, 1, {
-          ...materials.value[index],
-          name,
-          num: Number(materialEditor.value.form.num || 0),
-        });
-      }
+    const form = materialEditor.value.form;
+    const num = Number(form.num ?? 0);
+    if (!Number.isFinite(num) || num < 0) {
+      showToast("请输入有效库存");
+      return;
     }
-
-    saveMaterials();
+    const isNew = materialEditor.value.type === "add";
+    if (!isNew && !materials.value.some((item) => item.id === form.id)) return;
+    const nextMaterials = isNew
+      ? [...materials.value, { id: createId("material"), name, num }]
+      : materials.value.map((item) => item.id === form.id ? { ...item, name, num } : item);
+    if (!commit({ materials: nextMaterials }, { reason: isNew ? "initial" : "adjustment" })) return;
     materialEditor.value.show = false;
   }
 
@@ -66,13 +78,12 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
       title: "提示",
       message: "删除备料后，相关货品配方也会移除该备料，确认继续吗？",
     }).then(() => {
-      materials.value = materials.value.filter((item) => item.id !== id);
-      products.value = products.value.map((product) => ({
+      const nextMaterials = materials.value.filter((item) => item.id !== id);
+      const nextProducts = products.value.map((product) => ({
         ...product,
         recipe: product.recipe.filter((item) => item.materialId !== id),
       }));
-      saveMaterials();
-      saveProducts();
+      if (!commit({ materials: nextMaterials, products: nextProducts }, { reason: "removal" })) return;
       showToast("备料已删除");
     }).catch(() => {
     });
@@ -80,7 +91,11 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
 
   return {
     materialEditor,
-    saveMaterials,
+    restock,
+    restockMaterial,
+    restockTotal,
+    openRestock,
+    submitRestock,
     openMaterialEditor,
     submitMaterialEditor,
     removeMaterial,

@@ -12,53 +12,56 @@
         </button>
       </div>
 
+      <el-input v-model="search" class="manage-search" placeholder="搜索备料名称" aria-label="搜索备料名称" clearable />
       <div class="manage-list-scroll">
-        <div v-if="!groups.length" class="manage-empty">
-          <strong>还没有备料</strong>
-          <span>新增备料后，可以在货品配方里选择并计算库存。</span>
+        <div v-if="!visibleGroups.length" class="manage-empty">
+          <strong>{{ search.trim() ? "没有匹配的备料" : "还没有备料" }}</strong>
+          <span v-if="!search.trim()">新增备料后，可以在货品配方里选择并计算库存。</span>
         </div>
 
         <section
           v-else
-          v-for="group in groups"
+          v-for="group in visibleGroups"
           :key="group.key"
           class="material-group"
           :class="{ collapsed: group.collapsed }"
         >
-          <button class="material-group-head" type="button" @click="emit('toggle-group', group.key)">
+          <div v-if="search.trim()" class="material-group-label">{{ group.title }} · {{ group.items.length }}项</div>
+          <button v-else class="material-group-head" type="button" @click="emit('toggle-group', group.key)">
             <span>{{ group.title }}</span>
             <small>{{ group.items.length }}项</small>
           </button>
 
           <div v-if="!group.collapsed" class="material-group-list">
-            <van-swipe-cell v-for="item in group.items" :key="item.id" class="manage-swipe-cell">
-              <div class="material-row" :class="materialStatusClass(item)">
-                <div class="material-info">
-                  <div class="material-title-row">
+            <div v-for="item in group.items" :key="item.id" class="record-row">
+              <button class="material-row record-edit" :class="materialStatusClass(item)" type="button" @click="emit('edit', item)">
+                <span class="material-info">
+                  <span class="material-title-row">
                     <strong>{{ item.name }}</strong>
                     <span class="material-status" :class="materialStatusClass(item)">
                       {{ materialStatusText(item) }}
                     </span>
-                  </div>
+                  </span>
                   <small>{{ materialRelatedSummary(item.id) }}</small>
-                </div>
+                </span>
 
-                <div class="material-metrics">
-                  <div class="material-metric">
+                <span class="material-metrics">
+                  <span class="material-metric">
                     <span>{{ item.num }}</span>
                     <small>库存</small>
-                  </div>
-                  <div class="material-metric">
+                  </span>
+                  <span class="material-metric">
                     <strong>{{ materialCraftableCount(item.id) }}</strong>
                     <small>可制</small>
-                  </div>
-                </div>
-              </div>
-              <template #right>
-                <van-button square type="primary" class="swipe-btn" text="编辑" @click="emit('edit', item)" />
-                <van-button square type="danger" class="swipe-btn" text="删除" @click="emit('remove', item.id)" />
-              </template>
-            </van-swipe-cell>
+                  </span>
+                </span>
+              </button>
+              <RowActions :label="item.name" :actions="[
+                { name: '补库存', callback: () => emit('restock', item) },
+                { name: '库存流水', callback: () => emit('history', item) },
+                { name: '删除备料', color: '#c63535', callback: () => emit('remove', item.id) },
+              ]" />
+            </div>
           </div>
         </section>
       </div>
@@ -67,7 +70,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import RowActions from "@/components/RowActions.vue";
 import { Plus } from "@element-plus/icons-vue";
 import type { Material, MaterialGroupKey } from "@/types/stock";
 
@@ -95,7 +99,20 @@ const emit = defineEmits<{
   "toggle-group": [key: MaterialGroupKey];
   edit: [item: Material];
   remove: [id: string];
+  restock: [item: Material];
+  history: [item: Material];
 }>();
+
+const search = ref("");
+const visibleGroups = computed(() => {
+  const query = search.value.trim().toLowerCase();
+  if (!query) return props.groups;
+  return props.groups.map((group) => ({
+    ...group,
+    collapsed: false,
+    items: group.items.filter((item) => item.name.toLowerCase().includes(query)),
+  })).filter((group) => group.items.length);
+});
 
 const popupShow = computed({
   get: () => props.show,
@@ -109,7 +126,7 @@ const popupShow = computed({
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px 12px;
   align-items: center;
-  padding: 14px 16px;
+  padding: 12px;
   border-radius: 10px;
   background: var(--surface-soft);
 }
@@ -158,11 +175,14 @@ const popupShow = computed({
   gap: 10px;
 }
 
-.manage-swipe-cell {
-  flex: 0 0 auto;
-  overflow: hidden;
-  border-radius: 10px;
-  background: var(--surface-soft);
+.material-group-label {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.material-title-row {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
 }
 
 .material-title-row {

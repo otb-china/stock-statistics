@@ -1,6 +1,6 @@
 import { ref, type Ref } from "vue";
 import { showConfirmDialog, showToast } from "vant";
-import { LStorage } from "@/utils/localStorage.ts";
+import type { useStockRecords } from "./useStockRecords";
 import { createEmptyProductForm, createId } from "@/utils/stockData.ts";
 import type { EditorType, Material, Product } from "@/types/stock";
 
@@ -11,6 +11,7 @@ interface UseProductEditorOptions {
 export function useProductEditor(
   materials: Ref<Material[]>,
   products: Ref<Product[]>,
+  commit: ReturnType<typeof useStockRecords>["commit"],
   options: UseProductEditorOptions = {},
 ) {
   const productEditor = ref({
@@ -18,10 +19,6 @@ export function useProductEditor(
     type: "add" as EditorType,
     form: createEmptyProductForm(),
   });
-
-  function saveProducts() {
-    LStorage.productData.setter(products.value);
-  }
 
   function openProductEditor(product?: Product) {
     if (!product && !materials.value.length) {
@@ -54,15 +51,10 @@ export function useProductEditor(
   }
 
   function toggleProductStatus(product: Product) {
-    const nextStatus = product.status === "active" ? "inactive" : "active";
-    const index = products.value.findIndex((item) => item.id === product.id);
-    if (index < 0) return;
-
-    products.value.splice(index, 1, {
-      ...products.value[index],
-      status: nextStatus,
-    });
-    saveProducts();
+    const nextStatus: Product["status"] = product.status === "active" ? "inactive" : "active";
+    if (!products.value.some((item) => item.id === product.id)) return;
+    const nextProducts = products.value.map((item) => item.id === product.id ? { ...item, status: nextStatus } : item);
+    if (!commit({ products: nextProducts })) return;
     showToast(nextStatus === "active" ? "货品已设为正常" : "货品已设为停产");
   }
 
@@ -130,16 +122,12 @@ export function useProductEditor(
       recipe: validRecipe,
     };
 
-    if (productEditor.value.type === "add") {
-      products.value.push(productPayload);
-    } else {
-      const index = products.value.findIndex((item) => item.id === productEditor.value.form.id);
-      if (index >= 0) {
-        products.value.splice(index, 1, productPayload);
-      }
-    }
-
-    saveProducts();
+    const isNew = productEditor.value.type === "add";
+    if (!isNew && !products.value.some((item) => item.id === productPayload.id)) return;
+    const nextProducts = isNew
+      ? [...products.value, productPayload]
+      : products.value.map((item) => item.id === productPayload.id ? productPayload : item);
+    if (!commit({ products: nextProducts })) return;
     productEditor.value.show = false;
   }
 
@@ -148,8 +136,7 @@ export function useProductEditor(
       title: "提示",
       message: "确认删除这个货品吗？",
     }).then(() => {
-      products.value = products.value.filter((item) => item.id !== id);
-      saveProducts();
+      if (!commit({ products: products.value.filter((item) => item.id !== id) })) return;
       showToast("货品已删除");
     }).catch(() => {
     });
@@ -157,7 +144,6 @@ export function useProductEditor(
 
   return {
     productEditor,
-    saveProducts,
     openProductEditor,
     addRecipeItem,
     toggleProductStatus,

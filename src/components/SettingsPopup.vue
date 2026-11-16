@@ -37,7 +37,15 @@
           </span>
           <span>
             <strong>导出总数据</strong>
-            <em>下载备料、货品和订单备份文件</em>
+            <em>{{ lastExport }}</em>
+          </span>
+        </button>
+
+        <button v-if="recoverySummary" class="settings-item settings-item-feature" type="button" @click="emit('restore')">
+          <span class="settings-item-icon"><el-icon><RefreshLeft /></el-icon></span>
+          <span>
+            <strong>恢复最近备份</strong>
+            <em>{{ recoverySummary }}</em>
           </span>
         </button>
 
@@ -57,7 +65,7 @@
           </span>
           <span>
             <strong>重置数据</strong>
-            <em>清除备料、货品和订单全部数据</em>
+            <em>清空备料、货品、订单和库存流水</em>
           </span>
         </button>
       </div>
@@ -67,7 +75,7 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import { Delete, Download, Upload } from "@element-plus/icons-vue";
+import { Delete, Download, RefreshLeft, Upload } from "@element-plus/icons-vue";
 import type { ThemeKey, ThemeOption } from "@/config/themes";
 
 const props = defineProps<{
@@ -75,6 +83,8 @@ const props = defineProps<{
   themeOptions: ThemeOption[];
   currentTheme: ThemeKey;
   currentThemeName: string;
+  lastExport: string;
+  recoverySummary: string;
 }>();
 
 const emit = defineEmits<{
@@ -83,6 +93,7 @@ const emit = defineEmits<{
   export: [];
   "open-import": [];
   reset: [];
+  restore: [];
 }>();
 
 const popupShow = computed({

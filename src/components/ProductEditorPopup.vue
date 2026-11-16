@@ -27,6 +27,11 @@
         </div>
       </div>
 
+      <div v-if="type === 'edit' && limitingMaterials" class="capacity-note">
+        <p>当前限制产量的备料：{{ limitingMaterials }}</p>
+        <p v-if="sharedMaterials">与其他在售货品共用：{{ sharedMaterials }}</p>
+      </div>
+
       <div class="recipe-header">
         <strong>配方</strong>
         <el-button size="small" plain @click="emit('add-recipe')">新增关联</el-button>
@@ -88,6 +93,8 @@ const props = defineProps<{
   show: boolean;
   type: EditorType;
   form: Product;
+  limitingMaterials: string;
+  sharedMaterials: string;
   availableMaterialsForRecipe: (index: number) => Material[];
 }>();
 
@@ -108,6 +115,8 @@ const canSubmit = computed(() => props.form.name.trim() && props.form.recipe.len
 </script>
 
 <style lang="scss" scoped>
+.capacity-note { margin-top: 12px; color: var(--text-subtle); font-size: 12px; }
+.capacity-note p { margin: 4px 0; }
 .editor-card,
 .recipe-card {
   margin-top: 14px;
