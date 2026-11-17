@@ -765,3 +765,29 @@ body {
   user-select: none;
   -webkit-user-select: none;
 }
+
+.popup-body > .submit-button,
+.popup-body > form > .submit-button {
+  position: sticky;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  z-index: 5;
+  margin-top: 46px;
+  box-shadow:
+    0 0 0 18px var(--surface, #ffffff),
+    0 60px 0 18px var(--surface, #ffffff),
+    0 -16px 12px 10px var(--surface, #ffffff);
+}
+
+.popup-body > .submit-button.is-disabled,
+.popup-body > form > .submit-button.is-disabled {
+  opacity: 1;
+  filter: saturate(0.55) brightness(1.3);
+}
+
+@supports (background: color-mix(in srgb, red 50%, white)) {
+  .popup-body > .submit-button.is-disabled,
+  .popup-body > form > .submit-button.is-disabled {
+    filter: none;
+    background: color-mix(in srgb, var(--accent, #1f6b7b) 42%, var(--surface, #ffffff));
+  }
+}
