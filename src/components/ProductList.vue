@@ -22,7 +22,18 @@
   >
     <summary v-if="group.inactive" class="product-group-summary">停产货品（{{ group.items.length }}）</summary>
     <div class="product-list">
-      <div v-for="product in group.items" :key="product.id" class="record-row">
+      <SwipeRow
+        v-for="product in group.items"
+        :key="product.id"
+        :label="product.name"
+        :actions="[
+          group.inactive
+            ? { name: '恢复', icon: RefreshLeft, callback: () => emit('toggle-status', product) }
+            : { name: '停产', icon: VideoPause, tone: 'warning', callback: () => emit('toggle-status', product) },
+          { name: '删除', icon: Delete, tone: 'danger', callback: () => emit('remove', product.id) },
+        ]"
+      >
+      <div class="record-row">
         <button class="product-row record-edit" type="button" :aria-label="`编辑${product.name}`" @click="emit('edit', product)">
           <span class="product-title">{{ product.name }}</span>
           <span class="product-prices">
@@ -36,11 +47,8 @@
         <button v-if="!group.inactive" class="pill-button record-quick-action" type="button" :aria-label="`为${product.name}记单`" @click="emit('order', product)">
           记单
         </button>
-        <RowActions :label="product.name" :actions="[
-          { name: group.inactive ? '恢复销售' : '设为停产', callback: () => emit('toggle-status', product) },
-          { name: '删除货品', color: '#c63535', callback: () => emit('remove', product.id) },
-        ]" />
       </div>
+      </SwipeRow>
     </div>
     <p v-if="!group.inactive && group.items.some(sharedMaterials)" class="product-note">
       可制数量按单款计算，共用备料的货品会消耗同一份库存。
@@ -50,8 +58,8 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { Search } from "@element-plus/icons-vue";
-import RowActions from "@/components/RowActions.vue";
+import { Delete, RefreshLeft, Search, VideoPause } from "@element-plus/icons-vue";
+import SwipeRow from "@/components/SwipeRow.vue";
 import type { Product } from "@/types/stock";
 
 const props = defineProps<{

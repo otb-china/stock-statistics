@@ -602,23 +602,123 @@ body {
 }
 
 /* dialogs & action sheets */
-.van-dialog {
-  border-radius: 20px;
+/* centered confirm dialogs */
+.van-dialog,
+.confirm-dialog.van-popup {
+  width: min(320px, calc(100vw - 48px));
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(15, 30, 45, 0.22);
 }
 
-.van-dialog__header {
-  padding-top: 24px;
+.van-dialog,
+.confirm-dialog.van-popup {
+  padding: 24px 20px 18px;
+}
+
+.van-dialog__header,
+.confirm-dialog-title {
+  margin: 0;
+  padding: 0;
   color: var(--text-strong);
+  font-size: 17px;
   font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
-.van-dialog__message {
+.van-dialog__header::before,
+.confirm-dialog-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  background: var(--accent-soft, #e8f3f5);
+  color: var(--accent, #1f6b7b);
+  font-size: 22px;
+}
+
+.van-dialog__header::before {
+  content: "!";
+  font-weight: 800;
+}
+
+.danger-dialog .van-dialog__header::before,
+.confirm-dialog-icon.danger {
+  background: #fdecec;
+  color: #e05252;
+}
+
+.van-dialog__message,
+.confirm-dialog-message {
+  margin: 0;
+  padding: 8px 0 0;
   color: var(--text-muted);
+  font-size: 14px;
   line-height: 1.6;
+  text-align: center;
 }
 
-.van-dialog__confirm {
+.van-dialog__footer,
+.confirm-dialog-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 0;
+}
+
+.van-dialog__footer::after,
+.van-dialog__footer .van-hairline--left::after {
+  display: none;
+}
+
+.van-dialog__footer .van-button,
+.confirm-dialog-button {
+  flex: 1;
+  height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--surface-muted, #f1f4f7);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.van-dialog__footer .van-dialog__confirm {
+  background: var(--accent, #1f6b7b);
+  color: #ffffff !important;
   font-weight: 700;
+}
+
+.danger-dialog .van-dialog__footer .van-dialog__confirm,
+.confirm-dialog-button.danger {
+  background: #e05252;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.confirm-dialog-button.danger-soft {
+  background: #fdecec;
+  color: #d14343;
+  font-weight: 700;
+}
+
+.confirm-dialog-actions.stacked {
+  flex-direction: column;
+}
+
+.confirm-dialog-actions.stacked .confirm-dialog-button {
+  flex: none;
+}
+
+.van-dialog__footer .van-button:active,
+.confirm-dialog-button:active {
+  filter: brightness(0.95);
 }
 
 .van-action-sheet__header {

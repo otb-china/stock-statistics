@@ -41,7 +41,16 @@
           </button>
 
           <div v-if="!group.collapsed" class="material-group-list">
-            <div v-for="item in group.items" :key="item.id" class="record-row">
+            <SwipeRow
+              v-for="item in group.items"
+              :key="item.id"
+              :label="item.name"
+              :actions="[
+                { name: '流水', icon: Tickets, callback: () => emit('history', item) },
+                { name: '删除', icon: Delete, tone: 'danger', callback: () => emit('remove', item.id) },
+              ]"
+            >
+            <div class="record-row">
               <button class="material-row record-edit" :class="materialStatusClass(item)" type="button" @click="emit('edit', item)">
                 <span class="material-info">
                   <span class="material-title-row">
@@ -65,11 +74,8 @@
                 </span>
               </button>
               <button class="pill-button record-quick-action" type="button" :aria-label="`为${item.name}补货`" @click="emit('restock', item)">补货</button>
-              <RowActions :label="item.name" :actions="[
-                { name: '库存流水', callback: () => emit('history', item) },
-                { name: '删除备料', color: '#c63535', callback: () => emit('remove', item.id) },
-              ]" />
             </div>
+            </SwipeRow>
           </div>
         </section>
       </div>
@@ -79,8 +85,8 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import RowActions from "@/components/RowActions.vue";
-import { Box, Plus, Search } from "@element-plus/icons-vue";
+import SwipeRow from "@/components/SwipeRow.vue";
+import { Box, Delete, Plus, Search, Tickets } from "@element-plus/icons-vue";
 import type { Material, MaterialGroupKey } from "@/types/stock";
 
 interface MaterialManageGroup {

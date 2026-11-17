@@ -97,6 +97,7 @@ export function useBackupActions(
       title: "清空数据",
       message: "清空全部数据？清空前的数据会保留在最近可恢复备份中。",
       confirmButtonText: "确认清空",
+      className: "danger-dialog",
     }).then(() => replace({ materials: [], products: [], orders: [], movements: [] }, "数据已清空，可在设置中恢复"))
       .catch(() => {});
   }

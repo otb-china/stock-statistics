@@ -140,8 +140,10 @@ export function useProductEditor(
 
   function removeProduct(id: string) {
     showConfirmDialog({
-      title: "提示",
-      message: "确认删除这个货品吗？",
+      title: "删除货品",
+      message: "删除后无法恢复，确认删除这个货品吗？",
+      confirmButtonText: "删除",
+      className: "danger-dialog",
     }).then(() => {
       if (!commit({ products: products.value.filter((item) => item.id !== id) })) return;
       showToast("货品已删除");

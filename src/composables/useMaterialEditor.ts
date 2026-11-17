@@ -107,8 +107,10 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
 
   function removeMaterial(id: string) {
     showConfirmDialog({
-      title: "提示",
-      message: "删除备料后，相关货品配方也会移除该备料，确认继续吗？",
+      title: "删除备料",
+      message: "删除后，相关货品配方也会移除该备料，确认继续吗？",
+      confirmButtonText: "删除",
+      className: "danger-dialog",
     }).then(() => {
       const nextMaterials = materials.value.filter((item) => item.id !== id);
       const nextProducts = products.value.map((product) => ({

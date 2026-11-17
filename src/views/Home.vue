@@ -140,7 +140,14 @@
         />
 
         <div v-if="OrderData.length" class="order-list">
-          <div v-for="item in visibleOrders" :key="item.id" class="order-row record-row">
+          <SwipeRow
+            v-for="item in visibleOrders"
+            :key="item.id"
+            class="order-swipe"
+            :label="item.title + '订单'"
+            :actions="[{ name: '删除', icon: Delete, tone: 'danger', callback: () => del(item) }]"
+          >
+          <div class="order-row record-row">
             <button class="order-edit record-edit" type="button" @click="beforeUpd(item)">
               <span class="order-avatar" aria-hidden="true">{{ item.title.slice(0, 1) }}</span>
               <span class="order-info">
@@ -149,10 +156,8 @@
               </span>
               <span class="order-amount">收入 {{ formatOrderIncome(item) }}</span>
             </button>
-            <RowActions :label="item.title + '订单'" :actions="[
-              { name: '删除订单', color: '#c63535', callback: () => del(item) },
-            ]" />
           </div>
+          </SwipeRow>
 
           <button
             v-if="OrderData.length > orderPreviewLimit"
@@ -303,19 +308,28 @@
       @cost-change="setOrderCost"
       @submit="orderSubmit"
     />
-    <van-action-sheet
-      v-model:show="deleteOrderShow"
-      :title="`删除「${deletingOrder?.title ?? ''}」订单`"
-      :description="deleteOrderDescription"
-      :actions="deleteOrderActions"
-      cancel-text="取消"
-    />
+    <van-popup v-model:show="deleteOrderShow" class="confirm-dialog" round>
+      <span class="confirm-dialog-icon danger"><el-icon><Delete /></el-icon></span>
+      <h3 class="confirm-dialog-title">删除「{{ deletingOrder?.title ?? "" }}」订单</h3>
+      <p class="confirm-dialog-message">{{ deleteOrderDescription }}</p>
+      <div class="confirm-dialog-actions" :class="{ stacked: deleteOrderActions.length > 1 }">
+        <button
+          v-for="(action, index) in deleteOrderActions"
+          :key="action.name"
+          class="confirm-dialog-button"
+          :class="index === 0 ? 'danger' : 'danger-soft'"
+          type="button"
+          @click="deleteOrderShow = false; action.callback()"
+        >{{ action.name }}</button>
+        <button class="confirm-dialog-button" type="button" @click="deleteOrderShow = false">取消</button>
+      </div>
+    </van-popup>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import RowActions from "@/components/RowActions.vue";
+import SwipeRow from "@/components/SwipeRow.vue";
 import StockHistoryPopup from "@/components/StockHistoryPopup.vue";
 import { useStockRecords } from "@/composables/useStockRecords";
 import { LStorage } from "@/utils/localStorage.ts";
@@ -339,7 +353,7 @@ import type {
   Material,
   MaterialGroupKey,
 } from "@/types/stock";
-import { ArrowDown, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
+import { ArrowDown, Delete, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -392,6 +406,11 @@ const currentThemeOption = computed(() => {
   return themeOptions.find((theme) => theme.key === currentTheme.value) || themeOptions[0];
 });
 const themeStyle = computed(() => currentThemeOption.value.variables);
+watch(themeStyle, (variables) => {
+  for (const [name, value] of Object.entries(variables)) {
+    document.documentElement.style.setProperty(name, value);
+  }
+}, { immediate: true });
 const setTheme = (theme: ThemeKey) => {
   currentTheme.value = theme;
   themeStorage.setter(theme);
@@ -981,7 +1000,11 @@ onUnmounted(() => {
   background: transparent;
 }
 
-.order-row + .order-row {
+.order-swipe {
+  border-radius: 0;
+}
+
+.order-swipe + .order-swipe {
   border-top: 1px solid var(--divider);
 }
 
@@ -1043,12 +1066,6 @@ onUnmounted(() => {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-.order-row :deep(.row-actions-button) {
-  min-width: 32px;
-  margin-right: -6px;
-  color: var(--text-muted);
 }
 
 .orders-toggle-btn {
