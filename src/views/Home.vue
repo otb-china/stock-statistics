@@ -237,7 +237,9 @@
         <div class="restock-steps">
           <button v-for="step in [5, 10, 20, 50]" :key="step" type="button" @click="restock.quantity = (restock.quantity || 0) + step">+{{ step }}</button>
         </div>
-        <el-button class="submit-button" type="primary" native-type="submit" :disabled="restockTotal === null">确认补库存</el-button>
+        <div class="popup-footer">
+          <el-button class="submit-button" type="primary" native-type="submit" :disabled="restockTotal === null">确认补库存</el-button>
+        </div>
       </form>
     </van-popup>
 

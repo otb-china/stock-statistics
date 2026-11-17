@@ -106,15 +106,17 @@
         <p>历史订单缺少扣料明细，修改件数只更新订单记录。</p>
       </div>
 
-      <el-button
-        type="primary"
-        size="large"
-        class="submit-button"
-        :disabled="!form.title || !isValidAmount(form.value) || (form.cost !== undefined && !isValidAmount(form.cost)) || !Number.isSafeInteger(form.quantity) || form.quantity < 1 || !form.orderDate"
-        @click="emit('submit')"
-      >
-        {{ type === "upd" ? "保存修改" : (calculationModel ? "记单并扣料" : "仅记订单") }}
-      </el-button>
+      <div class="popup-footer">
+        <el-button
+          type="primary"
+          size="large"
+          class="submit-button"
+          :disabled="!form.title || !isValidAmount(form.value) || (form.cost !== undefined && !isValidAmount(form.cost)) || !Number.isSafeInteger(form.quantity) || form.quantity < 1 || !form.orderDate"
+          @click="emit('submit')"
+        >
+          {{ type === "upd" ? "保存修改" : (calculationModel ? "记单并扣料" : "仅记订单") }}
+        </el-button>
+      </div>
     </div>
   </van-popup>
 </template>

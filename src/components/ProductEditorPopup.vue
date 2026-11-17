@@ -89,15 +89,17 @@
         <span>勾选做一件需要用到的备料，再填写用量</span>
       </button>
 
-      <el-button
-        type="primary"
-        size="large"
-        class="submit-button"
-        :disabled="!canSubmit"
-        @click="emit('submit')"
-      >
-        {{ type === "add" ? "添加货品" : "保存修改" }}
-      </el-button>
+      <div class="popup-footer">
+        <el-button
+          type="primary"
+          size="large"
+          class="submit-button"
+          :disabled="!canSubmit"
+          @click="emit('submit')"
+        >
+          {{ type === "add" ? "添加货品" : "保存修改" }}
+        </el-button>
+      </div>
     </div>
   </van-popup>
 
@@ -132,9 +134,11 @@
         </button>
         <p v-if="!pickerMaterials.length" class="picker-empty">没有匹配的备料</p>
       </div>
-      <el-button type="primary" size="large" class="submit-button" @click="confirmPicker">
-        确定{{ picker.selected.length ? "（" + picker.selected.length + "）" : "" }}
-      </el-button>
+      <div class="popup-footer">
+        <el-button type="primary" size="large" class="submit-button" @click="confirmPicker">
+          确定{{ picker.selected.length ? "（" + picker.selected.length + "）" : "" }}
+        </el-button>
+      </div>
     </div>
   </van-popup>
 </template>
@@ -334,8 +338,6 @@ const canSubmit = computed(() => {
 .picker-body {
   display: flex;
   flex-direction: column;
-  max-height: 78vh;
-  overflow: hidden;
 }
 
 .picker-head {
@@ -365,9 +367,6 @@ const canSubmit = computed(() => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  min-height: 0;
-  overflow-y: auto;
-  padding-bottom: 4px;
 }
 
 .picker-item {
@@ -433,10 +432,5 @@ const canSubmit = computed(() => {
   color: var(--text-muted);
   font-size: 13px;
   text-align: center;
-}
-
-.picker-body .submit-button {
-  flex-shrink: 0;
-  margin-top: 14px;
 }
 </style>

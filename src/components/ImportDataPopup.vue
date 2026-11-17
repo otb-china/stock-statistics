@@ -45,15 +45,17 @@
         <p>导入会覆盖当前数据，覆盖前的数据会保留为最近可恢复备份。</p>
       </div>
 
-      <el-button
-        type="primary"
-        size="large"
-        class="submit-button"
-        :disabled="!preview || reading"
-        @click="emit('import')"
-      >
-        覆盖并导入
-      </el-button>
+      <div class="popup-footer">
+        <el-button
+          type="primary"
+          size="large"
+          class="submit-button"
+          :disabled="!preview || reading"
+          @click="emit('import')"
+        >
+          覆盖并导入
+        </el-button>
+      </div>
     </div>
   </van-popup>
 </template>

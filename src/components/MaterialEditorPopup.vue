@@ -68,15 +68,17 @@
         <el-icon><ArrowRight /></el-icon>
       </button>
 
-      <el-button
-        type="primary"
-        size="large"
-        class="submit-button"
-        :disabled="!form.name.trim()"
-        @click="emit('submit')"
-      >
-        {{ type === "add" ? "添加备料" : "保存修改" }}
-      </el-button>
+      <div class="popup-footer">
+        <el-button
+          type="primary"
+          size="large"
+          class="submit-button"
+          :disabled="!form.name.trim()"
+          @click="emit('submit')"
+        >
+          {{ type === "add" ? "添加备料" : "保存修改" }}
+        </el-button>
+      </div>
     </div>
   </van-popup>
 
@@ -90,7 +92,9 @@
           {{ product.name }}
         </van-checkbox>
       </van-checkbox-group>
-      <el-button class="submit-button" type="primary" @click="productPickerShow = false">完成</el-button>
+      <div class="popup-footer">
+        <el-button class="submit-button" type="primary" @click="productPickerShow = false">完成</el-button>
+      </div>
     </div>
   </van-popup>
 </template>
@@ -183,18 +187,10 @@ function openProductPicker() {
   flex-shrink: 0;
 }
 
-.product-options {
-  max-height: 44vh;
-  overflow-y: auto;
-}
 
 .product-options :deep(.van-checkbox) {
   min-height: 44px;
   padding: 6px 0;
-}
-
-.product-options + .submit-button {
-  margin-top: 16px;
 }
 
 .product-link-row {
