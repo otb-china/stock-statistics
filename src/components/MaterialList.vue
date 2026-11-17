@@ -42,10 +42,11 @@
             </span>
             <small class="material-related">{{ relatedSummary(item.id) }}</small>
           </button>
-          <div class="material-side">
-            <span class="material-stock">库存 <strong>{{ item.num }}</strong></span>
-            <button class="material-restock" type="button" :aria-label="'为' + item.name + '补货'" @click="emit('restock', item)">补货</button>
-          </div>
+          <span class="material-stock">
+            <strong>{{ item.num }}</strong>
+            <small>库存</small>
+          </span>
+          <button class="material-restock" type="button" :aria-label="'为' + item.name + '补货'" @click="emit('restock', item)">补货</button>
         </div>
       </SwipeRow>
     </div>
@@ -153,7 +154,8 @@ details[open] .material-list {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px 12px 14px;
+  min-height: 56px;
+  padding: 8px 10px 8px 14px;
   border-radius: 14px;
   background: var(--surface-soft);
 }
@@ -169,7 +171,7 @@ details[open] .material-list {
 .material-main {
   display: grid;
   flex: 1;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -224,35 +226,39 @@ details[open] .material-list {
   white-space: nowrap;
 }
 
-.material-side {
+.material-stock {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
   flex-shrink: 0;
-}
-
-.material-stock {
-  color: var(--text-muted);
-  font-size: 12px;
-  white-space: nowrap;
+  min-width: 40px;
+  line-height: 1.1;
 }
 
 .material-stock strong {
   color: var(--accent-strong);
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
+.material-stock small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .material-restock {
-  padding: 6px 14px;
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 14px;
   border: 0;
   border-radius: 999px;
   background: var(--surface);
   color: var(--accent-strong);
   box-shadow: 0 0 0 1px var(--accent-border) inset;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
