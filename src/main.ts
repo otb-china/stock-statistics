@@ -14,6 +14,7 @@ import "otb-toolkit/src/styles/index.scss"
 import "@/style.scss"
 // 路由守卫
 import "@/router/routerGuards"
+import { setupPopupSwipeClose } from "@/utils/popupSwipeClose"
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -21,6 +22,8 @@ const pinia = createPinia()
 app.use(pinia).use(router).use(ElementPlus).use(Vant)
 
 app.mount('#app')
+
+setupPopupSwipeClose()
 
 const STEPPER_SELECTOR = ".el-input-number__increase, .el-input-number__decrease"
 
