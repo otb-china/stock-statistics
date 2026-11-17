@@ -120,7 +120,7 @@
 import { computed } from "vue";
 import DatePicker from "@/components/Date.vue";
 import { Check, InfoFilled, Tickets, WarningFilled } from "@element-plus/icons-vue";
-import { isValidAmount, moneyCents } from "@/utils/stockData";
+import { isValidAmount, orderNetIncomeCents } from "@/utils/stockData";
 import type { Order, OrderEditorType, Product } from "@/types/stock";
 
 const props = defineProps<{
@@ -156,8 +156,8 @@ const calculationModel = computed({
 });
 
 const netIncome = computed(() => {
-  const { value, cost } = props.form;
-  if (isValidAmount(value) && isValidAmount(cost)) return (moneyCents(value) - moneyCents(cost)) / 100;
+  const cents = orderNetIncomeCents(props.form);
+  return cents === undefined ? undefined : cents / 100;
 });
 </script>
 

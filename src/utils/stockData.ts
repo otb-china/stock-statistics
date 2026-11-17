@@ -60,13 +60,17 @@ export function isValidAmount(value: unknown): value is number {
   return typeof value === "number" && value >= 0 && Number.isSafeInteger(moneyCents(value));
 }
 
+export function orderNetIncomeCents({ value, cost }: Pick<Order, "value" | "cost">) {
+  if (!isValidAmount(value) || !isValidAmount(cost)) return undefined;
+  return moneyCents(value) - moneyCents(cost);
+}
+
 export function summarizeOrders(orders: Order[]) {
   let revenue = 0;
   let netIncome = 0;
   for (const order of orders) {
-    const sale = moneyCents(order.value);
-    revenue += sale;
-    if (order.cost !== undefined) netIncome += sale - moneyCents(order.cost);
+    revenue += moneyCents(order.value);
+    netIncome += orderNetIncomeCents(order) ?? 0;
   }
   return { revenue: revenue / 100, netIncome: netIncome / 100 };
 }

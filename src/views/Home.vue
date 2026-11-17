@@ -152,7 +152,7 @@
             @click="monthChange('')"
           >
             <span>全部</span>
-            <strong>收入 ¥{{ orderTotals.revenue }}</strong>
+            <strong>收入 ¥{{ orderTotals.netIncome }}</strong>
           </button>
           <button
             v-for="item in orderInfo.monthData"
@@ -164,7 +164,7 @@
             @click="monthChange(item.month)"
           >
             <span>{{ formatMonth(item.month) }}</span>
-            <strong>收入 ¥{{ item.revenue }}</strong>
+            <strong>收入 ¥{{ item.netIncome }}</strong>
           </button>
         </div>
 
@@ -186,7 +186,7 @@
                 <strong>{{ item.title }}<em>× {{ item.quantity }}</em></strong>
                 <small>{{ item.orderDate }}</small>
               </span>
-              <span class="order-amount">收入 ¥{{ item.value }}</span>
+              <span class="order-amount">收入 {{ formatOrderIncome(item) }}</span>
             </button>
             <RowActions :label="item.title + '订单'" :actions="[
               { name: '删除订单', color: '#c63535', callback: () => del(item) },
@@ -374,7 +374,7 @@ import RowActions from "@/components/RowActions.vue";
 import StockHistoryPopup from "@/components/StockHistoryPopup.vue";
 import { useStockRecords } from "@/composables/useStockRecords";
 import { LStorage } from "@/utils/localStorage.ts";
-import { summarizeOrders } from "@/utils/stockData";
+import { orderNetIncomeCents, summarizeOrders } from "@/utils/stockData";
 import ImportDataPopup from "@/components/ImportDataPopup.vue";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
 import MaterialManagePopup from "@/components/MaterialManagePopup.vue";
@@ -621,6 +621,11 @@ const maxCraftableCount = computed(() => {
 const ordersPanel = ref<HTMLElement>();
 const currentMonth = dayjs().format("YYYY-MM");
 const currentMonthTotals = computed(() => orderInfo.value.monthData.find((item) => item.month === currentMonth) ?? summarizeOrders([]));
+
+function formatOrderIncome(order: Parameters<typeof orderNetIncomeCents>[0]) {
+  const cents = orderNetIncomeCents(order);
+  return cents === undefined ? "—" : `¥${cents / 100}`;
+}
 
 function scrollToOrders() {
   ordersPanel.value?.focus({ preventScroll: true });
