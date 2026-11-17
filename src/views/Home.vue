@@ -99,7 +99,6 @@
         <ProductList
           :products="productsList"
           :craftable-count-for-product="craftableCountForProduct"
-          :shared-materials="sharedMaterials"
           @edit="openProductEditor"
           @order="openCreateOrder"
           @toggle-status="toggleProductStatus"
@@ -114,7 +113,7 @@
             <span class="block-text">
               <h2 id="orders-title">订单</h2>
               <small>
-                <template v-if="orderInfo.checkedMonth || orderSearch.trim()">筛选出 {{ OrderData.length }} 单</template>
+                <template v-if="orderInfo.checkedMonth">筛选出 {{ OrderData.length }} 单</template>
                 <template v-else>共 {{ orderInfo.data.length }} 单</template>
               </small>
             </span>
@@ -149,16 +148,6 @@
           </button>
         </div>
 
-        <el-input
-          v-if="orderInfo.data.length > 3 || orderSearch"
-          v-model="orderSearch"
-          class="order-search"
-          placeholder="按货品名称筛选订单"
-          aria-label="按货品名称筛选订单"
-          :prefix-icon="Search"
-          clearable
-        />
-
         <div v-if="OrderData.length" ref="orderListRef" class="order-list" :class="{ scrollable: OrderData.length > ORDER_VISIBLE_ROWS }">
           <SwipeRow
             v-for="item in OrderData"
@@ -184,7 +173,7 @@
 
         <div v-else class="orders-empty">
           <span class="orders-empty-icon"><el-icon><Tickets /></el-icon></span>
-          <strong>{{ orderSearch.trim() || orderInfo.checkedMonth ? "没有匹配的订单" : "还没有订单记录" }}</strong>
+          <strong>{{ orderInfo.checkedMonth ? "没有匹配的订单" : "还没有订单记录" }}</strong>
           <span v-if="!orderInfo.data.length">
             {{
               !data.length
@@ -348,7 +337,7 @@ import type {
   Material,
   MaterialGroupKey,
 } from "@/types/stock";
-import { Box, Delete, Goods, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
+import { Box, Delete, Goods, Plus, Right, Setting, Tickets, Top } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -403,7 +392,6 @@ const {
   calculation,
   orderInfo,
   OrderData,
-  orderSearch,
   orderTotals,
   activeOrderProducts,
   canSyncCalculation,
@@ -449,7 +437,6 @@ const {
   restoreRecovery,
   importData,
 } = useBackupActions(stock, settingsPopup, () => {
-  orderSearch.value = "";
   monthChange("");
   initOrderMonthData();
 });
@@ -557,7 +544,7 @@ const updateScrollTopVisibility = () => {
 const storedTheme = themeStorage.getter();
 currentTheme.value = isThemeKey(storedTheme) ? storedTheme : DEFAULT_THEME;
 initOrderMonthData();
-watch(() => [orderSearch.value, orderInfo.value.checkedMonth], () => {
+watch(() => orderInfo.value.checkedMonth, () => {
   orderListRef.value?.scrollTo({ top: 0 });
 });
 
@@ -956,20 +943,6 @@ button.block-title {
 
 .month-chip.active span {
   color: rgba(255, 255, 255, 0.78);
-}
-
-.order-search {
-  margin-bottom: 6px;
-}
-
-.order-search :deep(.el-input__wrapper) {
-  border-radius: 12px;
-  background: var(--field-bg);
-  box-shadow: none;
-}
-
-.order-search :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
 .order-list {

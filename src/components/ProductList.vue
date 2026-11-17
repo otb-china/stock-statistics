@@ -42,9 +42,6 @@
       </div>
       </SwipeRow>
     </div>
-    <p v-if="!group.inactive && group.items.some(sharedMaterials)" class="product-note">
-      可制数量按单款计算，共用备料的货品会消耗同一份库存。
-    </p>
   </component>
 </template>
 
@@ -57,7 +54,6 @@ import type { Product } from "@/types/stock";
 const props = defineProps<{
   products: Product[];
   craftableCountForProduct: (product: Product) => number;
-  sharedMaterials: (product: Product) => string;
 }>();
 
 const emit = defineEmits<{
@@ -214,7 +210,6 @@ details[open] .summary-arrow {
   font-size: 11px;
 }
 
-.product-note,
 .product-empty {
   margin: 8px 0 0;
   color: var(--text-muted);

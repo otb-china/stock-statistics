@@ -18,7 +18,6 @@ interface UseOrderActionsOptions {
 
 export function useOrderActions(options: UseOrderActionsOptions) {
   const calculation = ref(false);
-  const orderSearch = ref("");
   const unitPrice = ref(0);
   const unitCost = ref<number>();
   const deletingOrderId = ref("");
@@ -35,10 +34,8 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   const OrderData = computed(() => {
     const checkedMonth = orderInfo.value.checkedMonth;
-    const search = orderSearch.value.trim().toLowerCase();
     return orderInfo.value.data.filter((item) =>
-      (!checkedMonth || item.orderDate?.substring(0, 7) === checkedMonth)
-      && (!search || item.title.toLowerCase().includes(search)),
+      !checkedMonth || item.orderDate?.substring(0, 7) === checkedMonth,
     );
   });
 
@@ -345,7 +342,6 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     calculation,
     orderInfo,
     OrderData,
-    orderSearch,
     orderTotals,
     activeOrderProducts,
     canSyncCalculation,
