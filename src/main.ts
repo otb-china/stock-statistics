@@ -15,6 +15,7 @@ import "@/style.scss"
 // 路由守卫
 import "@/router/routerGuards"
 import { setupPopupSwipeClose } from "@/utils/popupSwipeClose"
+import { setupPopupScrollShadow } from "@/utils/popupScrollShadow"
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -24,8 +25,16 @@ app.use(pinia).use(router).use(ElementPlus).use(Vant)
 app.mount('#app')
 
 setupPopupSwipeClose()
+setupPopupScrollShadow()
 
 const STEPPER_SELECTOR = ".el-input-number__increase, .el-input-number__decrease"
+const FIELD_SELECTOR = ".el-input, .el-input-number, .van-field"
+const NON_TEXT_INPUT_TYPES = ["button", "checkbox", "radio", "submit", "reset", "file", "range"]
+
+function isTextInput(element: Element | null): element is HTMLInputElement | HTMLTextAreaElement {
+  return element instanceof HTMLTextAreaElement
+    || (element instanceof HTMLInputElement && !NON_TEXT_INPUT_TYPES.includes(element.type))
+}
 
 function guardStepperFocus(event: Event) {
   const target = event.target as HTMLElement | null
@@ -38,5 +47,14 @@ function guardStepperFocus(event: Event) {
   }
 }
 
+function dismissKeyboardOnTapOutside(event: Event) {
+  const target = event.target as HTMLElement | null
+  const active = document.activeElement
+  if (!target || !isTextInput(active)) return
+  if (isTextInput(target) || target.closest(FIELD_SELECTOR)?.contains(active)) return
+  active.blur()
+}
+
 document.addEventListener("pointerdown", guardStepperFocus, true)
 document.addEventListener("mousedown", guardStepperFocus, true)
+document.addEventListener("click", dismissKeyboardOnTapOutside, true)

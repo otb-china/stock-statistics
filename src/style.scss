@@ -286,22 +286,17 @@ body {
   padding-right: 58px;
 }
 
-@supports (animation-timeline: scroll()) {
-  .van-popup--bottom.van-popup--round > .popup-body > .popup-head {
-    animation: popup-head-elevate linear both;
-    animation-timeline: scroll(nearest block);
-    animation-range: 0 24px;
-  }
+.van-popup--bottom.van-popup--round > .popup-body > .popup-head,
+.popup-footer {
+  transition: box-shadow 0.2s ease;
 }
 
-@keyframes popup-head-elevate {
-  from {
-    box-shadow: 0 0 0 rgba(15, 30, 45, 0);
-  }
+.van-popup--bottom.van-popup--round > .popup-body.is-scrolled > .popup-head {
+  box-shadow: 0 8px 16px -10px rgba(15, 30, 45, 0.22);
+}
 
-  to {
-    box-shadow: 0 8px 16px -10px rgba(15, 30, 45, 0.22);
-  }
+.popup-body.has-more .popup-footer {
+  box-shadow: 0 -8px 16px -10px rgba(15, 30, 45, 0.22);
 }
 
 .popup-title {
@@ -820,24 +815,6 @@ body {
   margin: 24px -18px 0;
   padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
   background: var(--surface, #ffffff);
-}
-
-@supports (animation-timeline: scroll()) {
-  .popup-footer {
-    animation: popup-footer-elevate linear both;
-    animation-timeline: scroll(nearest block);
-    animation-range: calc(100% - 24px) 100%;
-  }
-}
-
-@keyframes popup-footer-elevate {
-  from {
-    box-shadow: 0 -8px 16px -10px rgba(15, 30, 45, 0.22);
-  }
-
-  to {
-    box-shadow: 0 0 0 rgba(15, 30, 45, 0);
-  }
 }
 
 .popup-footer > .submit-button {
