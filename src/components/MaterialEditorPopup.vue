@@ -12,9 +12,6 @@
       </div>
 
       <section class="editor-section">
-        <div class="form-section-head">
-          <strong>基础信息</strong>
-        </div>
         <div class="form-stack">
           <label class="form-field">
             <span class="form-label">备料名称</span>
