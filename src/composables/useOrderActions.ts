@@ -254,7 +254,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       showToast("请输入有效的订单成本");
       return;
     }
-    const amounts = { value: moneyCents(value) / 100, cost: cost === undefined ? undefined : moneyCents(cost) / 100 };
+    const amounts = { value: moneyCents(value) / 100, cost: moneyCents(cost ?? 0) / 100 };
 
     const nextOrders = [...data];
     let changes: ProductRecipe[] = [];

@@ -61,8 +61,9 @@ export function isValidAmount(value: unknown): value is number {
 }
 
 export function orderNetIncomeCents({ value, cost }: Pick<Order, "value" | "cost">) {
-  if (!isValidAmount(value) || !isValidAmount(cost)) return undefined;
-  return moneyCents(value) - moneyCents(cost);
+  const orderCost = cost ?? 0;
+  if (!isValidAmount(value) || !isValidAmount(orderCost)) return undefined;
+  return moneyCents(value) - moneyCents(orderCost);
 }
 
 export function summarizeOrders(orders: Order[]) {
@@ -92,7 +93,7 @@ export function normalizeProducts(list: RSA[] | undefined): Product[] {
       id: String(item.id || createId("product")),
       name: String(item.name || ""),
       defaultValue: Number(item.defaultValue ?? item.value ?? 0),
-      defaultCost: isValidAmount(item.defaultCost) ? moneyCents(item.defaultCost) / 100 : undefined,
+      defaultCost: isValidAmount(item.defaultCost) ? moneyCents(item.defaultCost) / 100 : 0,
       status,
       recipe: Array.isArray(item.recipe)
         ? item.recipe
@@ -112,7 +113,7 @@ export function normalizeOrders(list: RSA[] | undefined): Order[] {
     id: String(item.id || createId("order")),
     title: String(item.title || ""),
     value: Number(item.value || 0),
-    cost: isValidAmount(item.cost) ? moneyCents(item.cost) / 100 : undefined,
+    cost: isValidAmount(item.cost) ? moneyCents(item.cost) / 100 : 0,
     orderDate: String(item.orderDate || ""),
     quantity: Number.isSafeInteger(item.quantity) && item.quantity > 0 ? item.quantity : 1,
     deductedMaterials: isValidDeduction(item.deductedMaterials) ? item.deductedMaterials : undefined,
@@ -169,8 +170,8 @@ function isStockMovement(value: unknown): value is StockMovement {
 }
 
 export function assertValidBackupData({ materials, products, orders }: ResolvedBackupData) {
-  if (products.some((product) => product?.defaultCost !== undefined && !isValidAmount(product.defaultCost))
-    || orders.some((order) => order?.cost !== undefined && !isValidAmount(order.cost))) {
+  if (products.some((product) => product?.defaultCost != null && !isValidAmount(product.defaultCost))
+    || orders.some((order) => order?.cost != null && !isValidAmount(order.cost))) {
     throw new Error("成本金额无效");
   }
   if (orders.some((order) => order?.deductedMaterials !== undefined && !isValidDeduction(order.deductedMaterials))) {

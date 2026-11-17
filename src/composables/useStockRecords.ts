@@ -17,9 +17,22 @@ interface MovementContext {
 
 const storageKey = "stockStatisticsRecords";
 
+function withDefaultCosts<T extends StockData>(data: T): T {
+  return {
+    ...data,
+    products: data.products.map((product) => product.defaultCost == null ? { ...product, defaultCost: 0 } : product),
+    orders: data.orders.map((order) => order.cost == null ? { ...order, cost: 0 } : order),
+  };
+}
+
 export function useStockRecords() {
   let storedValue = localStorage.getItem(storageKey);
-  const records = ref<StoredRecords>(storedValue ? JSON.parse(storedValue) : {
+  const storedRecords: StoredRecords | undefined = storedValue ? JSON.parse(storedValue) : undefined;
+  const records = ref<StoredRecords>(storedRecords ? {
+    ...storedRecords,
+    data: withDefaultCosts(storedRecords.data),
+    recovery: storedRecords.recovery && withDefaultCosts(storedRecords.recovery),
+  } : {
     data: {
       materials: normalizeMaterials(LStorage.data.getter()),
       products: normalizeProducts(LStorage.productData.getter()),

@@ -99,7 +99,7 @@ export function useProductEditor(
       id: productEditor.value.form.id || createId("product"),
       name,
       defaultValue: moneyCents(defaultValue) / 100,
-      defaultCost: defaultCost === undefined ? undefined : moneyCents(defaultCost) / 100,
+      defaultCost: moneyCents(defaultCost ?? 0) / 100,
       status: productEditor.value.form.status,
       recipe: validRecipe,
     };
