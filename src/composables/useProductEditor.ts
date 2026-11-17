@@ -115,8 +115,8 @@ export function useProductEditor(
     }
 
     const { defaultValue, defaultCost } = productEditor.value.form;
-    const price = defaultValue ?? 0;
-    if (!isValidAmount(price) || (defaultCost !== undefined && !isValidAmount(defaultCost))) {
+    const isNew = productEditor.value.type === "add";
+    if (!isValidAmount(defaultValue) || ((isNew || defaultCost !== undefined) && !isValidAmount(defaultCost))) {
       showToast("请输入有效的售价和成本");
       return;
     }
@@ -124,13 +124,12 @@ export function useProductEditor(
     const productPayload: Product = {
       id: productEditor.value.form.id || createId("product"),
       name,
-      defaultValue: moneyCents(price) / 100,
+      defaultValue: moneyCents(defaultValue) / 100,
       defaultCost: defaultCost === undefined ? undefined : moneyCents(defaultCost) / 100,
       status: productEditor.value.form.status,
       recipe: validRecipe,
     };
 
-    const isNew = productEditor.value.type === "add";
     if (!isNew && !products.value.some((item) => item.id === productPayload.id)) return;
     const nextProducts = isNew
       ? [...products.value, productPayload]

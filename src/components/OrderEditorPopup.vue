@@ -71,7 +71,7 @@
             <van-field
               :model-value="Number.isFinite(form.cost) ? form.cost : ''"
               type="number"
-              placeholder="待填写"
+              placeholder="输入成本"
               aria-label="总成本"
               clearable
               @update:model-value="emit('cost-change', $event)"

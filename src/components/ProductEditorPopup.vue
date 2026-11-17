@@ -20,7 +20,16 @@
         <div class="form-row">
           <label class="form-field">
             <span class="form-label">单件售价</span>
-            <el-input-number v-model="form.defaultValue" :min="0" :max="100000" :precision="2" :controls="false" aria-label="单件售价">
+            <el-input-number
+              :model-value="form.defaultValue"
+              :min="0"
+              :max="100000"
+              :precision="2"
+              :controls="false"
+              placeholder="输入售价"
+              aria-label="单件售价"
+              @update:model-value="form.defaultValue = $event ?? undefined"
+            >
               <template #prefix>¥</template>
             </el-input-number>
           </label>
@@ -31,7 +40,7 @@
               :min="0"
               :precision="2"
               :controls="false"
-              placeholder="待填写"
+              placeholder="输入成本"
               aria-label="单件成本"
               @update:model-value="form.defaultCost = $event ?? undefined"
             >
@@ -106,12 +115,13 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import { Delete, Goods, InfoFilled, Plus } from "@element-plus/icons-vue";
-import type { EditorType, Material, Product } from "@/types/stock";
+import { isValidAmount } from "@/utils/stockData";
+import type { EditorType, Material, ProductEditorForm } from "@/types/stock";
 
 const props = defineProps<{
   show: boolean;
   type: EditorType;
-  form: Product;
+  form: ProductEditorForm;
   limitingMaterials: string;
   sharedMaterials: string;
   availableMaterialsForRecipe: (index: number) => Material[];
@@ -130,7 +140,11 @@ const popupShow = computed({
   set: (value: boolean) => emit("update:show", value),
 });
 
-const canSubmit = computed(() => props.form.name.trim() && props.form.recipe.length);
+const canSubmit = computed(() => {
+  const { name, recipe, defaultValue, defaultCost } = props.form;
+  return Boolean(name.trim() && recipe.length && isValidAmount(defaultValue)
+    && (props.type === "edit" && defaultCost === undefined || isValidAmount(defaultCost)));
+});
 </script>
 
 <style lang="scss" scoped>

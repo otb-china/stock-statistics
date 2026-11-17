@@ -29,20 +29,12 @@
             </div>
             <div>
               <span class="income-label">本月净收入</span>
-              <button v-if="currentMonthTotals.netIncome === undefined" type="button" class="income-pending income-action" @click="showPendingOrders(currentMonth)">
-                {{ currentMonthTotals.missingCosts }} 单待补成本
-              </button>
-              <strong v-else class="income-value"><small>¥</small>{{ currentMonthTotals.netIncome }}</strong>
-              <small v-if="currentMonthTotals.netIncome !== undefined && currentMonthTotals.hasUncostedLegacyOrders" class="income-label">仅统计已录成本订单</small>
+              <strong class="income-value"><small>¥</small>{{ currentMonthTotals.netIncome }}</strong>
             </div>
           </div>
           <span class="income-meta">
             <span>累计流水 ¥{{ orderTotals.revenue }}</span>
-            <span>
-              <button v-if="orderTotals.netIncome === undefined" type="button" class="income-action" @click="showPendingOrders('')">累计 {{ orderTotals.missingCosts }} 单待补成本</button>
-              <template v-else>累计净收入 ¥{{ orderTotals.netIncome }}</template>
-              <template v-if="orderTotals.netIncome !== undefined && orderTotals.hasUncostedLegacyOrders">（已录成本）</template>
-            </span>
+            <span>累计净收入 ¥{{ orderTotals.netIncome }}</span>
             <span>共 {{ orderInfo.data.length }} 单</span>
           </span>
           <span class="income-deco" aria-hidden="true"></span>
@@ -160,8 +152,7 @@
             @click="monthChange('')"
           >
             <span>全部</span>
-            <strong>流水 ¥{{ orderTotals.revenue }}</strong>
-            <small>{{ formatNetIncome(orderTotals) }}</small>
+            <strong>收入 ¥{{ orderTotals.revenue }}</strong>
           </button>
           <button
             v-for="item in orderInfo.monthData"
@@ -173,8 +164,7 @@
             @click="monthChange(item.month)"
           >
             <span>{{ formatMonth(item.month) }}</span>
-            <strong>流水 ¥{{ item.revenue }}</strong>
-            <small>{{ formatNetIncome(item) }}</small>
+            <strong>收入 ¥{{ item.revenue }}</strong>
           </button>
         </div>
 
@@ -188,26 +178,15 @@
           clearable
         />
 
-        <button v-if="pendingCostsOnly" class="pill-button pending-filter" type="button" aria-label="清除待补成本筛选" @click="pendingCostsOnly = false">
-          仅看待补成本 <el-icon aria-hidden="true"><Close /></el-icon>
-        </button>
-
         <div v-if="OrderData.length" class="order-list">
           <div v-for="item in visibleOrders" :key="item.id" class="order-row record-row">
             <button class="order-edit record-edit" type="button" @click="beforeUpd(item)">
               <span class="order-avatar" aria-hidden="true">{{ item.title.slice(0, 1) }}</span>
               <span class="order-info">
                 <strong>{{ item.title }}<em>× {{ item.quantity }}</em></strong>
-                <small>
-                  {{ item.orderDate }}
-                  <template v-if="item.cost !== undefined"> · 成本 ¥{{ item.cost }}</template>
-                  <template v-else-if="item.trackCost"> · 待补成本</template>
-                </small>
+                <small>{{ item.orderDate }}</small>
               </span>
-              <span class="order-amount">
-                <span>售价 ¥{{ item.value }}</span>
-                <small v-if="item.cost !== undefined">净收入 ¥{{ (moneyCents(item.value) - moneyCents(item.cost)) / 100 }}</small>
-              </span>
+              <span class="order-amount">收入 ¥{{ item.value }}</span>
             </button>
             <RowActions :label="item.title + '订单'" :actions="[
               { name: '删除订单', color: '#c63535', callback: () => del(item) },
@@ -227,12 +206,12 @@
 
         <div v-else class="orders-empty">
           <span class="orders-empty-icon"><el-icon><Tickets /></el-icon></span>
-          <strong>{{ orderSearch.trim() || pendingCostsOnly || orderInfo.checkedMonth ? "没有匹配的订单" : "还没有订单记录" }}</strong>
+          <strong>{{ orderSearch.trim() || orderInfo.checkedMonth ? "没有匹配的订单" : "还没有订单记录" }}</strong>
           <span v-if="!orderInfo.data.length">
             {{
               !data.length
                 ? "先配置备料，再配置货品，之后就可以记录订单。"
-                : (products.length ? "新增订单后，这里会按月份汇总流水和净收入。" : "先配置货品，再开始记录订单。")
+                : (products.length ? "新增订单后，这里会按月份汇总收入。" : "先配置货品，再开始记录订单。")
             }}
           </span>
           <button v-if="!orderInfo.data.length" class="ghost-btn" type="button" @click="openImportExport">导入备份</button>
@@ -395,7 +374,7 @@ import RowActions from "@/components/RowActions.vue";
 import StockHistoryPopup from "@/components/StockHistoryPopup.vue";
 import { useStockRecords } from "@/composables/useStockRecords";
 import { LStorage } from "@/utils/localStorage.ts";
-import { moneyCents, summarizeOrders } from "@/utils/stockData";
+import { summarizeOrders } from "@/utils/stockData";
 import ImportDataPopup from "@/components/ImportDataPopup.vue";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
 import MaterialManagePopup from "@/components/MaterialManagePopup.vue";
@@ -417,7 +396,7 @@ import type {
   MaterialGroupKey,
   Product,
 } from "@/types/stock";
-import { ArrowDown, Close, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
+import { ArrowDown, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -498,7 +477,6 @@ const {
   orderInfo,
   OrderData,
   orderSearch,
-  pendingCostsOnly,
   visibleOrders,
   collapsedOrdersCount,
   orderTotals,
@@ -549,7 +527,6 @@ const {
   importData,
 } = useBackupActions(stock, settingsPopup, () => {
   orderSearch.value = "";
-  pendingCostsOnly.value = false;
   monthChange("");
   initOrderMonthData();
 });
@@ -650,19 +627,6 @@ function scrollToOrders() {
   ordersPanel.value?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function showPendingOrders(month: string) {
-  orderSearch.value = "";
-  orderInfo.value.checkedMonth = month;
-  pendingCostsOnly.value = true;
-  ordersExpanded.value = false;
-  scrollToOrders();
-}
-
-function formatNetIncome({ netIncome, missingCosts, hasUncostedLegacyOrders }: ReturnType<typeof summarizeOrders>) {
-  if (netIncome === undefined) return `${missingCosts} 单待补成本`;
-  return `净收入 ¥${netIncome}${hasUncostedLegacyOrders ? "（已录成本）" : ""}`;
-}
-
 const todayText = dayjs().format("M月D日") + " · " + ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dayjs().day()];
 
 function craftableRatio(product: Product) {
@@ -727,7 +691,7 @@ const openMaterialsPopup = (tab: ManageTab = "materials") => {
 const storedTheme = themeStorage.getter();
 currentTheme.value = isThemeKey(storedTheme) ? storedTheme : DEFAULT_THEME;
 initOrderMonthData();
-watch([orderSearch, pendingCostsOnly], () => { ordersExpanded.value = false; });
+watch(orderSearch, () => { ordersExpanded.value = false; });
 
 onMounted(() => {
   updateScrollTopVisibility();
@@ -868,14 +832,10 @@ onUnmounted(() => {
   opacity: 0.82;
 }
 
-.income-value,
-.income-pending {
+.income-value {
   display: block;
   margin-top: 8px;
   overflow-wrap: anywhere;
-}
-
-.income-value {
   font-size: clamp(24px, 7vw, 36px);
   font-weight: 700;
   line-height: 1;
@@ -887,10 +847,6 @@ onUnmounted(() => {
   margin-right: 3px;
   font-size: 20px;
   font-weight: 600;
-}
-
-.income-pending {
-  font-size: 16px;
 }
 
 .income-meta {
@@ -933,30 +889,8 @@ onUnmounted(() => {
   gap: 10px;
 }
 
-.income-action {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  font-size: inherit;
-  text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}
-
-.income-pending.income-action {
-  font-size: 16px;
-  font-weight: 700;
-}
-
 .orders-panel {
   scroll-margin-top: calc(80px + env(safe-area-inset-top));
-}
-
-.pending-filter {
-  margin: 0 0 10px;
 }
 
 /* panels */
@@ -1205,13 +1139,11 @@ onUnmounted(() => {
 }
 
 .month-chip span,
-.month-chip strong,
-.month-chip small {
+.month-chip strong {
   display: block;
 }
 
-.month-chip span,
-.month-chip small {
+.month-chip span {
   color: var(--text-muted);
   font-size: 11px;
 }
@@ -1229,8 +1161,7 @@ onUnmounted(() => {
   box-shadow: 0 6px 14px var(--accent-ring);
 }
 
-.month-chip.active span,
-.month-chip.active small {
+.month-chip.active span {
   color: rgba(255, 255, 255, 0.78);
 }
 
@@ -1320,14 +1251,6 @@ onUnmounted(() => {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-.order-amount small {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 500;
 }
 
 .order-row :deep(.row-actions-button) {

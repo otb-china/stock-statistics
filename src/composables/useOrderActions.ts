@@ -21,7 +21,6 @@ interface UseOrderActionsOptions {
 export function useOrderActions(options: UseOrderActionsOptions) {
   const calculation = ref(false);
   const orderSearch = ref("");
-  const pendingCostsOnly = ref(false);
   const unitPrice = ref(0);
   const unitCost = ref<number>();
   const deletingOrderId = ref("");
@@ -40,8 +39,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     const search = orderSearch.value.trim().toLowerCase();
     return orderInfo.value.data.filter((item) =>
       (!checkedMonth || item.orderDate?.substring(0, 7) === checkedMonth)
-      && (!search || item.title.toLowerCase().includes(search))
-      && (!pendingCostsOnly.value || (item.trackCost && item.cost === undefined)),
+      && (!search || item.title.toLowerCase().includes(search)),
     );
   });
 
@@ -267,7 +265,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       }
       const deduction = calculation.value ? orderDeduction.value.items : [];
       changes = deduction.map((item) => ({ ...item, quantity: -item.quantity }));
-      savedOrder = { ...form, ...amounts, id: createId("order"), trackCost: true, deductedMaterials: deduction };
+      savedOrder = { ...form, ...amounts, id: createId("order"), deductedMaterials: deduction };
       nextOrders.unshift(savedOrder);
     } else {
       const index = data.findIndex((item) => item.id === editingId);
@@ -354,7 +352,6 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo,
     OrderData,
     orderSearch,
-    pendingCostsOnly,
     visibleOrders,
     collapsedOrdersCount,
     orderTotals,

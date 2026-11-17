@@ -6,6 +6,7 @@ import type {
   Material,
   Order,
   Product,
+  ProductEditorForm,
   ProductRecipe,
   ResolvedBackupData,
   StockMovement,
@@ -32,11 +33,10 @@ export function createEmptyMaterialForm(): Material {
   };
 }
 
-export function createEmptyProductForm(): Product {
+export function createEmptyProductForm(): ProductEditorForm {
   return {
     id: "",
     name: "",
-    defaultValue: 0,
     status: "active",
     recipe: [],
   };
@@ -63,16 +63,12 @@ export function isValidAmount(value: unknown): value is number {
 export function summarizeOrders(orders: Order[]) {
   let revenue = 0;
   let netIncome = 0;
-  let missingCosts = 0;
-  let hasUncostedLegacyOrders = false;
   for (const order of orders) {
     const sale = moneyCents(order.value);
     revenue += sale;
     if (order.cost !== undefined) netIncome += sale - moneyCents(order.cost);
-    else if (order.trackCost) missingCosts++;
-    else hasUncostedLegacyOrders = true;
   }
-  return { revenue: revenue / 100, netIncome: missingCosts ? undefined : netIncome / 100, missingCosts, hasUncostedLegacyOrders };
+  return { revenue: revenue / 100, netIncome: netIncome / 100 };
 }
 
 export function normalizeMaterials(list: RSA[] | undefined): Material[] {
@@ -113,7 +109,6 @@ export function normalizeOrders(list: RSA[] | undefined): Order[] {
     title: String(item.title || ""),
     value: Number(item.value || 0),
     cost: isValidAmount(item.cost) ? moneyCents(item.cost) / 100 : undefined,
-    trackCost: item.trackCost === true ? true : undefined,
     orderDate: String(item.orderDate || ""),
     quantity: Number.isSafeInteger(item.quantity) && item.quantity > 0 ? item.quantity : 1,
     deductedMaterials: isValidDeduction(item.deductedMaterials) ? item.deductedMaterials : undefined,

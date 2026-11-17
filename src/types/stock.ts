@@ -30,12 +30,13 @@ export interface Product extends RSA {
   recipe: ProductRecipe[];
 }
 
+export type ProductEditorForm = Pick<Product, "id" | "name" | "status" | "recipe" | "defaultCost"> & { defaultValue?: number };
+
 export interface Order extends RSA {
   id: string;
   title: string;
   value: number;
   cost?: number;
-  trackCost?: true;
   orderDate: string;
   quantity: number;
   deductedMaterials?: ProductRecipe[];

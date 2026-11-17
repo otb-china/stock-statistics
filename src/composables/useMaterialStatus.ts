@@ -2,6 +2,8 @@ import { computed, type Ref } from "vue";
 import type { Material, MaterialGroupKey, Product } from "@/types/stock";
 import { recipeQuantities } from "@/utils/stockData";
 
+type ProductWithRecipe = Pick<Product, "id" | "recipe">;
+
 export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Product[]>) {
   const materialsMap = computed(() => {
     return new Map(materials.value.map((item) => [item.id, item]));
@@ -17,7 +19,7 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     return Math.max(0, Math.floor(Number((material.num / quantity).toPrecision(15))));
   }
 
-  function productCapacity(product: Product) {
+  function productCapacity(product: ProductWithRecipe) {
     const details = Array.from(recipeQuantities(product.recipe), ([materialId, quantity]) => ({
       name: materialsMap.value.get(materialId)?.name ?? "缺失备料",
       count: materialCapacity(materialId, quantity),
@@ -31,12 +33,12 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     return productCapacity(product).maxCount;
   }
 
-  function limitingMaterials(product: Product) {
+  function limitingMaterials(product: ProductWithRecipe) {
     const { details, maxCount } = productCapacity(product);
     return details.filter((item) => item.count === maxCount).map((item) => item.name).join("、");
   }
 
-  function sharedMaterials(product: Product) {
+  function sharedMaterials(product: ProductWithRecipe) {
     return productCapacity(product).details.filter((item) => item.shared).map((item) => item.name).join("、");
   }
 

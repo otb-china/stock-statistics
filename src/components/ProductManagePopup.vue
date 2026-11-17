@@ -41,7 +41,7 @@
                 </span>
               </span>
               <span class="product-meta">
-                <b>售价 ¥{{ product.defaultValue || 0 }} · {{ product.defaultCost === undefined ? '待填成本' : `成本 ¥${product.defaultCost}` }}</b>
+                <b>售价 ¥{{ product.defaultValue || 0 }}<template v-if="product.defaultCost !== undefined"> · 成本 ¥{{ product.defaultCost }}</template></b>
                 <small>{{ recipePreview(product) }}</small>
               </span>
             </span>
