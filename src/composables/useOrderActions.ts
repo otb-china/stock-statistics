@@ -21,6 +21,7 @@ interface UseOrderActionsOptions {
 export function useOrderActions(options: UseOrderActionsOptions) {
   const calculation = ref(false);
   const orderSearch = ref("");
+  const pendingCostsOnly = ref(false);
   const unitPrice = ref(0);
   const unitCost = ref<number>();
   const deletingOrderId = ref("");
@@ -39,7 +40,8 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     const search = orderSearch.value.trim().toLowerCase();
     return orderInfo.value.data.filter((item) =>
       (!checkedMonth || item.orderDate?.substring(0, 7) === checkedMonth)
-      && (!search || item.title.toLowerCase().includes(search)),
+      && (!search || item.title.toLowerCase().includes(search))
+      && (!pendingCostsOnly.value || (item.trackCost && item.cost === undefined)),
     );
   });
 
@@ -203,7 +205,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     else if (Number.isSafeInteger(quantity) && quantity > 0) unitCost.value = cost / quantity;
   }
 
-  function openCreateOrder() {
+  function openCreateOrder(product?: Product) {
     if (!options.materials.value.length) {
       showToast("请先新增备料");
       options.openMaterialEditor();
@@ -216,13 +218,17 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       options.openProductEditor();
       return;
     }
-    const firstProduct = availableProducts[0];
+    const selectedProduct = product ? availableProducts.find((item) => item.id === product.id) : availableProducts[0];
+    if (!selectedProduct) {
+      showToast("该货品当前无法记单");
+      return;
+    }
     orderInfo.value.type = "add";
-    unitPrice.value = firstProduct.defaultValue || 0;
-    unitCost.value = firstProduct.defaultCost;
+    unitPrice.value = selectedProduct.defaultValue || 0;
+    unitCost.value = selectedProduct.defaultCost;
     orderInfo.value.form = {
       id: "",
-      title: firstProduct.name,
+      title: selectedProduct.name,
       value: unitPrice.value,
       cost: unitCost.value,
       quantity: 1,
@@ -261,7 +267,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       }
       const deduction = calculation.value ? orderDeduction.value.items : [];
       changes = deduction.map((item) => ({ ...item, quantity: -item.quantity }));
-      savedOrder = { ...form, ...amounts, id: createId("order"), deductedMaterials: deduction };
+      savedOrder = { ...form, ...amounts, id: createId("order"), trackCost: true, deductedMaterials: deduction };
       nextOrders.unshift(savedOrder);
     } else {
       const index = data.findIndex((item) => item.id === editingId);
@@ -348,6 +354,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo,
     OrderData,
     orderSearch,
+    pendingCostsOnly,
     visibleOrders,
     collapsedOrdersCount,
     orderTotals,

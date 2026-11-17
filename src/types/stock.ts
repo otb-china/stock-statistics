@@ -35,6 +35,7 @@ export interface Order extends RSA {
   title: string;
   value: number;
   cost?: number;
+  trackCost?: true;
   orderDate: string;
   quantity: number;
   deductedMaterials?: ProductRecipe[];

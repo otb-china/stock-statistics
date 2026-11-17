@@ -9,6 +9,7 @@
         </div>
       </div>
       <div class="header-actions">
+        <button class="order-add-btn" type="button" @click="openCreateOrder()">记单</button>
         <button v-if="showScrollTop" class="header-icon" type="button" aria-label="返回顶部" @click="scrollToTop">
           <el-icon><Top /></el-icon>
         </button>
@@ -28,15 +29,20 @@
             </div>
             <div>
               <span class="income-label">本月净收入</span>
-              <strong v-if="currentMonthTotals.netIncome === undefined" class="income-pending">
+              <button v-if="currentMonthTotals.netIncome === undefined" type="button" class="income-pending income-action" @click="showPendingOrders(currentMonth)">
                 {{ currentMonthTotals.missingCosts }} 单待补成本
-              </strong>
+              </button>
               <strong v-else class="income-value"><small>¥</small>{{ currentMonthTotals.netIncome }}</strong>
+              <small v-if="currentMonthTotals.netIncome !== undefined && currentMonthTotals.hasUncostedLegacyOrders" class="income-label">仅统计已录成本订单</small>
             </div>
           </div>
           <span class="income-meta">
             <span>累计流水 ¥{{ orderTotals.revenue }}</span>
-            <span>累计净收入 {{ orderTotals.netIncome === undefined ? `待补 ${orderTotals.missingCosts} 单成本` : `¥${orderTotals.netIncome}` }}</span>
+            <span>
+              <button v-if="orderTotals.netIncome === undefined" type="button" class="income-action" @click="showPendingOrders('')">累计 {{ orderTotals.missingCosts }} 单待补成本</button>
+              <template v-else>累计净收入 ¥{{ orderTotals.netIncome }}</template>
+              <template v-if="orderTotals.netIncome !== undefined && orderTotals.hasUncostedLegacyOrders">（已录成本）</template>
+            </span>
             <span>共 {{ orderInfo.data.length }} 单</span>
           </span>
           <span class="income-deco" aria-hidden="true"></span>
@@ -59,6 +65,14 @@
             :footer="productsSummary.footerText || '去配置货品'"
             variant="goods"
             @click="openMaterialsPopup('products')"
+          />
+          <StatCard
+            title="订单"
+            :value="orderInfo.data.length"
+            unit="单"
+            footer="查看记录"
+            variant="orders"
+            @click="scrollToOrders"
           />
         </div>
       </section>
@@ -100,7 +114,8 @@
             :key="product.id"
             class="craftable-row"
             type="button"
-            @click="openProductEditor(product)"
+            :aria-label="`为${product.name}记单`"
+            @click="openCreateOrder(product)"
           >
             <span class="craftable-main">
               <span class="craftable-name">{{ product.name }}</span>
@@ -113,6 +128,7 @@
               <strong>{{ craftableCountForProduct(product) }}</strong>
               <small>可制</small>
             </span>
+            <span class="pill-button" aria-hidden="true">记单</span>
           </button>
           <p v-if="craftableProducts.some(sharedMaterials)" class="panel-note">
             可制数量按单款计算，共用备料的货品会消耗同一份库存。
@@ -123,13 +139,13 @@
         </div>
       </section>
 
-      <section class="panel orders-panel">
+      <section ref="ordersPanel" class="panel orders-panel" tabindex="-1" aria-labelledby="orders-title">
         <div class="panel-head">
-          <h2>
+          <h2 id="orders-title">
             <span class="panel-mark"></span>订单记录
             <span class="panel-count">{{ OrderData.length }} 条</span>
           </h2>
-          <button class="order-add-btn" type="button" @click="openCreateOrder">
+          <button class="order-add-btn" type="button" @click="openCreateOrder()">
             <el-icon><Plus /></el-icon>
             <span>新增订单</span>
           </button>
@@ -145,7 +161,7 @@
           >
             <span>全部</span>
             <strong>流水 ¥{{ orderTotals.revenue }}</strong>
-            <small>净收入 {{ orderTotals.netIncome === undefined ? '待补成本' : `¥${orderTotals.netIncome}` }}</small>
+            <small>{{ formatNetIncome(orderTotals) }}</small>
           </button>
           <button
             v-for="item in orderInfo.monthData"
@@ -158,7 +174,7 @@
           >
             <span>{{ formatMonth(item.month) }}</span>
             <strong>流水 ¥{{ item.revenue }}</strong>
-            <small>净收入 {{ item.netIncome === undefined ? '待补成本' : `¥${item.netIncome}` }}</small>
+            <small>{{ formatNetIncome(item) }}</small>
           </button>
         </div>
 
@@ -172,13 +188,21 @@
           clearable
         />
 
+        <button v-if="pendingCostsOnly" class="pill-button pending-filter" type="button" aria-label="清除待补成本筛选" @click="pendingCostsOnly = false">
+          仅看待补成本 <el-icon aria-hidden="true"><Close /></el-icon>
+        </button>
+
         <div v-if="OrderData.length" class="order-list">
           <div v-for="item in visibleOrders" :key="item.id" class="order-row record-row">
             <button class="order-edit record-edit" type="button" @click="beforeUpd(item)">
               <span class="order-avatar" aria-hidden="true">{{ item.title.slice(0, 1) }}</span>
               <span class="order-info">
                 <strong>{{ item.title }}<em>× {{ item.quantity }}</em></strong>
-                <small>{{ item.orderDate }} · {{ item.cost === undefined ? '待补成本' : `成本 ¥${item.cost}` }}</small>
+                <small>
+                  {{ item.orderDate }}
+                  <template v-if="item.cost !== undefined"> · 成本 ¥{{ item.cost }}</template>
+                  <template v-else-if="item.trackCost"> · 待补成本</template>
+                </small>
               </span>
               <span class="order-amount">
                 <span>售价 ¥{{ item.value }}</span>
@@ -203,8 +227,8 @@
 
         <div v-else class="orders-empty">
           <span class="orders-empty-icon"><el-icon><Tickets /></el-icon></span>
-          <strong>{{ orderSearch.trim() ? "没有匹配的订单" : "还没有订单记录" }}</strong>
-          <span v-if="!orderSearch.trim()">
+          <strong>{{ orderSearch.trim() || pendingCostsOnly || orderInfo.checkedMonth ? "没有匹配的订单" : "还没有订单记录" }}</strong>
+          <span v-if="!orderInfo.data.length">
             {{
               !data.length
                 ? "先配置备料，再配置货品，之后就可以记录订单。"
@@ -246,6 +270,7 @@
       @create="openProductEditor"
       @toggle-status="toggleProductStatus"
       @edit="openProductEditor"
+      @order="openCreateOrder"
       @remove="removeProduct"
     />
 
@@ -392,7 +417,7 @@ import type {
   MaterialGroupKey,
   Product,
 } from "@/types/stock";
-import { ArrowDown, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
+import { ArrowDown, Close, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
@@ -473,6 +498,7 @@ const {
   orderInfo,
   OrderData,
   orderSearch,
+  pendingCostsOnly,
   visibleOrders,
   collapsedOrdersCount,
   orderTotals,
@@ -523,6 +549,7 @@ const {
   importData,
 } = useBackupActions(stock, settingsPopup, () => {
   orderSearch.value = "";
+  pendingCostsOnly.value = false;
   monthChange("");
   initOrderMonthData();
 });
@@ -614,10 +641,27 @@ const maxCraftableCount = computed(() => {
   return Math.max(1, ...craftableProducts.value.map((item) => craftableCountForProduct(item)));
 });
 
-const currentMonthTotals = computed(() => {
-  const month = dayjs().format("YYYY-MM");
-  return orderInfo.value.monthData.find((item) => item.month === month) ?? summarizeOrders([]);
-});
+const ordersPanel = ref<HTMLElement>();
+const currentMonth = dayjs().format("YYYY-MM");
+const currentMonthTotals = computed(() => orderInfo.value.monthData.find((item) => item.month === currentMonth) ?? summarizeOrders([]));
+
+function scrollToOrders() {
+  ordersPanel.value?.focus({ preventScroll: true });
+  ordersPanel.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function showPendingOrders(month: string) {
+  orderSearch.value = "";
+  orderInfo.value.checkedMonth = month;
+  pendingCostsOnly.value = true;
+  ordersExpanded.value = false;
+  scrollToOrders();
+}
+
+function formatNetIncome({ netIncome, missingCosts, hasUncostedLegacyOrders }: ReturnType<typeof summarizeOrders>) {
+  if (netIncome === undefined) return `${missingCosts} 单待补成本`;
+  return `净收入 ¥${netIncome}${hasUncostedLegacyOrders ? "（已录成本）" : ""}`;
+}
 
 const todayText = dayjs().format("M月D日") + " · " + ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dayjs().day()];
 
@@ -683,7 +727,7 @@ const openMaterialsPopup = (tab: ManageTab = "materials") => {
 const storedTheme = themeStorage.getter();
 currentTheme.value = isThemeKey(storedTheme) ? storedTheme : DEFAULT_THEME;
 initOrderMonthData();
-watch(orderSearch, () => { ordersExpanded.value = false; });
+watch([orderSearch, pendingCostsOnly], () => { ordersExpanded.value = false; });
 
 onMounted(() => {
   updateScrollTopVisibility();
@@ -885,8 +929,34 @@ onUnmounted(() => {
 
 .overview-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.income-action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.income-pending.income-action {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.orders-panel {
+  scroll-margin-top: calc(80px + env(safe-area-inset-top));
+}
+
+.pending-filter {
+  margin: 0 0 10px;
 }
 
 /* panels */
@@ -1447,6 +1517,17 @@ onUnmounted(() => {
 .home-page :deep(.van-popup) {
   background: var(--surface);
   color: var(--text-main);
+}
+
+@media (max-width: 360px) {
+  .page-header,
+  .header-actions {
+    gap: 6px;
+  }
+
+  .header-actions .order-add-btn {
+    padding-inline: 10px;
+  }
 }
 
 @media (min-width: 640px) {

@@ -19,7 +19,7 @@ defineProps<{
   unit?: string;
   footer?: string;
   alert?: "warning" | "danger";
-  variant: "materials" | "goods";
+  variant: "materials" | "goods" | "orders";
 }>();
 
 defineEmits<{
@@ -33,7 +33,7 @@ defineEmits<{
   flex-direction: column;
   box-sizing: border-box;
   min-width: 0;
-  padding: 14px;
+  padding: 14px 10px;
   border: 0;
   border-radius: 18px;
   background: var(--surface);
@@ -80,6 +80,10 @@ defineEmits<{
 
 .goods .stat-title::before {
   background: var(--stat-goods-text);
+}
+
+.orders .stat-title::before {
+  background: var(--accent);
 }
 
 .stat-alert {

@@ -46,6 +46,7 @@
               </span>
             </span>
           </button>
+          <button v-if="product.status === 'active'" class="pill-button record-quick-action" type="button" :aria-label="`为${product.name}记单`" @click="emit('order', product)">记单</button>
           <RowActions :label="product.name" :actions="[
             { name: product.status === 'active' ? '设为停产' : '恢复销售', callback: () => emit('toggle-status', product) },
             { name: '删除货品', color: '#c63535', callback: () => emit('remove', product.id) },
@@ -77,6 +78,7 @@ const emit = defineEmits<{
   create: [];
   "toggle-status": [product: Product];
   edit: [product: Product];
+  order: [product: Product];
   remove: [id: string];
 }>();
 

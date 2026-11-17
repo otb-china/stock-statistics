@@ -64,8 +64,8 @@
                   </span>
                 </span>
               </button>
+              <button class="pill-button record-quick-action" type="button" :aria-label="`为${item.name}补货`" @click="emit('restock', item)">补货</button>
               <RowActions :label="item.name" :actions="[
-                { name: '补库存', callback: () => emit('restock', item) },
                 { name: '库存流水', callback: () => emit('history', item) },
                 { name: '删除备料', color: '#c63535', callback: () => emit('remove', item.id) },
               ]" />
@@ -304,9 +304,14 @@ const popupShow = computed({
   border-left: 1px solid var(--divider);
 }
 
-@media (max-width: 720px) {
-  .material-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+@media (max-width: 420px) {
+  .material-metrics {
+    gap: 4px;
+    padding-left: 6px;
+  }
+
+  .material-metric {
+    min-width: 34px;
   }
 }
 </style>
