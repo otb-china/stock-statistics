@@ -31,6 +31,40 @@
         </div>
       </div>
 
+      <div v-if="type === 'add' && products.length" class="form-stack product-links">
+        <div class="form-field">
+          <span class="form-label">关联货品 <small>选填</small></span>
+          <el-select
+            :model-value="productLinks.map((link) => link.productId)"
+            multiple
+            filterable
+            clearable
+            placeholder="搜索并选择货品"
+            aria-label="关联货品"
+            @update:model-value="emit('select-products', $event)"
+          >
+            <el-option
+              v-for="product in products"
+              :key="product.id"
+              :label="product.name"
+              :value="product.id"
+            />
+          </el-select>
+        </div>
+        <div v-if="productLinks.length">
+          <span class="form-label">每件用量</span>
+          <label v-for="link in productLinks" :key="link.productId" class="product-link-row">
+            <span>{{ productNames.get(link.productId) }}</span>
+            <el-input-number
+              v-model="link.quantity"
+              :min="1"
+              :max="1000"
+              :aria-label="`${productNames.get(link.productId)}每件用量`"
+            />
+          </label>
+        </div>
+      </div>
+
       <button v-if="type === 'edit'" class="link-row" type="button" @click="emit('history', form)">
         <el-icon><Tickets /></el-icon>
         <span>查看库存流水</span>
@@ -53,22 +87,26 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
 import { ArrowRight, Box, Tickets } from "@element-plus/icons-vue";
-import type { EditorType, Material } from "@/types/stock";
+import type { EditorType, Material, MaterialProductLink, Product } from "@/types/stock";
 
 const props = defineProps<{
   show: boolean;
   type: EditorType;
   form: Material;
+  products: Product[];
+  productLinks: MaterialProductLink[];
 }>();
 
 const emit = defineEmits<{
   "update:show": [value: boolean];
   submit: [];
   history: [item: Material];
+  "select-products": [productIds: string[]];
 }>();
 
 const quickSteps = [1, 5, 10, 50];
 const originalNum = ref<number | null>(null);
+const productNames = computed(() => new Map(props.products.map((product) => [product.id, product.name])));
 
 watch(() => props.show, (show) => {
   if (show) originalNum.value = props.type === "edit" ? props.form.num : null;
@@ -85,6 +123,25 @@ function addStock(step: number) {
 </script>
 
 <style lang="scss" scoped>
+.product-links {
+  margin-top: 16px;
+}
+
+.product-links :deep(.el-select) {
+  width: 100%;
+}
+
+.product-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 116px;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  color: var(--text-main);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
 .quick-steps {
   display: flex;
   gap: 8px;

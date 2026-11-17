@@ -253,6 +253,9 @@
       v-model:show="materialEditor.show"
       :type="materialEditor.type"
       :form="materialEditor.form"
+      :products="products"
+      :product-links="materialEditor.productLinks"
+      @select-products="setMaterialLinkedProducts"
       @submit="submitMaterialEditor"
       @history="openStockHistory"
     />
@@ -532,6 +535,7 @@ const {
   openRestock,
   submitRestock,
   openMaterialEditor,
+  setMaterialLinkedProducts,
   submitMaterialEditor,
   removeMaterial,
 } = useMaterialEditor(data, products, stock.commit);

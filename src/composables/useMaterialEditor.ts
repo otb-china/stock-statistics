@@ -2,13 +2,14 @@ import { computed, ref, type Ref } from "vue";
 import { showConfirmDialog, showToast } from "vant";
 import type { useStockRecords } from "./useStockRecords";
 import { createEmptyMaterialForm, createId } from "@/utils/stockData.ts";
-import type { EditorType, Material, Product } from "@/types/stock";
+import type { EditorType, Material, MaterialProductLink, Product } from "@/types/stock";
 
 export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Product[]>, commit: ReturnType<typeof useStockRecords>["commit"]) {
   const materialEditor = ref({
     show: false,
     type: "add" as EditorType,
     form: createEmptyMaterialForm(),
+    productLinks: [] as MaterialProductLink[],
   });
   const restock = ref({ show: false, materialId: "", quantity: 0 });
   const restockMaterial = computed(() => materials.value.find((item) => item.id === restock.value.materialId));
@@ -42,10 +43,19 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     materialEditor.value.form = item
       ? { ...item }
       : createEmptyMaterialForm();
+    materialEditor.value.productLinks = [];
     materialEditor.value.show = true;
   }
 
+  function setMaterialLinkedProducts(productIds: string[]) {
+    const previousLinks = new Map(materialEditor.value.productLinks.map((link) => [link.productId, link]));
+    materialEditor.value.productLinks = [...new Set(productIds)].map((productId) =>
+      previousLinks.get(productId) ?? { productId, quantity: 1 },
+    );
+  }
+
   function submitMaterialEditor() {
+    if (!materialEditor.value.show) return;
     const name = materialEditor.value.form.name.trim();
     if (!name) {
       showToast("请输入备料名称");
@@ -66,11 +76,33 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     }
     const isNew = materialEditor.value.type === "add";
     if (!isNew && !materials.value.some((item) => item.id === form.id)) return;
+    const materialId = isNew ? createId("material") : form.id;
     const nextMaterials = isNew
-      ? [...materials.value, { id: createId("material"), name, num }]
+      ? [...materials.value, { id: materialId, name, num }]
       : materials.value.map((item) => item.id === form.id ? { ...item, name, num } : item);
-    if (!commit({ materials: nextMaterials }, { reason: isNew ? "initial" : "adjustment" })) return;
+
+    const quantities = new Map<string, number>();
+    for (const { productId, quantity } of isNew ? materialEditor.value.productLinks : []) {
+      if (!products.value.some((product) => product.id === productId)) {
+        showToast("所选货品已不存在，请重新选择");
+        return;
+      }
+      if (typeof quantity !== "number" || !Number.isFinite(quantity) || quantity < 1 || quantity > 1000) {
+        showToast("请输入 1 到 1000 之间的每件用量");
+        return;
+      }
+      quantities.set(productId, quantity);
+    }
+
+    const nextProducts = quantities.size ? products.value.map((product) => {
+      const quantity = quantities.get(product.id);
+      if (quantity === undefined) return product;
+      return { ...product, recipe: [...product.recipe, { materialId, quantity }] };
+    }) : undefined;
+    const changes = nextProducts ? { materials: nextMaterials, products: nextProducts } : { materials: nextMaterials };
+    if (!commit(changes, { reason: isNew ? "initial" : "adjustment" })) return;
     materialEditor.value.show = false;
+    if (quantities.size) showToast(`已添加备料并关联 ${quantities.size} 款货品`);
   }
 
   function removeMaterial(id: string) {
@@ -97,6 +129,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     openRestock,
     submitRestock,
     openMaterialEditor,
+    setMaterialLinkedProducts,
     submitMaterialEditor,
     removeMaterial,
   };

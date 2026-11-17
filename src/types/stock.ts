@@ -16,6 +16,11 @@ export interface ProductRecipe extends RSA {
   quantity: number;
 }
 
+export interface MaterialProductLink {
+  productId: string;
+  quantity: number | null | undefined;
+}
+
 export interface Product extends RSA {
   id: string;
   name: string;
