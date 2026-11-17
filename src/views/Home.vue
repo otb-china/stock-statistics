@@ -313,7 +313,7 @@
           class="confirm-dialog-button"
           :class="index === 0 ? 'danger' : 'danger-soft'"
           type="button"
-          @click="deleteOrderShow = false; action.callback()"
+          @click="action.callback()"
         >{{ action.name }}</button>
         <button class="confirm-dialog-button" type="button" @click="deleteOrderShow = false">取消</button>
       </div>
