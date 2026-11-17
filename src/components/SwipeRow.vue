@@ -39,9 +39,10 @@ export interface SwipeAction {
   callback: () => void;
 }
 
-defineProps<{
+const props = defineProps<{
   label: string;
   actions: SwipeAction[];
+  swipeToTrigger?: boolean;
 }>();
 
 const DECIDE_DISTANCE = 8;
@@ -129,7 +130,8 @@ function onPointerUp(event: PointerEvent) {
   const width = actionsWidth();
   const velocity = (offset.value - startOffset) / Math.max(1, Date.now() - startTime);
   const shouldOpen = velocity < -0.4 || (velocity <= 0.4 && offset.value < -width / 2);
-  if (shouldOpen) open();
+  if (shouldOpen && props.swipeToTrigger && props.actions.length === 1) runAction(props.actions[0]);
+  else if (shouldOpen) open();
   else close();
 }
 

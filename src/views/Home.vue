@@ -155,6 +155,7 @@
             class="order-swipe"
             :label="item.title + '订单'"
             :actions="[{ name: '删除', icon: Delete, tone: 'danger', callback: () => del(item) }]"
+            swipe-to-trigger
           >
             <button class="order-edit" type="button" @click="beforeUpd(item)">
               <span class="order-avatar" aria-hidden="true">{{ item.title.slice(0, 1) }}</span>
