@@ -39,6 +39,7 @@
       <div class="product-item" :class="{ inactive: group.inactive }">
         <button class="product-main" type="button" :aria-label="'编辑' + product.name" @click="emit('edit', product)">
           <span class="product-title">{{ product.name }}</span>
+          <small class="product-meta">{{ product.recipe.length ? "关联 " + product.recipe.length + " 种备料" : "未配置备料" }}</small>
         </button>
         <template v-if="!group.inactive">
           <span class="product-count" :class="countClass(craftableCountForProduct(product))">
@@ -170,6 +171,11 @@ details[open] .summary-arrow {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.product-meta {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .product-count {

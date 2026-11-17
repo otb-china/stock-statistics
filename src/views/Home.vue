@@ -159,9 +159,9 @@
           clearable
         />
 
-        <div v-if="OrderData.length" class="order-list">
+        <div v-if="OrderData.length" ref="orderListRef" class="order-list" :class="{ scrollable: OrderData.length > ORDER_VISIBLE_ROWS }">
           <SwipeRow
-            v-for="item in visibleOrders"
+            v-for="item in OrderData"
             :key="item.id"
             class="order-swipe"
             :label="item.title + '订单'"
@@ -180,15 +180,6 @@
             </button>
           </SwipeRow>
 
-          <button
-            v-if="OrderData.length > orderPreviewLimit"
-            class="orders-toggle-btn"
-            type="button"
-            @click="ordersExpanded = !ordersExpanded"
-          >
-            {{ ordersExpanded ? "收起订单" : `展开剩余 ${collapsedOrdersCount} 条` }}
-            <el-icon :class="{ flipped: ordersExpanded }"><ArrowDown /></el-icon>
-          </button>
         </div>
 
         <div v-else class="orders-empty">
@@ -355,17 +346,16 @@ import type {
   Material,
   MaterialGroupKey,
 } from "@/types/stock";
-import { ArrowDown, Box, Delete, Goods, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
+import { Box, Delete, Goods, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const SCROLL_TOP_THRESHOLD = 240;
-const ORDER_PREVIEW_LIMIT = 10;
+const ORDER_VISIBLE_ROWS = 5;
 
 const showScrollTop = ref(false);
 const isScrolled = ref(false);
-const ordersExpanded = ref(false);
-const orderPreviewLimit = ORDER_PREVIEW_LIMIT;
+const orderListRef = ref<HTMLElement>();
 const currentTheme = ref<ThemeKey>(DEFAULT_THEME);
 const stock = useStockRecords();
 const data = computed(() => stock.records.value.data.materials);
@@ -412,8 +402,6 @@ const {
   orderInfo,
   OrderData,
   orderSearch,
-  visibleOrders,
-  collapsedOrdersCount,
   orderTotals,
   activeOrderProducts,
   canSyncCalculation,
@@ -439,8 +427,6 @@ const {
   activeProducts,
   orders,
   commit: stock.commit,
-  ordersExpanded,
-  orderPreviewLimit,
   dateFormat: DATE_FORMAT,
   openMaterialEditor: () => openMaterialEditor(),
   openProductEditor: () => openProductEditor(),
@@ -569,7 +555,9 @@ const updateScrollTopVisibility = () => {
 const storedTheme = themeStorage.getter();
 currentTheme.value = isThemeKey(storedTheme) ? storedTheme : DEFAULT_THEME;
 initOrderMonthData();
-watch(orderSearch, () => { ordersExpanded.value = false; });
+watch(() => [orderSearch.value, orderInfo.value.checkedMonth], () => {
+  orderListRef.value?.scrollTo({ top: 0 });
+});
 
 onMounted(() => {
   updateScrollTopVisibility();
@@ -917,8 +905,9 @@ button.block-title {
 .month-filter {
   display: flex;
   gap: 8px;
-  margin: 0 -14px 10px;
-  padding: 0 14px 2px;
+  margin: 0 0 10px;
+  padding: 0 0 2px;
+  border-radius: 12px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -982,8 +971,34 @@ button.block-title {
 }
 
 .order-list {
+  --order-row-height: 66px;
   display: flex;
   flex-direction: column;
+}
+
+.order-list.scrollable {
+  max-height: calc(var(--order-row-height) * 5 + 30px);
+  margin-right: -6px;
+  padding-right: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--divider) transparent;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+.order-list.scrollable::-webkit-scrollbar {
+  width: 4px;
+}
+
+.order-list.scrollable::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: var(--divider);
+}
+
+.order-swipe {
+  flex-shrink: 0;
 }
 
 .order-swipe {
@@ -999,7 +1014,8 @@ button.block-title {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 12px 2px;
+  height: var(--order-row-height);
+  padding: 0 2px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -1062,31 +1078,6 @@ button.block-title {
   margin-top: 2px;
   color: var(--text-subtle);
   font-size: 11px;
-}
-
-.orders-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin-top: 6px;
-  padding: 10px;
-  border: 0;
-  border-radius: 12px;
-  background: var(--surface-soft);
-  color: var(--accent-strong);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.orders-toggle-btn .el-icon {
-  transition: transform 0.2s ease;
-}
-
-.orders-toggle-btn .el-icon.flipped {
-  transform: rotate(180deg);
 }
 
 .orders-empty {

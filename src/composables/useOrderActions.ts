@@ -11,8 +11,6 @@ interface UseOrderActionsOptions {
   orders: Ref<Order[]>;
   commit: ReturnType<typeof useStockRecords>["commit"];
   activeProducts: ComputedRef<Product[]>;
-  ordersExpanded: Ref<boolean>;
-  orderPreviewLimit: number;
   dateFormat: string;
   openMaterialEditor: () => void;
   openProductEditor: () => void;
@@ -44,12 +42,6 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     );
   });
 
-  const visibleOrders = computed(() => {
-    if (options.ordersExpanded.value || OrderData.value.length <= options.orderPreviewLimit) return OrderData.value;
-    return OrderData.value.slice(0, options.orderPreviewLimit);
-  });
-
-  const collapsedOrdersCount = computed(() => Math.max(0, OrderData.value.length - options.orderPreviewLimit));
 
   const orderTotals = computed(() => summarizeOrders(orderInfo.value.data));
 
@@ -153,7 +145,6 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   function monthChange(month: string) {
     orderInfo.value.checkedMonth = orderInfo.value.checkedMonth === month ? "" : month;
-    options.ordersExpanded.value = false;
   }
 
   function setOrderDate(date: string) {
@@ -355,8 +346,6 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo,
     OrderData,
     orderSearch,
-    visibleOrders,
-    collapsedOrdersCount,
     orderTotals,
     activeOrderProducts,
     canSyncCalculation,
