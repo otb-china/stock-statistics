@@ -1,5 +1,5 @@
 <template>
-  <button class="stat-card" :class="variant" type="button" @click="$emit('click')">
+  <button class="stat-card" type="button" @click="$emit('click')">
     <span class="stat-head">
       <span class="stat-title">{{ title }}</span>
       <span v-if="alert" class="stat-alert" :class="alert && `is-${alert}`" aria-hidden="true"></span>
@@ -19,7 +19,6 @@ defineProps<{
   unit?: string;
   footer?: string;
   alert?: "warning" | "danger";
-  variant: "materials" | "goods" | "orders";
 }>();
 
 defineEmits<{
@@ -76,14 +75,6 @@ defineEmits<{
   height: 8px;
   border-radius: 3px;
   background: var(--stat-materials-text);
-}
-
-.goods .stat-title::before {
-  background: var(--stat-goods-text);
-}
-
-.orders .stat-title::before {
-  background: var(--accent);
 }
 
 .stat-alert {

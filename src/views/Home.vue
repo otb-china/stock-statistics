@@ -40,33 +40,14 @@
           <span class="income-deco" aria-hidden="true"></span>
         </div>
 
-        <div class="overview-stats">
-          <StatCard
-            title="备料"
-            :value="materialsSummary.totalKinds"
-            unit="种"
-            :footer="materialsSummary.footerText || (data.length ? '库存充足' : '去配置备料')"
-            :alert="materialsSummary.dangerKinds > 0 ? 'danger' : (materialsSummary.warningKinds > 0 ? 'warning' : undefined)"
-            variant="materials"
-            @click="openMaterialsPopup('materials')"
-          />
-          <StatCard
-            title="货品"
-            :value="products.length"
-            unit="款"
-            :footer="productsSummary.footerText || '去配置货品'"
-            variant="goods"
-            @click="openMaterialsPopup('products')"
-          />
-          <StatCard
-            title="订单"
-            :value="orderInfo.data.length"
-            unit="单"
-            footer="查看记录"
-            variant="orders"
-            @click="scrollToOrders"
-          />
-        </div>
+        <StatCard
+          title="备料"
+          :value="materialsSummary.totalKinds"
+          unit="种"
+          :footer="materialsSummary.footerText || (data.length ? '库存充足' : '去配置备料')"
+          :alert="materialsSummary.dangerKinds > 0 ? 'danger' : (materialsSummary.warningKinds > 0 ? 'warning' : undefined)"
+          @click="materialsPopup = true"
+        />
       </section>
 
       <section v-if="warningMaterials.length" class="panel warning-panel">
@@ -94,53 +75,33 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel" aria-labelledby="products-title">
         <div class="panel-head">
-          <h2><span class="panel-mark"></span>可制作货品</h2>
-          <span class="panel-count">{{ craftableProducts.length }} 种</span>
+          <h2 id="products-title"><span class="panel-mark"></span>货品</h2>
+          <button class="popup-create-btn" type="button" @click="openProductEditor()">
+            <el-icon><Plus /></el-icon>
+            <span>新增货品</span>
+          </button>
         </div>
 
-        <div v-if="craftableProducts.length" class="craftable-list">
-          <button
-            v-for="product in craftableProducts"
-            :key="product.id"
-            class="craftable-row"
-            type="button"
-            :aria-label="`为${product.name}记单`"
-            @click="openCreateOrder(product)"
-          >
-            <span class="craftable-main">
-              <span class="craftable-name">{{ product.name }}</span>
-              <small v-if="sharedMaterials(product)">共用 {{ sharedMaterials(product) }}</small>
-              <span class="craftable-bar">
-                <i :style="{ width: craftableRatio(product) }"></i>
-              </span>
-            </span>
-            <span class="craftable-count">
-              <strong>{{ craftableCountForProduct(product) }}</strong>
-              <small>可制</small>
-            </span>
-            <span class="pill-button" aria-hidden="true">记单</span>
-          </button>
-          <p v-if="craftableProducts.some(sharedMaterials)" class="panel-note">
-            可制数量按单款计算，共用备料的货品会消耗同一份库存。
-          </p>
-        </div>
-        <div v-else class="panel-empty">
-          {{ !data.length ? "还没有配置备料" : (products.length ? "当前没有可制作的正常货品" : "还没有配置货品") }}
-        </div>
+        <ProductList
+          :products="productsList"
+          :craftable-count-for-product="craftableCountForProduct"
+          :recipe-preview="recipePreview"
+          :shared-materials="sharedMaterials"
+          @edit="openProductEditor"
+          @order="openCreateOrder"
+          @toggle-status="toggleProductStatus"
+          @remove="removeProduct"
+        />
       </section>
 
-      <section ref="ordersPanel" class="panel orders-panel" tabindex="-1" aria-labelledby="orders-title">
+      <section class="panel" aria-labelledby="orders-title">
         <div class="panel-head">
           <h2 id="orders-title">
             <span class="panel-mark"></span>订单记录
             <span class="panel-count">{{ OrderData.length }} 条</span>
           </h2>
-          <button class="order-add-btn" type="button" @click="openCreateOrder()">
-            <el-icon><Plus /></el-icon>
-            <span>新增订单</span>
-          </button>
         </div>
 
         <div class="month-filter" v-if="orderInfo.monthData.length">
@@ -211,7 +172,7 @@
             {{
               !data.length
                 ? "先配置备料，再配置货品，之后就可以记录订单。"
-                : (products.length ? "新增订单后，这里会按月份汇总收入。" : "先配置货品，再开始记录订单。")
+                : (products.length ? "记单后，这里会按月份汇总收入。" : "先配置货品，再开始记录订单。")
             }}
           </span>
           <button v-if="!orderInfo.data.length" class="ghost-btn" type="button" @click="openImportExport">导入备份</button>
@@ -220,10 +181,9 @@
     </main>
 
     <MaterialManagePopup
-      v-if="materialsPopup.tab === 'materials'"
-      v-model:show="materialsPopup.show"
-      :description="materialsPopupDescription"
-      :create-text="materialsPopupCreateText"
+      v-model:show="materialsPopup"
+      description="管理库存数量和预警状态。"
+      create-text="新增备料"
       :groups="materialManageGroups"
       :material-status-class="materialStatusClass"
       :material-status-text="materialStatusText"
@@ -235,22 +195,6 @@
       @remove="removeMaterial"
       @restock="openRestock"
       @history="openStockHistory"
-    />
-
-    <ProductManagePopup
-      v-else
-      v-model:show="materialsPopup.show"
-      :description="materialsPopupDescription"
-      :create-text="materialsPopupCreateText"
-      :products="productsList"
-      :product-status-class="productStatusClass"
-      :craftable-count-for-product="craftableCountForProduct"
-      :recipe-preview="recipePreview"
-      @create="openProductEditor"
-      @toggle-status="toggleProductStatus"
-      @edit="openProductEditor"
-      @order="openCreateOrder"
-      @remove="removeProduct"
     />
 
     <MaterialEditorPopup
@@ -347,6 +291,7 @@
       v-model:calculation="calculation"
       :type="orderInfo.type"
       :form="orderInfo.form"
+      :show-product-picker="orderInfo.showProductPicker"
       :products="activeOrderProducts"
       :can-sync-calculation="canSyncCalculation"
       :deduction-message="deductionMessage"
@@ -380,7 +325,7 @@ import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
 import MaterialManagePopup from "@/components/MaterialManagePopup.vue";
 import OrderEditorPopup from "@/components/OrderEditorPopup.vue";
 import ProductEditorPopup from "@/components/ProductEditorPopup.vue";
-import ProductManagePopup from "@/components/ProductManagePopup.vue";
+import ProductList from "@/components/ProductList.vue";
 import SettingsPopup from "@/components/SettingsPopup.vue";
 import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
@@ -391,10 +336,8 @@ import { useOrderActions } from "@/composables/useOrderActions";
 import { useProductEditor } from "@/composables/useProductEditor";
 import type { ThemeKey } from "@/config/themes";
 import type {
-  ManageTab,
   Material,
   MaterialGroupKey,
-  Product,
 } from "@/types/stock";
 import { ArrowDown, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
@@ -436,10 +379,7 @@ function openStockHistory(item: Material) {
   history.value = { show: true, materialId: item.id };
 }
 const settingsPopup = ref(false);
-const materialsPopup = ref({
-  show: false,
-  tab: "materials" as ManageTab,
-});
+const materialsPopup = ref(false);
 const materialGroupCollapsed = ref<Record<MaterialGroupKey, boolean>>({
   danger: false,
   warning: false,
@@ -468,7 +408,6 @@ const {
   materialRelatedSummary,
   materialStatusText,
   materialStatusClass,
-  productStatusClass,
   recipePreview,
 } = useMaterialStatus(data, products);
 
@@ -595,30 +534,6 @@ const materialsSummary = computed(() => {
   };
 });
 
-const productsSummary = computed(() => {
-  const activeCount = activeProducts.value.length;
-  const inactiveCount = products.value.length - activeCount;
-  const footer = [] as string[];
-  if (activeCount > 0) footer.push(`正常 ${activeCount}`);
-  if (inactiveCount > 0) footer.push(`停产 ${inactiveCount}`);
-  return {
-    activeCount,
-    inactiveCount,
-    footerText: footer.join(" · "),
-  };
-});
-
-const craftableProducts = computed(() => {
-  return [...activeProducts.value]
-    .filter((item) => craftableCountForProduct(item) > 0)
-    .sort((a, b) => craftableCountForProduct(b) - craftableCountForProduct(a));
-});
-
-const maxCraftableCount = computed(() => {
-  return Math.max(1, ...craftableProducts.value.map((item) => craftableCountForProduct(item)));
-});
-
-const ordersPanel = ref<HTMLElement>();
 const currentMonth = dayjs().format("YYYY-MM");
 const currentMonthTotals = computed(() => orderInfo.value.monthData.find((item) => item.month === currentMonth) ?? summarizeOrders([]));
 
@@ -627,16 +542,7 @@ function formatOrderIncome(order: Parameters<typeof orderNetIncomeCents>[0]) {
   return cents === undefined ? "—" : `¥${cents / 100}`;
 }
 
-function scrollToOrders() {
-  ordersPanel.value?.focus({ preventScroll: true });
-  ordersPanel.value?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
 const todayText = dayjs().format("M月D日") + " · " + ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dayjs().day()];
-
-function craftableRatio(product: Product) {
-  return `${Math.round((craftableCountForProduct(product) / maxCraftableCount.value) * 100)}%`;
-}
 
 function formatMonth(month: string) {
   const [year, value] = month.split("-");
@@ -648,16 +554,6 @@ const warningMaterials = computed(() => {
     const status = materialGroupKey(item);
     return status === "warning" || status === "danger";
   });
-});
-
-const materialsPopupDescription = computed(() => {
-  return materialsPopup.value.tab === "materials"
-    ? "管理库存数量和预警状态。"
-    : "管理货品配方、价格和消耗规则。";
-});
-
-const materialsPopupCreateText = computed(() => {
-  return materialsPopup.value.tab === "materials" ? "新增备料" : "新增货品";
 });
 
 function countMaterialsByGroup() {
@@ -686,11 +582,6 @@ const scrollToTop = () => {
 const updateScrollTopVisibility = () => {
   showScrollTop.value = window.scrollY > SCROLL_TOP_THRESHOLD;
   isScrolled.value = window.scrollY > 2;
-};
-
-const openMaterialsPopup = (tab: ManageTab = "materials") => {
-  materialsPopup.value.tab = tab;
-  materialsPopup.value.show = true;
 };
 
 const storedTheme = themeStorage.getter();
@@ -888,16 +779,6 @@ onUnmounted(() => {
   border-radius: 50%;
 }
 
-.overview-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.orders-panel {
-  scroll-margin-top: calc(80px + env(safe-area-inset-top));
-}
-
 /* panels */
 .panel {
   padding: 16px;
@@ -942,19 +823,6 @@ onUnmounted(() => {
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
-}
-
-.panel-note,
-.panel-empty {
-  margin: 4px 0 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.panel-empty {
-  padding: 18px 0 6px;
-  text-align: center;
 }
 
 /* warning */
@@ -1031,87 +899,6 @@ onUnmounted(() => {
   color: var(--accent-strong);
   font-size: 12px;
   font-weight: 600;
-}
-
-/* craftable */
-.craftable-list {
-  display: grid;
-  gap: 8px;
-}
-
-.craftable-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--surface-soft);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.craftable-row:active {
-  transform: scale(0.985);
-}
-
-.craftable-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.craftable-name {
-  display: block;
-  color: var(--text-strong);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.craftable-main small {
-  display: block;
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.craftable-bar {
-  display: block;
-  height: 5px;
-  margin-top: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--surface-muted);
-}
-
-.craftable-bar i {
-  display: block;
-  height: 100%;
-  min-width: 6px;
-  border-radius: inherit;
-  background: var(--submit-btn-bg);
-}
-
-.craftable-count {
-  flex-shrink: 0;
-  min-width: 44px;
-  text-align: center;
-}
-
-.craftable-count strong {
-  display: block;
-  color: var(--accent-strong);
-  font-size: 22px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.craftable-count small {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 11px;
 }
 
 /* orders */
@@ -1360,10 +1147,6 @@ onUnmounted(() => {
 
 .order-add-btn:active {
   transform: scale(0.95);
-}
-
-.order-add-btn .el-icon {
-  font-size: 15px;
 }
 
 /* restock popup */

@@ -6,28 +6,31 @@
           <span class="popup-icon"><el-icon><Tickets /></el-icon></span>
           <div>
             <h3>{{ type === "add" ? "新增订单" : "编辑订单" }}</h3>
+            <p v-if="!showProductPicker">{{ form.title }}</p>
           </div>
         </div>
       </div>
 
-      <div class="form-section-head first">
-        <strong>选择货品</strong>
-      </div>
-      <div class="order-product-list">
-        <button
-          v-for="product in products"
-          :key="product.id"
-          class="order-product-card"
-          :class="{ active: form.title === product.name, empty: craftableCountForProduct(product) <= 0 }"
-          type="button"
-          :aria-pressed="form.title === product.name"
-          @click="emit('product-change', product.name)"
-        >
-          <span class="product-check"><el-icon><Check /></el-icon></span>
-          <strong>{{ product.name }}</strong>
-          <em>¥{{ product.defaultValue || 0 }} · 可制 {{ craftableCountForProduct(product) }}</em>
-        </button>
-      </div>
+      <template v-if="showProductPicker">
+        <div class="form-section-head first">
+          <strong>选择货品</strong>
+        </div>
+        <div class="order-product-list">
+          <button
+            v-for="product in products"
+            :key="product.id"
+            class="order-product-card"
+            :class="{ active: form.title === product.name, empty: craftableCountForProduct(product) <= 0 }"
+            type="button"
+            :aria-pressed="form.title === product.name"
+            @click="emit('product-change', product.name)"
+          >
+            <span class="product-check"><el-icon><Check /></el-icon></span>
+            <strong>{{ product.name }}</strong>
+            <em>¥{{ product.defaultValue || 0 }} · 可制 {{ craftableCountForProduct(product) }}</em>
+          </button>
+        </div>
+      </template>
 
       <div class="form-stack order-fields">
         <div class="form-row">
@@ -127,6 +130,7 @@ const props = defineProps<{
   show: boolean;
   type: OrderEditorType;
   form: Order;
+  showProductPicker: boolean;
   products: Product[];
   calculation: boolean;
   canSyncCalculation: boolean;

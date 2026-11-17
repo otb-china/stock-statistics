@@ -88,10 +88,6 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     return `status-${materialGroupKey(item)}`;
   }
 
-  function productStatusClass(status: Product["status"]) {
-    return `status-${status}`;
-  }
-
   function recipePreview(product: Product) {
     if (!product.recipe.length) return "未配置备料";
     return product.recipe
@@ -112,7 +108,6 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     materialRelatedSummary,
     materialStatusText,
     materialStatusClass,
-    productStatusClass,
     recipePreview,
   };
 }

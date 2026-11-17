@@ -1,6 +1,5 @@
 import type { RSA } from "otb-toolkit/src/types";
 
-export type ManageTab = "materials" | "products";
 export type MaterialGroupKey = "danger" | "warning" | "safe" | "unlinked";
 export type EditorType = "add" | "edit";
 export type OrderEditorType = "add" | "upd";

@@ -27,6 +27,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   const orderInfo = ref({
     type: "add" as OrderEditorType,
     show: false,
+    showProductPicker: true,
     form: createEmptyOrderForm(),
     get data() { return options.orders.value; },
     monthData: [] as (ReturnType<typeof summarizeOrders> & { month: string })[],
@@ -222,6 +223,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       return;
     }
     orderInfo.value.type = "add";
+    orderInfo.value.showProductPicker = product === undefined;
     unitPrice.value = selectedProduct.defaultValue || 0;
     unitCost.value = selectedProduct.defaultCost;
     orderInfo.value.form = {
@@ -300,6 +302,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   function beforeUpd(item: Order) {
     orderInfo.value.type = "upd";
+    orderInfo.value.showProductPicker = true;
     orderInfo.value.editingId = item.id;
     orderInfo.value.form = { ...item };
     unitPrice.value = item.value / item.quantity;
