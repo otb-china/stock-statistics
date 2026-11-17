@@ -1,6 +1,7 @@
 import { computed, ref, type Ref } from "vue";
 import dayjs from "dayjs";
-import { showConfirmDialog, showToast } from "vant";
+import { showConfirmDialog } from "vant";
+import { toastSuccess } from "@/utils/toast";
 import {
   assertValidBackupData,
   normalizeMaterials,
@@ -54,7 +55,7 @@ export function useBackupActions(
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    if (storage.recordExport(backup.createdAt)) showToast("已发起备份下载");
+    if (storage.recordExport(backup.createdAt)) toastSuccess("已发起备份下载");
   }
 
   function onImportFileError(error: string) {
@@ -89,7 +90,7 @@ export function useBackupActions(
     onDataReplaced();
     settingsPopup.value = false;
     importShow.value = false;
-    showToast(message);
+    toastSuccess(message);
   }
 
   function resetAllData() {

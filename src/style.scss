@@ -836,3 +836,60 @@ body {
     background: color-mix(in srgb, var(--accent, #1f6b7b) 42%, var(--surface, #ffffff));
   }
 }
+
+.van-toast.app-toast {
+  top: calc(84px + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(calc(100% - 40px), 420px);
+  min-width: 0;
+  min-height: 0;
+  padding: 12px 18px 12px 12px;
+  border: 1px solid var(--divider, #eef1f5);
+  border-radius: 16px;
+  background: var(--surface, #ffffff);
+  color: var(--text-strong, #223848);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow: 0 12px 32px rgba(15, 30, 45, 0.16), 0 2px 6px rgba(15, 30, 45, 0.06);
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.van-toast.app-toast .van-toast__text {
+  margin: 0;
+}
+
+.van-toast.app-toast::before {
+  content: "i";
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--header-icon-bg, #edf4fb);
+  color: var(--accent-strong, #1f6780);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.van-toast.app-toast.is-success::before {
+  content: "\2713";
+  background: #e3f5ea;
+  color: #1f8a4c;
+}
+
+.van-toast.app-toast.is-error::before {
+  content: "!";
+  background: var(--danger-bg, #fff3f1);
+  color: var(--danger-text, #d05f52);
+}

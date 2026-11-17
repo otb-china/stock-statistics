@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { showToast } from "vant";
+import { toastError } from "@/utils/toast";
 import { LStorage } from "@/utils/localStorage";
 import { createId, normalizeMaterials, normalizeOrders, normalizeProducts } from "@/utils/stockData";
 import type { Order, StockBackup, StockData, StockMovement, StockMovementReason } from "@/types/stock";
@@ -44,7 +44,7 @@ export function useStockRecords() {
   function save(next: StoredRecords) {
     try {
       if (localStorage.getItem(storageKey) !== storedValue) {
-        showToast("数据已在其他页面更新，请刷新后重试");
+        toastError("数据已在其他页面更新，请刷新后重试");
         return false;
       }
       const serialized = JSON.stringify(next);
@@ -53,7 +53,7 @@ export function useStockRecords() {
       records.value = next;
       return true;
     } catch {
-      showToast("数据保存失败，请检查浏览器存储空间后重试");
+      toastError("数据保存失败，请检查浏览器存储空间后重试");
       return false;
     }
   }

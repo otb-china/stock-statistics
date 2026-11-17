@@ -1,5 +1,6 @@
 import { ref, type Ref } from "vue";
-import { showConfirmDialog, showToast } from "vant";
+import { showConfirmDialog } from "vant";
+import { toastSuccess, toastError } from "@/utils/toast";
 import type { useStockRecords } from "./useStockRecords";
 import { createEmptyProductForm, createId, DEFAULT_WARNING_THRESHOLD, isValidAmount, isValidWarningThreshold, moneyCents } from "@/utils/stockData.ts";
 import type { EditorType, Material, Product } from "@/types/stock";
@@ -22,7 +23,7 @@ export function useProductEditor(
 
   function openProductEditor(product?: Product) {
     if (!product && !materials.value.length) {
-      showToast("请先新增备料");
+      toastError("请先新增备料");
       options.openMaterialEditor?.();
       return;
     }
@@ -51,7 +52,7 @@ export function useProductEditor(
     if (!products.value.some((item) => item.id === product.id)) return;
     const nextProducts = products.value.map((item) => item.id === product.id ? { ...item, status: nextStatus } : item);
     if (!commit({ products: nextProducts })) return;
-    showToast(nextStatus === "active" ? "货品已设为正常" : "货品已设为停产");
+    toastSuccess(nextStatus === "active" ? "货品已设为正常" : "货品已设为停产");
   }
 
   function removeRecipeItem(index: number) {
@@ -61,7 +62,7 @@ export function useProductEditor(
   function submitProductEditor() {
     const name = productEditor.value.form.name.trim();
     if (!name) {
-      showToast("请输入货品名称");
+      toastError("请输入货品名称");
       return;
     }
 
@@ -73,30 +74,30 @@ export function useProductEditor(
       }));
 
     if (!validRecipe.length) {
-      showToast("请至少配置一个备料");
+      toastError("请至少配置一个备料");
       return;
     }
 
     const duplicatedMaterial = new Set(validRecipe.map((item) => item.materialId));
     if (duplicatedMaterial.size !== validRecipe.length) {
-      showToast("同一个备料请只配置一次");
+      toastError("同一个备料请只配置一次");
       return;
     }
 
     const duplicated = products.value.some((item) => item.name === name && item.id !== productEditor.value.form.id);
     if (duplicated) {
-      showToast("货品名称已存在");
+      toastError("货品名称已存在");
       return;
     }
 
     const { defaultValue, defaultCost, warningThreshold } = productEditor.value.form;
     const isNew = productEditor.value.type === "add";
     if (!isValidAmount(defaultValue) || ((isNew || defaultCost !== undefined) && !isValidAmount(defaultCost))) {
-      showToast("请输入有效的售价和成本");
+      toastError("请输入有效的售价和成本");
       return;
     }
     if (!isValidWarningThreshold(warningThreshold)) {
-      showToast("预警阈值请输入大于或等于 0 的整数");
+      toastError("预警阈值请输入大于或等于 0 的整数");
       return;
     }
 
@@ -126,7 +127,7 @@ export function useProductEditor(
       className: "danger-dialog",
     }).then(() => {
       if (!commit({ products: products.value.filter((item) => item.id !== id) })) return;
-      showToast("货品已删除");
+      toastSuccess("货品已删除");
     }).catch(() => {
     });
   }

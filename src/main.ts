@@ -8,7 +8,7 @@ import ElementPlus from "element-plus"
 import "element-plus/dist/index.css"
 // Vant组件样式
 import 'vant/lib/index.css';
-import Vant from "vant"
+import Vant, { setToastDefaultOptions } from "vant"
 // 全局样式
 import "otb-toolkit/src/styles/index.scss"
 import "@/style.scss"
@@ -23,6 +23,8 @@ const pinia = createPinia()
 app.use(pinia).use(router).use(ElementPlus).use(Vant)
 
 app.mount('#app')
+
+setToastDefaultOptions({ position: "top", duration: 1800, className: "app-toast" })
 
 setupPopupSwipeClose()
 setupPopupScrollShadow()

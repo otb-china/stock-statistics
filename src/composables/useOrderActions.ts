@@ -1,6 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from "vue";
 import dayjs from "dayjs";
-import { showToast } from "vant";
+import { toastSuccess, toastError } from "@/utils/toast";
 import type { useStockRecords } from "./useStockRecords";
 import { createEmptyOrderForm, createId, isValidAmount, moneyCents, recipeQuantities, summarizeOrders } from "@/utils/stockData.ts";
 import type { Material, Order, OrderEditorType, Product, ProductRecipe } from "@/types/stock";
@@ -194,20 +194,20 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   function openCreateOrder(product?: Product) {
     if (!options.materials.value.length) {
-      showToast("请先新增备料");
+      toastError("请先新增备料");
       options.openMaterialEditor();
       return;
     }
 
     const availableProducts = options.activeProducts.value;
     if (!availableProducts.length) {
-      showToast("请先新增货品");
+      toastError("请先新增货品");
       options.openProductEditor();
       return;
     }
     const selectedProduct = product ? availableProducts.find((item) => item.id === product.id) : availableProducts[0];
     if (!selectedProduct) {
-      showToast("该货品当前无法记单");
+      toastError("该货品当前无法记单");
       return;
     }
     orderInfo.value.type = "add";
@@ -231,15 +231,15 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     const { type, form, editingId, data } = orderInfo.value;
     const { value, cost } = form;
     if (!Number.isSafeInteger(form.quantity) || form.quantity < 1) {
-      showToast("请输入大于 0 的整数件数");
+      toastError("请输入大于 0 的整数件数");
       return;
     }
     if (!form.title || !isValidAmount(value) || !form.orderDate) {
-      showToast("请填写有效的金额和日期");
+      toastError("请填写有效的金额和日期");
       return;
     }
     if (cost !== undefined && !isValidAmount(cost)) {
-      showToast("请输入有效的订单成本");
+      toastError("请输入有效的订单成本");
       return;
     }
     const amounts = { value: moneyCents(value) / 100, cost: moneyCents(cost ?? 0) / 100 };
@@ -250,7 +250,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     if (type === "add") {
       if (calculation.value && !canSyncCalculation.value) {
         calculation.value = false;
-        showToast("库存无法扣减，请确认后仅记录订单");
+        toastError("库存无法扣减，请确认后仅记录订单");
         return;
       }
       const deduction = calculation.value ? orderDeduction.value.items : [];
@@ -285,7 +285,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     const savedMonth = form.orderDate.substring(0, 7);
     if (orderInfo.value.checkedMonth && orderInfo.value.checkedMonth !== savedMonth) monthChange(savedMonth);
     initOrderMonthData();
-    showToast(type === "add" ? "订单已记录" : "订单已保存");
+    toastSuccess(type === "add" ? "订单已记录" : "订单已保存");
   }
 
   function beforeUpd(item: Order) {
@@ -304,14 +304,14 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     if (!order) return;
     const items = returnMaterials ? returnableMaterials.value : [];
     if (returnMaterials && !items.length) {
-      showToast("无法返还该订单的备料");
+      toastError("无法返还该订单的备料");
       return;
     }
     const nextOrders = orderInfo.value.data.filter((item) => item.id !== order.id);
     if (!persistOrderChange(nextOrders, items, order)) return;
     deletingOrderId.value = "";
     initOrderMonthData();
-    showToast(returnMaterials ? "订单已删除，备料已返还" : "订单已删除");
+    toastSuccess(returnMaterials ? "订单已删除，备料已返还" : "订单已删除");
   }
 
   function del(order: Order) {
@@ -325,7 +325,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       const material = stock.get(materialId);
       const balance = Number(((material?.num ?? 0) + quantity).toPrecision(15));
       if (!material || !Number.isFinite(balance) || balance < 0) {
-        showToast(material ? `${material.name}库存不足，无法保存订单` : "原扣料明细中的备料已不存在，无法调整库存");
+        toastError(material ? `${material.name}库存不足，无法保存订单` : "原扣料明细中的备料已不存在，无法调整库存");
         return false;
       }
       balances.set(materialId, balance);

@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from "vue";
-import { showConfirmDialog, showToast } from "vant";
+import { showConfirmDialog } from "vant";
+import { toastSuccess, toastError } from "@/utils/toast";
 import type { useStockRecords } from "./useStockRecords";
 import { createEmptyMaterialForm, createId } from "@/utils/stockData.ts";
 import type { EditorType, Material, MaterialProductLink, Product } from "@/types/stock";
@@ -35,7 +36,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     );
     if (!commit({ materials: nextMaterials }, { reason: "restock" })) return;
     restock.value.show = false;
-    showToast(`已补库存，${material.name}当前库存 ${total}`);
+    toastSuccess(`已补库存，${material.name}当前库存 ${total}`);
   }
 
   function openMaterialEditor(item?: Material) {
@@ -58,20 +59,20 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     if (!materialEditor.value.show) return;
     const name = materialEditor.value.form.name.trim();
     if (!name) {
-      showToast("请输入备料名称");
+      toastError("请输入备料名称");
       return;
     }
 
     const duplicated = materials.value.some((item) => item.name === name && item.id !== materialEditor.value.form.id);
     if (duplicated) {
-      showToast("备料名称已存在");
+      toastError("备料名称已存在");
       return;
     }
 
     const form = materialEditor.value.form;
     const num = Number(form.num ?? 0);
     if (!Number.isFinite(num) || num < 0) {
-      showToast("请输入有效库存");
+      toastError("请输入有效库存");
       return;
     }
     const isNew = materialEditor.value.type === "add";
@@ -84,11 +85,11 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     const quantities = new Map<string, number>();
     for (const { productId, quantity } of isNew ? materialEditor.value.productLinks : []) {
       if (!products.value.some((product) => product.id === productId && product.status === "active")) {
-        showToast("所选货品已停产或删除，请重新选择");
+        toastError("所选货品已停产或删除，请重新选择");
         return;
       }
       if (typeof quantity !== "number" || !Number.isFinite(quantity) || quantity < 1 || quantity > 1000) {
-        showToast("请输入 1 到 1000 之间的每件用量");
+        toastError("请输入 1 到 1000 之间的每件用量");
         return;
       }
       quantities.set(productId, quantity);
@@ -102,7 +103,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     const changes = nextProducts ? { materials: nextMaterials, products: nextProducts } : { materials: nextMaterials };
     if (!commit(changes, { reason: isNew ? "initial" : "adjustment" })) return;
     materialEditor.value.show = false;
-    if (quantities.size) showToast(`已添加备料并关联 ${quantities.size} 款货品`);
+    if (quantities.size) toastSuccess(`已添加备料并关联 ${quantities.size} 款货品`);
   }
 
   function removeMaterial(id: string) {
@@ -118,7 +119,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
         recipe: product.recipe.filter((item) => item.materialId !== id),
       }));
       if (!commit({ materials: nextMaterials, products: nextProducts }, { reason: "removal" })) return;
-      showToast("备料已删除");
+      toastSuccess("备料已删除");
     }).catch(() => {
     });
   }
