@@ -35,11 +35,11 @@
         <div class="form-field">
           <span class="form-label">关联货品 <small>选填</small></span>
           <el-select
+            ref="productSelect"
             :model-value="productLinks.map((link) => link.productId)"
             multiple
-            filterable
             clearable
-            placeholder="搜索并选择货品"
+            placeholder="请选择货品"
             aria-label="关联货品"
             @update:model-value="emit('select-products', $event)"
           >
@@ -49,6 +49,11 @@
               :label="product.name"
               :value="product.id"
             />
+            <template #footer>
+              <el-button class="product-select-done" type="primary" @click="productSelect?.blur()">
+                完成
+              </el-button>
+            </template>
           </el-select>
         </div>
         <div v-if="productLinks.length">
@@ -87,6 +92,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
 import { ArrowRight, Box, Tickets } from "@element-plus/icons-vue";
+import type { SelectInstance } from "element-plus";
 import type { EditorType, Material, MaterialProductLink, Product } from "@/types/stock";
 
 const props = defineProps<{
@@ -106,6 +112,7 @@ const emit = defineEmits<{
 
 const quickSteps = [1, 5, 10, 50];
 const originalNum = ref<number | null>(null);
+const productSelect = ref<SelectInstance>();
 const productNames = computed(() => new Map(props.products.map((product) => [product.id, product.name])));
 
 watch(() => props.show, (show) => {
@@ -128,6 +135,10 @@ function addStock(step: number) {
 }
 
 .product-links :deep(.el-select) {
+  width: 100%;
+}
+
+.product-select-done {
   width: 100%;
 }
 
