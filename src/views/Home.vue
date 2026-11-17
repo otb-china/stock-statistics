@@ -37,6 +37,7 @@
           <span class="income-meta">
             <span>累计流水 ¥{{ orderTotals.revenue }}</span>
             <span>累计净收入 {{ orderTotals.netIncome === undefined ? `待补 ${orderTotals.missingCosts} 单成本` : `¥${orderTotals.netIncome}` }}</span>
+            <span>共 {{ orderInfo.data.length }} 单</span>
           </span>
           <span class="income-deco" aria-hidden="true"></span>
         </div>
