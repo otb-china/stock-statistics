@@ -838,7 +838,7 @@ body {
 }
 
 .van-toast.app-toast {
-  top: calc(84px + env(safe-area-inset-top));
+  top: calc(112px + env(safe-area-inset-top));
   display: flex;
   flex-direction: row;
   align-items: center;
