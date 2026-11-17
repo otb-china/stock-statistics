@@ -127,7 +127,7 @@ const emit = defineEmits<{
   "select-products": [productIds: string[]];
 }>();
 
-const quickSteps = [1, 5, 10, 50];
+const quickSteps = [2, 5, 10];
 const originalNum = ref<number | null>(null);
 const productPickerShow = ref(false);
 const productNames = computed(() => new Map(props.products.map((product) => [product.id, product.name])));
