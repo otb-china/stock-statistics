@@ -34,27 +34,19 @@
       <div v-if="type === 'add' && products.length" class="form-stack product-links">
         <div class="form-field">
           <span class="form-label">关联货品 <small>选填</small></span>
-          <el-select
-            ref="productSelect"
-            :model-value="productLinks.map((link) => link.productId)"
-            multiple
-            clearable
-            placeholder="请选择货品"
+          <button
+            class="product-picker-trigger"
+            :class="{ selected: productLinks.length }"
+            type="button"
             aria-label="关联货品"
-            @update:model-value="emit('select-products', $event)"
+            aria-haspopup="dialog"
+            :aria-expanded="productPickerShow"
+            data-no-swipe-close
+            @click="openProductPicker"
           >
-            <el-option
-              v-for="product in products"
-              :key="product.id"
-              :label="product.name"
-              :value="product.id"
-            />
-            <template #footer>
-              <el-button class="product-select-done" type="primary" @click="productSelect?.blur()">
-                完成
-              </el-button>
-            </template>
-          </el-select>
+            <span>{{ selectedProductsText || "请选择货品" }}</span>
+            <el-icon aria-hidden="true"><ArrowDown /></el-icon>
+          </button>
         </div>
         <div v-if="productLinks.length">
           <span class="form-label">每件用量</span>
@@ -87,12 +79,25 @@
       </el-button>
     </div>
   </van-popup>
+
+  <van-popup v-model:show="productPickerShow" position="bottom" round destroy-on-close aria-label="关联货品">
+    <div class="popup-body">
+      <div class="popup-head">
+        <div class="popup-title"><h3>关联货品</h3></div>
+      </div>
+      <van-checkbox-group v-model="selectedProductIds" class="product-options" data-no-swipe-close>
+        <van-checkbox v-for="product in products" :key="product.id" :name="product.id">
+          {{ product.name }}
+        </van-checkbox>
+      </van-checkbox-group>
+      <el-button class="submit-button" type="primary" @click="productPickerShow = false">完成</el-button>
+    </div>
+  </van-popup>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
-import { ArrowRight, Box, Tickets } from "@element-plus/icons-vue";
-import type { SelectInstance } from "element-plus";
+import { ArrowDown, ArrowRight, Box, Tickets } from "@element-plus/icons-vue";
 import type { EditorType, Material, MaterialProductLink, Product } from "@/types/stock";
 
 const props = defineProps<{
@@ -112,11 +117,17 @@ const emit = defineEmits<{
 
 const quickSteps = [1, 5, 10, 50];
 const originalNum = ref<number | null>(null);
-const productSelect = ref<SelectInstance>();
+const productPickerShow = ref(false);
 const productNames = computed(() => new Map(props.products.map((product) => [product.id, product.name])));
+const selectedProductIds = computed({
+  get: () => props.productLinks.map((link) => link.productId),
+  set: (ids: string[]) => emit("select-products", ids),
+});
+const selectedProductsText = computed(() => selectedProductIds.value.map((id) => productNames.value.get(id)).filter(Boolean).join("、"));
 
 watch(() => props.show, (show) => {
   if (show) originalNum.value = props.type === "edit" ? props.form.num : null;
+  else productPickerShow.value = false;
 }, { immediate: true });
 
 const popupShow = computed({
@@ -127,6 +138,12 @@ const popupShow = computed({
 function addStock(step: number) {
   props.form.num = Math.min(100000, Number(((props.form.num || 0) + step).toPrecision(15)));
 }
+
+function openProductPicker() {
+  const focused = document.activeElement;
+  if (focused instanceof HTMLInputElement) focused.blur();
+  productPickerShow.value = true;
+}
 </script>
 
 <style lang="scss" scoped>
@@ -134,12 +151,50 @@ function addStock(step: number) {
   margin-top: 16px;
 }
 
-.product-links :deep(.el-select) {
+.product-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   width: 100%;
+  min-height: 46px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--field-bg);
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 
-.product-select-done {
-  width: 100%;
+.product-picker-trigger.selected {
+  color: var(--text-strong);
+}
+
+.product-picker-trigger span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-picker-trigger .el-icon {
+  flex-shrink: 0;
+}
+
+.product-options {
+  max-height: 44vh;
+  overflow-y: auto;
+}
+
+.product-options :deep(.van-checkbox) {
+  min-height: 44px;
+  padding: 6px 0;
+}
+
+.product-options + .submit-button {
+  margin-top: 16px;
 }
 
 .product-link-row {
