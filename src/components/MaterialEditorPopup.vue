@@ -11,27 +11,32 @@
         </div>
       </div>
 
-      <div class="form-stack">
-        <label class="form-field">
-          <span class="form-label">备料名称</span>
-          <el-input v-model="form.name" placeholder="例如：珍珠、包装盒" maxlength="30" clearable />
-        </label>
+      <section class="editor-section">
+        <div class="form-section-head">
+          <strong>基础信息</strong>
+        </div>
+        <div class="form-stack">
+          <label class="form-field">
+            <span class="form-label">备料名称</span>
+            <el-input v-model="form.name" placeholder="例如：珍珠、包装盒" maxlength="30" clearable />
+          </label>
 
-        <div class="form-field">
-          <span class="form-label">
-            库存数量
-            <small v-if="type === 'edit' && originalNum !== null && form.num !== originalNum">
-              原库存 {{ originalNum }} → {{ form.num }}
-            </small>
-          </span>
-          <el-input-number v-model="form.num" :min="0" :max="100000" aria-label="库存数量" />
-          <div class="quick-steps">
-            <button v-for="step in quickSteps" :key="step" type="button" @click="addStock(step)">+{{ step }}</button>
+          <div class="form-field">
+            <span class="form-label">
+              库存数量
+              <small v-if="type === 'edit' && originalNum !== null && form.num !== originalNum">
+                原库存 {{ originalNum }} → {{ form.num }}
+              </small>
+            </span>
+            <el-input-number v-model="form.num" :min="0" :max="100000" aria-label="库存数量" />
+            <div class="quick-steps">
+              <button v-for="step in quickSteps" :key="step" type="button" @click="addStock(step)">+{{ step }}</button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <section v-if="type === 'add' && products.length" class="product-links">
+      <section v-if="type === 'add' && products.length" class="editor-section">
         <div class="form-section-head">
           <strong>关联货品 <small v-if="productLinks.length">{{ productLinks.length }}</small></strong>
           <span class="section-optional">选填</span>
@@ -154,14 +159,41 @@ function openProductPicker() {
 </script>
 
 <style lang="scss" scoped>
-.product-links {
-  margin-top: 24px;
-  padding-top: 4px;
-  border-top: 1px solid var(--divider);
+.editor-section {
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--surface-muted);
 }
 
-.product-links .form-section-head {
-  margin-top: 18px;
+.editor-section + .editor-section {
+  margin-top: 12px;
+}
+
+.editor-section .form-section-head {
+  margin: 0 0 14px;
+}
+
+.editor-section :deep(.el-input__wrapper) {
+  background: var(--surface);
+}
+
+.editor-section :deep(.el-input-number__decrease),
+.editor-section :deep(.el-input-number__increase) {
+  background: var(--surface-muted);
+  box-shadow: none;
+}
+
+.editor-section :deep(.el-input-number__decrease.is-disabled),
+.editor-section :deep(.el-input-number__increase.is-disabled) {
+  background: transparent;
+}
+
+.editor-section .product-picker-trigger {
+  background: var(--surface);
+}
+
+.editor-section .form-section-head strong small {
+  background: var(--surface);
 }
 
 .section-optional {
