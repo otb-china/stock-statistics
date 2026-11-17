@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
 import { showConfirmDialog, showToast } from "vant";
 import type { useStockRecords } from "./useStockRecords";
-import { createEmptyProductForm, createId, isValidAmount, moneyCents } from "@/utils/stockData.ts";
+import { createEmptyProductForm, createId, DEFAULT_WARNING_THRESHOLD, isValidAmount, isValidWarningThreshold, moneyCents } from "@/utils/stockData.ts";
 import type { EditorType, Material, Product } from "@/types/stock";
 
 interface UseProductEditorOptions {
@@ -31,6 +31,7 @@ export function useProductEditor(
     productEditor.value.form = product
       ? {
         ...product,
+        warningThreshold: product.warningThreshold ?? DEFAULT_WARNING_THRESHOLD,
         recipe: product.recipe.map((item) => ({ ...item })),
       }
       : createEmptyProductForm();
@@ -88,10 +89,14 @@ export function useProductEditor(
       return;
     }
 
-    const { defaultValue, defaultCost } = productEditor.value.form;
+    const { defaultValue, defaultCost, warningThreshold } = productEditor.value.form;
     const isNew = productEditor.value.type === "add";
     if (!isValidAmount(defaultValue) || ((isNew || defaultCost !== undefined) && !isValidAmount(defaultCost))) {
       showToast("请输入有效的售价和成本");
+      return;
+    }
+    if (!isValidWarningThreshold(warningThreshold)) {
+      showToast("预警阈值请输入大于或等于 0 的整数");
       return;
     }
 
@@ -100,6 +105,7 @@ export function useProductEditor(
       name,
       defaultValue: moneyCents(defaultValue) / 100,
       defaultCost: moneyCents(defaultCost ?? 0) / 100,
+      warningThreshold,
       status: productEditor.value.form.status,
       recipe: validRecipe,
     };

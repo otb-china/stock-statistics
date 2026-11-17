@@ -25,11 +25,12 @@ export interface Product extends RSA {
   name: string;
   defaultValue: number;
   defaultCost?: number;
+  warningThreshold?: number;
   status: "active" | "inactive";
   recipe: ProductRecipe[];
 }
 
-export type ProductEditorForm = Pick<Product, "id" | "name" | "status" | "recipe" | "defaultCost"> & { defaultValue?: number };
+export type ProductEditorForm = Pick<Product, "id" | "name" | "status" | "recipe" | "defaultCost" | "warningThreshold"> & { defaultValue?: number };
 
 export interface Order extends RSA {
   id: string;

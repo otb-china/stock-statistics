@@ -32,7 +32,7 @@
           <small class="product-meta">{{ product.recipe.length ? "关联 " + product.recipe.length + " 种备料" : "未配置备料" }}</small>
         </button>
         <template v-if="!group.inactive">
-          <span class="product-count" :class="countClass(craftableCountForProduct(product))">
+          <span class="product-count" :class="'is-' + craftableStatus(craftableCountForProduct(product), product.warningThreshold)">
             <strong>{{ craftableCountForProduct(product) }}</strong>
             <small>可制</small>
           </span>
@@ -49,6 +49,7 @@
 import { computed } from "vue";
 import { ArrowDown, Delete, RefreshLeft, VideoPause } from "@element-plus/icons-vue";
 import SwipeRow from "@/components/SwipeRow.vue";
+import { craftableStatus } from "@/utils/stockData";
 import type { Product } from "@/types/stock";
 
 const props = defineProps<{
@@ -63,11 +64,6 @@ const emit = defineEmits<{
   remove: [id: string];
 }>();
 
-function countClass(count: number) {
-  if (count <= 0) return "is-danger";
-  if (count < 2) return "is-warning";
-  return "";
-}
 const groups = computed(() => {
   const visible = props.products;
   return [

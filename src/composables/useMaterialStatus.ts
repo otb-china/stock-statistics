@@ -1,6 +1,6 @@
 import { computed, type Ref } from "vue";
 import type { Material, MaterialGroupKey, Product } from "@/types/stock";
-import { recipeQuantities } from "@/utils/stockData";
+import { craftableStatus, recipeQuantities } from "@/utils/stockData";
 
 type ProductWithRecipe = Pick<Product, "id" | "recipe">;
 
@@ -58,12 +58,14 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
 
   function materialStatus(item: Material) {
     if (Number(item.num) <= 0) return "danger";
-    const list = activeRelatedProducts(item.id);
-    if (!list.length) return "safe";
-    const count = materialCraftableCount(item.id);
-    if (count <= 0) return "danger";
-    if (count < 2) return "warning";
-    return "safe";
+    let status: "warning" | "safe" = "safe";
+    for (const product of activeRelatedProducts(item.id)) {
+      const quantity = recipeQuantities(product.recipe).get(item.id) ?? 0;
+      const relatedStatus = craftableStatus(materialCapacity(item.id, quantity), product.warningThreshold);
+      if (relatedStatus === "danger") return "danger";
+      if (relatedStatus === "warning") status = "warning";
+    }
+    return status;
   }
 
   function materialGroupKey(item: Material): MaterialGroupKey {

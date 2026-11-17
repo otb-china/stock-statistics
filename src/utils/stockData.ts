@@ -38,8 +38,20 @@ export function createEmptyProductForm(): ProductEditorForm {
     id: "",
     name: "",
     status: "active",
+    warningThreshold: DEFAULT_WARNING_THRESHOLD,
     recipe: [],
   };
+}
+
+export const DEFAULT_WARNING_THRESHOLD = 1;
+
+export function isValidWarningThreshold(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+export function craftableStatus(count: number, threshold = DEFAULT_WARNING_THRESHOLD) {
+  if (count <= 0) return "danger";
+  return count <= threshold ? "warning" : "safe";
 }
 
 export function createEmptyOrderForm(): Order {
@@ -94,6 +106,7 @@ export function normalizeProducts(list: RSA[] | undefined): Product[] {
       name: String(item.name || ""),
       defaultValue: Number(item.defaultValue ?? item.value ?? 0),
       defaultCost: isValidAmount(item.defaultCost) ? moneyCents(item.defaultCost) / 100 : 0,
+      warningThreshold: isValidWarningThreshold(item.warningThreshold) ? item.warningThreshold : DEFAULT_WARNING_THRESHOLD,
       status,
       recipe: Array.isArray(item.recipe)
         ? item.recipe
@@ -170,6 +183,9 @@ function isStockMovement(value: unknown): value is StockMovement {
 }
 
 export function assertValidBackupData({ materials, products, orders }: ResolvedBackupData) {
+  if (products.some((product) => product?.warningThreshold !== undefined && !isValidWarningThreshold(product.warningThreshold))) {
+    throw new Error("货品预警阈值无效");
+  }
   if (products.some((product) => product?.defaultCost != null && !isValidAmount(product.defaultCost))
     || orders.some((order) => order?.cost != null && !isValidAmount(order.cost))) {
     throw new Error("成本金额无效");

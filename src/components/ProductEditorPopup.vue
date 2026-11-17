@@ -48,6 +48,16 @@
             </el-input-number>
           </label>
         </div>
+        <div class="form-field">
+          <span class="form-label">预警阈值 <small>可制件数小于或等于此值时预警</small></span>
+          <el-input-number
+            :model-value="form.warningThreshold"
+            :min="0"
+            :precision="0"
+            aria-label="预警阈值"
+            @update:model-value="form.warningThreshold = $event ?? undefined"
+          />
+        </div>
       </div>
 
       <div v-if="type === 'edit' && limitingMaterials" class="info-tip">
@@ -146,7 +156,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { Check, Close, Goods, InfoFilled, Plus, Search } from "@element-plus/icons-vue";
-import { isValidAmount } from "@/utils/stockData";
+import { isValidAmount, isValidWarningThreshold } from "@/utils/stockData";
 import type { EditorType, Material, ProductEditorForm } from "@/types/stock";
 
 const props = defineProps<{
@@ -206,8 +216,8 @@ function confirmPicker() {
 }
 
 const canSubmit = computed(() => {
-  const { name, recipe, defaultValue, defaultCost } = props.form;
-  return Boolean(name.trim() && recipe.length && isValidAmount(defaultValue)
+  const { name, recipe, defaultValue, defaultCost, warningThreshold } = props.form;
+  return Boolean(name.trim() && recipe.length && isValidAmount(defaultValue) && isValidWarningThreshold(warningThreshold)
     && (props.type === "edit" && defaultCost === undefined || isValidAmount(defaultCost)));
 });
 </script>
