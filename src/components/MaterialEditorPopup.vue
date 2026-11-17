@@ -53,7 +53,7 @@
         </div>
         <div v-if="productLinks.length">
           <span class="form-label">每件用量</span>
-          <label v-for="link in productLinks" :key="link.productId" class="product-link-row">
+          <div v-for="link in productLinks" :key="link.productId" class="product-link-row">
             <span>{{ productNames.get(link.productId) }}</span>
             <el-input-number
               v-model="link.quantity"
@@ -61,7 +61,7 @@
               :max="1000"
               :aria-label="`${productNames.get(link.productId)}每件用量`"
             />
-          </label>
+          </div>
         </div>
       </div>
 
