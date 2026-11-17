@@ -769,13 +769,18 @@ body {
 .popup-body > .submit-button,
 .popup-body > form > .submit-button {
   position: sticky;
-  bottom: calc(22px + env(safe-area-inset-bottom));
+  bottom: calc(12px + env(safe-area-inset-bottom));
   z-index: 5;
-  margin-top: 46px;
+  margin-top: 20px;
   box-shadow:
+    0 0 0 12px var(--surface, #ffffff),
     0 0 0 18px var(--surface, #ffffff),
-    0 60px 0 18px var(--surface, #ffffff),
-    0 -16px 12px 10px var(--surface, #ffffff);
+    0 40px 0 18px var(--surface, #ffffff);
+}
+
+.popup-body:has(> .submit-button),
+.popup-body:has(> form > .submit-button) {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 .popup-body > .submit-button.is-disabled,

@@ -981,7 +981,6 @@ button.block-title {
   margin-right: -6px;
   padding-right: 6px;
   overflow-y: auto;
-  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--divider) transparent;
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
