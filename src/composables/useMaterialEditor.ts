@@ -83,8 +83,8 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
 
     const quantities = new Map<string, number>();
     for (const { productId, quantity } of isNew ? materialEditor.value.productLinks : []) {
-      if (!products.value.some((product) => product.id === productId)) {
-        showToast("所选货品已不存在，请重新选择");
+      if (!products.value.some((product) => product.id === productId && product.status === "active")) {
+        showToast("所选货品已停产或删除，请重新选择");
         return;
       }
       if (typeof quantity !== "number" || !Number.isFinite(quantity) || quantity < 1 || quantity > 1000) {

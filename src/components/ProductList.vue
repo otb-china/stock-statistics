@@ -37,20 +37,16 @@
         ]"
       >
       <div class="product-item" :class="{ inactive: group.inactive }">
-        <button class="product-main" type="button" :aria-label="`编辑${product.name}`" @click="emit('edit', product)">
+        <button class="product-main" type="button" :aria-label="'编辑' + product.name" @click="emit('edit', product)">
           <span class="product-title">{{ product.name }}</span>
-          <span class="product-prices">
-            <b>¥{{ product.defaultValue ?? 0 }}</b>
-            <template v-if="product.defaultCost !== undefined"><i>成本 ¥{{ product.defaultCost }}</i></template>
-          </span>
-          <small class="product-recipe">{{ recipePreview(product) }}</small>
         </button>
-        <div v-if="!group.inactive" class="product-side">
+        <template v-if="!group.inactive">
           <span class="product-count" :class="countClass(craftableCountForProduct(product))">
-            可制 <strong>{{ craftableCountForProduct(product) }}</strong>
+            <strong>{{ craftableCountForProduct(product) }}</strong>
+            <small>可制</small>
           </span>
-          <button class="product-order" type="button" :aria-label="`为${product.name}记单`" @click="emit('order', product)">记单</button>
-        </div>
+          <button class="product-order" type="button" :aria-label="'为' + product.name + '记单'" @click="emit('order', product)">记单</button>
+        </template>
         <span v-else class="product-paused">已停产</span>
       </div>
       </SwipeRow>
@@ -70,7 +66,6 @@ import type { Product } from "@/types/stock";
 const props = defineProps<{
   products: Product[];
   craftableCountForProduct: (product: Product) => number;
-  recipePreview: (product: Product) => string;
   sharedMaterials: (product: Product) => string;
 }>();
 
@@ -144,7 +139,8 @@ details[open] .summary-arrow {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px 12px 14px;
+  min-height: 56px;
+  padding: 8px 10px 8px 14px;
   border-radius: 14px;
   background: var(--surface-soft);
 }
@@ -156,7 +152,7 @@ details[open] .summary-arrow {
 .product-main {
   display: grid;
   flex: 1;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -176,51 +172,26 @@ details[open] .summary-arrow {
   white-space: nowrap;
 }
 
-.product-prices {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 12px;
-}
-
-.product-prices b {
-  color: var(--accent-strong);
-  font-size: 14px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.product-prices i {
-  color: var(--text-muted);
-  font-style: normal;
-}
-
-.product-recipe {
-  overflow: hidden;
-  color: var(--text-subtle);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.product-side {
+.product-count {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
   flex-shrink: 0;
-}
-
-.product-count {
-  color: var(--text-muted);
-  font-size: 12px;
-  white-space: nowrap;
+  min-width: 40px;
+  line-height: 1.1;
 }
 
 .product-count strong {
   color: var(--accent-strong);
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+.product-count small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .product-count.is-warning strong {
@@ -232,14 +203,16 @@ details[open] .summary-arrow {
 }
 
 .product-order {
-  padding: 6px 14px;
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 14px;
   border: 0;
   border-radius: 999px;
   background: var(--surface);
   color: var(--accent-strong);
   box-shadow: 0 0 0 1px var(--accent-border) inset;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }

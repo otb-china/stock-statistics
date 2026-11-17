@@ -99,7 +99,6 @@
         <ProductList
           :products="productsList"
           :craftable-count-for-product="craftableCountForProduct"
-          :recipe-preview="recipePreview"
           :shared-materials="sharedMaterials"
           @edit="openProductEditor"
           @order="openCreateOrder"
@@ -211,7 +210,7 @@
       v-model:show="materialEditor.show"
       :type="materialEditor.type"
       :form="materialEditor.form"
-      :products="products"
+      :products="activeProducts"
       :product-links="materialEditor.productLinks"
       @select-products="setMaterialLinkedProducts"
       @submit="submitMaterialEditor"
@@ -406,7 +405,6 @@ const {
   materialGroupKey,
   materialRelatedSummary,
   materialStatusText,
-  recipePreview,
 } = useMaterialStatus(data, products);
 
 const {
