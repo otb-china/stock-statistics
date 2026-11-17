@@ -1,7 +1,7 @@
 import { ref, type Ref } from "vue";
 import { showConfirmDialog, showToast } from "vant";
 import type { useStockRecords } from "./useStockRecords";
-import { createEmptyProductForm, createId } from "@/utils/stockData.ts";
+import { createEmptyProductForm, createId, isValidAmount, moneyCents } from "@/utils/stockData.ts";
 import type { EditorType, Material, Product } from "@/types/stock";
 
 interface UseProductEditorOptions {
@@ -114,10 +114,18 @@ export function useProductEditor(
       return;
     }
 
+    const { defaultValue, defaultCost } = productEditor.value.form;
+    const price = defaultValue ?? 0;
+    if (!isValidAmount(price) || (defaultCost !== undefined && !isValidAmount(defaultCost))) {
+      showToast("请输入有效的售价和成本");
+      return;
+    }
+
     const productPayload: Product = {
       id: productEditor.value.form.id || createId("product"),
       name,
-      defaultValue: Number(productEditor.value.form.defaultValue || 0),
+      defaultValue: moneyCents(price) / 100,
+      defaultCost: defaultCost === undefined ? undefined : moneyCents(defaultCost) / 100,
       status: productEditor.value.form.status,
       recipe: validRecipe,
     };

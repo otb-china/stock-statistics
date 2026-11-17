@@ -21,12 +21,22 @@
     <main class="page-main">
       <section class="overview">
         <div class="income-card">
-          <span class="income-label">本月收入</span>
-          <strong class="income-value"><small>¥</small>{{ currentMonthIncome }}</strong>
+          <div class="income-metrics">
+            <div>
+              <span class="income-label">本月流水</span>
+              <strong class="income-value"><small>¥</small>{{ currentMonthTotals.revenue }}</strong>
+            </div>
+            <div>
+              <span class="income-label">本月净收入</span>
+              <strong v-if="currentMonthTotals.netIncome === undefined" class="income-pending">
+                {{ currentMonthTotals.missingCosts }} 单待补成本
+              </strong>
+              <strong v-else class="income-value"><small>¥</small>{{ currentMonthTotals.netIncome }}</strong>
+            </div>
+          </div>
           <span class="income-meta">
-            <span>累计 ¥{{ orderTotal }}</span>
-            <span class="income-dot"></span>
-            <span>共 {{ orderInfo.data.length }} 单</span>
+            <span>累计流水 ¥{{ orderTotals.revenue }}</span>
+            <span>累计净收入 {{ orderTotals.netIncome === undefined ? `待补 ${orderTotals.missingCosts} 单成本` : `¥${orderTotals.netIncome}` }}</span>
           </span>
           <span class="income-deco" aria-hidden="true"></span>
         </div>
@@ -133,7 +143,8 @@
             @click="monthChange('')"
           >
             <span>全部</span>
-            <strong>¥{{ orderTotal }}</strong>
+            <strong>流水 ¥{{ orderTotals.revenue }}</strong>
+            <small>净收入 {{ orderTotals.netIncome === undefined ? '待补成本' : `¥${orderTotals.netIncome}` }}</small>
           </button>
           <button
             v-for="item in orderInfo.monthData"
@@ -145,7 +156,8 @@
             @click="monthChange(item.month)"
           >
             <span>{{ formatMonth(item.month) }}</span>
-            <strong>¥{{ item.value }}</strong>
+            <strong>流水 ¥{{ item.revenue }}</strong>
+            <small>净收入 {{ item.netIncome === undefined ? '待补成本' : `¥${item.netIncome}` }}</small>
           </button>
         </div>
 
@@ -165,9 +177,12 @@
               <span class="order-avatar" aria-hidden="true">{{ item.title.slice(0, 1) }}</span>
               <span class="order-info">
                 <strong>{{ item.title }}<em>× {{ item.quantity }}</em></strong>
-                <small>{{ item.orderDate }}</small>
+                <small>{{ item.orderDate }} · {{ item.cost === undefined ? '待补成本' : `成本 ¥${item.cost}` }}</small>
               </span>
-              <span class="order-amount">¥{{ item.value }}</span>
+              <span class="order-amount">
+                <span>售价 ¥{{ item.value }}</span>
+                <small v-if="item.cost !== undefined">净收入 ¥{{ (moneyCents(item.value) - moneyCents(item.cost)) / 100 }}</small>
+              </span>
             </button>
             <RowActions :label="item.title + '订单'" :actions="[
               { name: '删除订单', color: '#c63535', callback: () => del(item) },
@@ -192,7 +207,7 @@
             {{
               !data.length
                 ? "先配置备料，再配置货品，之后就可以记录订单。"
-                : (products.length ? "新增订单后，这里会按月份汇总收入。" : "先配置货品，再开始记录订单。")
+                : (products.length ? "新增订单后，这里会按月份汇总流水和净收入。" : "先配置货品，再开始记录订单。")
             }}
           </span>
           <button v-if="!orderInfo.data.length" class="ghost-btn" type="button" @click="openImportExport">导入备份</button>
@@ -332,6 +347,7 @@
       @date-change="setOrderDate"
       @quantity-change="setOrderQuantity"
       @value-change="setOrderValue"
+      @cost-change="setOrderCost"
       @submit="orderSubmit"
     />
     <van-action-sheet
@@ -350,6 +366,7 @@ import RowActions from "@/components/RowActions.vue";
 import StockHistoryPopup from "@/components/StockHistoryPopup.vue";
 import { useStockRecords } from "@/composables/useStockRecords";
 import { LStorage } from "@/utils/localStorage.ts";
+import { moneyCents, summarizeOrders } from "@/utils/stockData";
 import ImportDataPopup from "@/components/ImportDataPopup.vue";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
 import MaterialManagePopup from "@/components/MaterialManagePopup.vue";
@@ -454,7 +471,7 @@ const {
   orderSearch,
   visibleOrders,
   collapsedOrdersCount,
-  orderTotal,
+  orderTotals,
   activeOrderProducts,
   canSyncCalculation,
   deductionMessage,
@@ -467,6 +484,7 @@ const {
   setOrderDate,
   setOrderQuantity,
   setOrderValue,
+  setOrderCost,
   onProductChange,
   openCreateOrder,
   orderSubmit,
@@ -591,9 +609,9 @@ const maxCraftableCount = computed(() => {
   return Math.max(1, ...craftableProducts.value.map((item) => craftableCountForProduct(item)));
 });
 
-const currentMonthIncome = computed(() => {
+const currentMonthTotals = computed(() => {
   const month = dayjs().format("YYYY-MM");
-  return orderInfo.value.monthData.find((item) => item.month === month)?.value ?? 0;
+  return orderInfo.value.monthData.find((item) => item.month === month) ?? summarizeOrders([]);
 });
 
 const todayText = dayjs().format("M月D日") + " · " + ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dayjs().day()];
@@ -789,14 +807,27 @@ onUnmounted(() => {
 }
 
 
+.income-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
 .income-label {
   font-size: 13px;
   opacity: 0.82;
 }
 
-.income-value {
+.income-value,
+.income-pending {
+  display: block;
   margin-top: 8px;
-  font-size: 36px;
+  overflow-wrap: anywhere;
+}
+
+.income-value {
+  font-size: clamp(24px, 7vw, 36px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -809,23 +840,20 @@ onUnmounted(() => {
   font-weight: 600;
 }
 
+.income-pending {
+  font-size: 16px;
+}
+
 .income-meta {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-top: 14px;
   padding: 5px 10px;
-  border-radius: 999px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.16);
   font-size: 12px;
-}
-
-.income-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.6;
 }
 
 .income-deco {
@@ -1102,11 +1130,13 @@ onUnmounted(() => {
 }
 
 .month-chip span,
-.month-chip strong {
+.month-chip strong,
+.month-chip small {
   display: block;
 }
 
-.month-chip span {
+.month-chip span,
+.month-chip small {
   color: var(--text-muted);
   font-size: 11px;
 }
@@ -1124,7 +1154,8 @@ onUnmounted(() => {
   box-shadow: 0 6px 14px var(--accent-ring);
 }
 
-.month-chip.active span {
+.month-chip.active span,
+.month-chip.active small {
   color: rgba(255, 255, 255, 0.78);
 }
 
@@ -1213,6 +1244,15 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.order-amount small {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .order-row :deep(.row-actions-button) {

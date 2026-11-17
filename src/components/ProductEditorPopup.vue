@@ -6,29 +6,39 @@
           <span class="popup-icon"><el-icon><Goods /></el-icon></span>
           <div>
             <h3>{{ type === "add" ? "新增货品" : "编辑货品" }}</h3>
-            <p>设置售价和配方，下单时会自动带出金额并扣减备料。</p>
+            <p>单件售价和成本会自动带入新订单。</p>
           </div>
         </div>
       </div>
 
-      <div class="form-row product-basic">
+      <div class="form-stack">
         <label class="form-field">
           <span class="form-label">货品名称</span>
           <el-input v-model="form.name" placeholder="例如：珍珠手链" maxlength="30" clearable />
         </label>
 
-        <label class="form-field">
-          <span class="form-label">单价</span>
-          <el-input-number
-            v-model="form.defaultValue"
-            :min="0"
-            :max="100000"
-            :controls="false"
-            aria-label="单价"
-          >
-            <template #prefix>¥</template>
-          </el-input-number>
-        </label>
+        <div class="form-row">
+          <label class="form-field">
+            <span class="form-label">单件售价</span>
+            <el-input-number v-model="form.defaultValue" :min="0" :max="100000" :precision="2" :controls="false" aria-label="单件售价">
+              <template #prefix>¥</template>
+            </el-input-number>
+          </label>
+          <label class="form-field">
+            <span class="form-label">单件成本</span>
+            <el-input-number
+              :model-value="form.defaultCost"
+              :min="0"
+              :precision="2"
+              :controls="false"
+              placeholder="待填写"
+              aria-label="单件成本"
+              @update:model-value="form.defaultCost = $event ?? undefined"
+            >
+              <template #prefix>¥</template>
+            </el-input-number>
+          </label>
+        </div>
       </div>
 
       <div v-if="type === 'edit' && limitingMaterials" class="info-tip">
@@ -124,10 +134,6 @@ const canSubmit = computed(() => props.form.name.trim() && props.form.recipe.len
 </script>
 
 <style lang="scss" scoped>
-.product-basic {
-  grid-template-columns: minmax(0, 1fr) 120px;
-}
-
 .recipe-list {
   display: grid;
   gap: 8px;
@@ -221,10 +227,6 @@ const canSubmit = computed(() => props.form.name.trim() && props.form.recipe.len
 }
 
 @media (max-width: 400px) {
-  .product-basic {
-    grid-template-columns: minmax(0, 1fr) 104px;
-  }
-
   .recipe-row {
     grid-template-columns: minmax(0, 1fr) 116px 30px;
   }

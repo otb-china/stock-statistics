@@ -41,7 +41,7 @@
                 </span>
               </span>
               <span class="product-meta">
-                <b>¥{{ product.defaultValue || 0 }}</b>
+                <b>售价 ¥{{ product.defaultValue || 0 }} · {{ product.defaultCost === undefined ? '待填成本' : `成本 ¥${product.defaultCost}` }}</b>
                 <small>{{ recipePreview(product) }}</small>
               </span>
             </span>
@@ -167,15 +167,13 @@ const popupShow = computed({
 }
 
 .product-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  display: grid;
+  gap: 3px;
   margin-top: 6px;
   min-width: 0;
 }
 
 .product-meta b {
-  flex: 0 0 auto;
   color: var(--text-main);
   font-size: 13px;
 }

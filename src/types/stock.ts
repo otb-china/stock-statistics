@@ -20,6 +20,7 @@ export interface Product extends RSA {
   id: string;
   name: string;
   defaultValue: number;
+  defaultCost?: number;
   status: "active" | "inactive";
   recipe: ProductRecipe[];
 }
@@ -28,6 +29,7 @@ export interface Order extends RSA {
   id: string;
   title: string;
   value: number;
+  cost?: number;
   orderDate: string;
   quantity: number;
   deductedMaterials?: ProductRecipe[];
@@ -65,11 +67,6 @@ export interface StockData {
 
 export interface StockBackup extends StockData {
   createdAt: string;
-}
-
-export interface OrderMonth {
-  month: string;
-  value: number;
 }
 
 export interface BackupData extends RSA {

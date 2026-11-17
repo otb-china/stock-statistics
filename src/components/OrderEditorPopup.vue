@@ -6,7 +6,6 @@
           <span class="popup-icon"><el-icon><Tickets /></el-icon></span>
           <div>
             <h3>{{ type === "add" ? "新增订单" : "编辑订单" }}</h3>
-            <p>{{ type === "add" ? "选择货品后会自动带出收入金额。" : "调整订单信息后保存。" }}</p>
           </div>
         </div>
       </div>
@@ -42,28 +41,49 @@
               @update:model-value="emit('quantity-change', $event ?? 0)"
             />
           </div>
+          <div class="form-field">
+            <span class="form-label">下单日期</span>
+            <DatePicker
+              class-name="date-control"
+              placeholder="选择下单日期"
+              :default-date="form.orderDate"
+              @date-change="emit('date-change', $event)"
+            />
+          </div>
+        </div>
+
+        <div class="form-row">
           <label class="form-field">
-            <span class="form-label">订单总金额</span>
+            <span class="form-label">总售价</span>
             <van-field
               :model-value="Number.isFinite(form.value) ? form.value : ''"
               type="number"
-              placeholder="收入金额"
+              placeholder="实收金额"
+              aria-label="总售价"
               clearable
               @update:model-value="emit('value-change', $event)"
             >
               <template #left-icon><span class="currency">¥</span></template>
             </van-field>
           </label>
+          <label class="form-field">
+            <span class="form-label">总成本</span>
+            <van-field
+              :model-value="Number.isFinite(form.cost) ? form.cost : ''"
+              type="number"
+              placeholder="待填写"
+              aria-label="总成本"
+              clearable
+              @update:model-value="emit('cost-change', $event)"
+            >
+              <template #left-icon><span class="currency">¥</span></template>
+            </van-field>
+          </label>
         </div>
 
-        <div class="form-field">
-          <span class="form-label">下单日期</span>
-          <DatePicker
-            class-name="date-control"
-            placeholder="选择下单日期"
-            :default-date="form.orderDate"
-            @date-change="emit('date-change', $event)"
-          />
+        <div class="order-net" aria-live="polite">
+          <span>净收入</span>
+          <strong>{{ netIncome === undefined ? '待计算' : `¥${netIncome}` }}</strong>
         </div>
       </div>
 
@@ -87,7 +107,7 @@
         type="primary"
         size="large"
         class="submit-button"
-        :disabled="!form.title || !Number.isFinite(form.value) || !Number.isSafeInteger(form.quantity) || form.quantity < 1 || !form.orderDate"
+        :disabled="!form.title || !isValidAmount(form.value) || (form.cost !== undefined && !isValidAmount(form.cost)) || !Number.isSafeInteger(form.quantity) || form.quantity < 1 || !form.orderDate"
         @click="emit('submit')"
       >
         {{ type === "upd" ? "保存修改" : (calculationModel ? "记单并扣料" : "仅记订单") }}
@@ -100,6 +120,7 @@
 import { computed } from "vue";
 import DatePicker from "@/components/Date.vue";
 import { Check, InfoFilled, Tickets, WarningFilled } from "@element-plus/icons-vue";
+import { isValidAmount, moneyCents } from "@/utils/stockData";
 import type { Order, OrderEditorType, Product } from "@/types/stock";
 
 const props = defineProps<{
@@ -120,6 +141,7 @@ const emit = defineEmits<{
   "date-change": [date: string];
   "quantity-change": [quantity: number];
   "value-change": [value: string];
+  "cost-change": [value: string];
   submit: [];
 }>();
 
@@ -131,6 +153,11 @@ const popupShow = computed({
 const calculationModel = computed({
   get: () => props.canSyncCalculation && props.calculation,
   set: (value: boolean) => emit("update:calculation", value),
+});
+
+const netIncome = computed(() => {
+  const { value, cost } = props.form;
+  if (isValidAmount(value) && isValidAmount(cost)) return (moneyCents(value) - moneyCents(cost)) / 100;
 });
 </script>
 
@@ -220,6 +247,15 @@ const calculationModel = computed({
 
 .order-fields {
   margin-top: 18px;
+}
+
+.order-net {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-main);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .currency {

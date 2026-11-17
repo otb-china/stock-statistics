@@ -52,8 +52,24 @@ export function createEmptyOrderForm(): Order {
   };
 }
 
-export function sumOrderValue(list: Order[]) {
-  return list.reduce((total, item) => total + Math.round(Number(item.value) * 100), 0) / 100;
+export function moneyCents(value: number) {
+  return Math.round(Number((value * 100).toPrecision(15)));
+}
+
+export function isValidAmount(value: unknown): value is number {
+  return typeof value === "number" && value >= 0 && Number.isSafeInteger(moneyCents(value));
+}
+
+export function summarizeOrders(orders: Order[]) {
+  let revenue = 0;
+  let cost = 0;
+  let missingCosts = 0;
+  for (const order of orders) {
+    revenue += moneyCents(order.value);
+    if (order.cost === undefined) missingCosts++;
+    else cost += moneyCents(order.cost);
+  }
+  return { revenue: revenue / 100, netIncome: missingCosts ? undefined : (revenue - cost) / 100, missingCosts };
 }
 
 export function normalizeMaterials(list: RSA[] | undefined): Material[] {
@@ -72,7 +88,8 @@ export function normalizeProducts(list: RSA[] | undefined): Product[] {
     return {
       id: String(item.id || createId("product")),
       name: String(item.name || ""),
-      defaultValue: Number(item.defaultValue || item.value || 0),
+      defaultValue: Number(item.defaultValue ?? item.value ?? 0),
+      defaultCost: isValidAmount(item.defaultCost) ? moneyCents(item.defaultCost) / 100 : undefined,
       status,
       recipe: Array.isArray(item.recipe)
         ? item.recipe
@@ -92,6 +109,7 @@ export function normalizeOrders(list: RSA[] | undefined): Order[] {
     id: String(item.id || createId("order")),
     title: String(item.title || ""),
     value: Number(item.value || 0),
+    cost: isValidAmount(item.cost) ? moneyCents(item.cost) / 100 : undefined,
     orderDate: String(item.orderDate || ""),
     quantity: Number.isSafeInteger(item.quantity) && item.quantity > 0 ? item.quantity : 1,
     deductedMaterials: isValidDeduction(item.deductedMaterials) ? item.deductedMaterials : undefined,
@@ -148,6 +166,10 @@ function isStockMovement(value: unknown): value is StockMovement {
 }
 
 export function assertValidBackupData({ materials, products, orders }: ResolvedBackupData) {
+  if (products.some((product) => product?.defaultCost !== undefined && !isValidAmount(product.defaultCost))
+    || orders.some((order) => order?.cost !== undefined && !isValidAmount(order.cost))) {
+    throw new Error("成本金额无效");
+  }
   if (orders.some((order) => order?.deductedMaterials !== undefined && !isValidDeduction(order.deductedMaterials))) {
     throw new Error("订单扣料明细无效");
   }

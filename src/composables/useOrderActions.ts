@@ -2,8 +2,8 @@ import { computed, ref, type ComputedRef, type Ref } from "vue";
 import dayjs from "dayjs";
 import { showToast } from "vant";
 import type { useStockRecords } from "./useStockRecords";
-import { createEmptyOrderForm, createId, recipeQuantities, sumOrderValue } from "@/utils/stockData.ts";
-import type { Material, Order, OrderEditorType, OrderMonth, Product, ProductRecipe } from "@/types/stock";
+import { createEmptyOrderForm, createId, isValidAmount, moneyCents, recipeQuantities, summarizeOrders } from "@/utils/stockData.ts";
+import type { Material, Order, OrderEditorType, Product, ProductRecipe } from "@/types/stock";
 
 interface UseOrderActionsOptions {
   materials: Ref<Material[]>;
@@ -22,13 +22,14 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   const calculation = ref(false);
   const orderSearch = ref("");
   const unitPrice = ref(0);
+  const unitCost = ref<number>();
   const deletingOrderId = ref("");
   const orderInfo = ref({
     type: "add" as OrderEditorType,
     show: false,
     form: createEmptyOrderForm(),
     get data() { return options.orders.value; },
-    monthData: [] as OrderMonth[],
+    monthData: [] as (ReturnType<typeof summarizeOrders> & { month: string })[],
     editingId: "",
     checkedMonth: "",
   });
@@ -49,7 +50,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   const collapsedOrdersCount = computed(() => Math.max(0, OrderData.value.length - options.orderPreviewLimit));
 
-  const orderTotal = computed(() => sumOrderValue(orderInfo.value.data));
+  const orderTotals = computed(() => summarizeOrders(orderInfo.value.data));
 
   const selectedOrderProduct = computed(() => productByName(orderInfo.value.form.title));
 
@@ -127,20 +128,22 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   }
 
   function initOrderMonthData() {
-    const months = {} as Record<string, number>;
+    const months = new Map<string, Order[]>();
 
     for (const item of orderInfo.value.data) {
       if (item.orderDate) {
         const month = item.orderDate.substring(0, 7);
-        months[month] = (months[month] || 0) + Math.round(Number(item.value) * 100);
+        const monthOrders = months.get(month);
+        if (monthOrders) monthOrders.push(item);
+        else months.set(month, [item]);
       }
     }
 
-    orderInfo.value.monthData = Object.keys(months)
-      .sort((a, b) => b.localeCompare(a))
-      .map((month) => ({
+    orderInfo.value.monthData = [...months]
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([month, orders]) => ({
         month,
-        value: months[month] / 100,
+        ...summarizeOrders(orders),
       }));
     if (orderInfo.value.checkedMonth && !orderInfo.value.monthData.some((item) => item.month === orderInfo.value.checkedMonth)) {
       monthChange("");
@@ -158,10 +161,11 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   function onProductChange(productName: string) {
     const product = productByName(productName);
-    if (product) {
+    if (product && product.name !== orderInfo.value.form.title) {
       orderInfo.value.form.title = product.name;
       unitPrice.value = product.defaultValue || 0;
-      orderInfo.value.form.value = Number((unitPrice.value * orderInfo.value.form.quantity).toFixed(2));
+      unitCost.value = product.defaultCost;
+      updateOrderAmounts(orderInfo.value.form.quantity);
       calculation.value = canSyncCalculation.value;
     }
     if (!orderInfo.value.form.orderDate) {
@@ -169,12 +173,16 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     }
   }
 
+  function updateOrderAmounts(quantity: number) {
+    if (!Number.isSafeInteger(quantity) || quantity < 1) return;
+    orderInfo.value.form.value = moneyCents(unitPrice.value * quantity) / 100;
+    orderInfo.value.form.cost = unitCost.value === undefined ? undefined : moneyCents(unitCost.value * quantity) / 100;
+  }
+
   function setOrderQuantity(quantity: number) {
     const couldDeduct = canSyncCalculation.value;
     orderInfo.value.form.quantity = quantity;
-    if (Number.isSafeInteger(quantity) && quantity > 0) {
-      orderInfo.value.form.value = Number((unitPrice.value * quantity).toFixed(2));
-    }
+    updateOrderAmounts(quantity);
     if (orderInfo.value.type === "add" && (!couldDeduct || !canSyncCalculation.value)) {
       calculation.value = canSyncCalculation.value;
     }
@@ -185,6 +193,14 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo.value.form.value = value === "" ? Number.NaN : Number(value);
     const quantity = orderInfo.value.form.quantity;
     if (value !== "" && Number.isSafeInteger(quantity) && quantity > 0) unitPrice.value = Number(value) / quantity;
+  }
+
+  function setOrderCost(value: string) {
+    const cost = value === "" ? undefined : Number(value);
+    orderInfo.value.form.cost = cost;
+    const quantity = orderInfo.value.form.quantity;
+    if (cost === undefined) unitCost.value = undefined;
+    else if (Number.isSafeInteger(quantity) && quantity > 0) unitCost.value = cost / quantity;
   }
 
   function openCreateOrder() {
@@ -203,10 +219,12 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     const firstProduct = availableProducts[0];
     orderInfo.value.type = "add";
     unitPrice.value = firstProduct.defaultValue || 0;
+    unitCost.value = firstProduct.defaultCost;
     orderInfo.value.form = {
       id: "",
       title: firstProduct.name,
       value: unitPrice.value,
+      cost: unitCost.value,
       quantity: 1,
       orderDate: dayjs(new Date()).format(options.dateFormat),
     };
@@ -217,15 +235,20 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   function orderSubmit() {
     if (!orderInfo.value.show) return;
     const { type, form, editingId, data } = orderInfo.value;
-    const value = Number(Number(form.value).toFixed(2));
+    const { value, cost } = form;
     if (!Number.isSafeInteger(form.quantity) || form.quantity < 1) {
       showToast("请输入大于 0 的整数件数");
       return;
     }
-    if (!form.title || !Number.isFinite(value) || value < 0 || !form.orderDate) {
+    if (!form.title || !isValidAmount(value) || !form.orderDate) {
       showToast("请填写有效的金额和日期");
       return;
     }
+    if (cost !== undefined && !isValidAmount(cost)) {
+      showToast("请输入有效的订单成本");
+      return;
+    }
+    const amounts = { value: moneyCents(value) / 100, cost: cost === undefined ? undefined : moneyCents(cost) / 100 };
 
     const nextOrders = [...data];
     let changes: ProductRecipe[] = [];
@@ -238,7 +261,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       }
       const deduction = calculation.value ? orderDeduction.value.items : [];
       changes = deduction.map((item) => ({ ...item, quantity: -item.quantity }));
-      savedOrder = { ...form, value, id: createId("order"), deductedMaterials: deduction };
+      savedOrder = { ...form, ...amounts, id: createId("order"), deductedMaterials: deduction };
       nextOrders.unshift(savedOrder);
     } else {
       const index = data.findIndex((item) => item.id === editingId);
@@ -257,7 +280,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
         }));
         deduction = nextDeduction;
       }
-      savedOrder = { ...form, value, id: previous.id, deductedMaterials: deduction };
+      savedOrder = { ...form, ...amounts, id: previous.id, deductedMaterials: deduction };
       nextOrders[index] = savedOrder;
     }
 
@@ -276,6 +299,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo.value.editingId = item.id;
     orderInfo.value.form = { ...item };
     unitPrice.value = item.value / item.quantity;
+    unitCost.value = item.cost === undefined ? undefined : item.cost / item.quantity;
     calculation.value = false;
     orderInfo.value.show = true;
   }
@@ -326,7 +350,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderSearch,
     visibleOrders,
     collapsedOrdersCount,
-    orderTotal,
+    orderTotals,
     activeOrderProducts,
     canSyncCalculation,
     deductionMessage,
@@ -339,6 +363,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     setOrderDate,
     setOrderQuantity,
     setOrderValue,
+    setOrderCost,
     onProductChange,
     openCreateOrder,
     orderSubmit,
