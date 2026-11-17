@@ -23,7 +23,7 @@
         <span>{{ action.name }}</span>
       </button>
     </div>
-    <div class="swipe-content" :style="{ transform: 'translate3d(' + offset + 'px, 0, 0)' }">
+    <div class="swipe-content" :style="{ transform: offset ? `translateX(${offset}px)` : undefined }">
       <slot />
     </div>
   </div>
@@ -218,10 +218,10 @@ onBeforeUnmount(close);
   z-index: 1;
   background: var(--surface, #ffffff);
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
-  will-change: transform;
 }
 
 .dragging .swipe-content {
   transition: none;
+  will-change: transform;
 }
 </style>

@@ -293,7 +293,7 @@
       @cost-change="setOrderCost"
       @submit="orderSubmit"
     />
-    <van-popup v-model:show="deleteOrderShow" class="confirm-dialog" round>
+    <van-popup v-model:show="deleteOrderShow" class="confirm-dialog" round destroy-on-close>
       <span class="confirm-dialog-icon danger"><el-icon><Delete /></el-icon></span>
       <h3 class="confirm-dialog-title">删除「{{ deletingOrder?.title ?? "" }}」订单</h3>
       <p class="confirm-dialog-message">{{ deleteOrderDescription }}</p>
