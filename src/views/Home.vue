@@ -9,7 +9,6 @@
         </div>
       </div>
       <div class="header-actions">
-        <button class="order-add-btn" type="button" @click="openCreateOrder()">记单</button>
         <button v-if="showScrollTop" class="header-icon" type="button" aria-label="返回顶部" @click="scrollToTop">
           <el-icon><Top /></el-icon>
         </button>
@@ -40,47 +39,55 @@
           <span class="income-deco" aria-hidden="true"></span>
         </div>
 
-        <StatCard
-          title="备料"
-          :value="materialsSummary.totalKinds"
-          unit="种"
-          :footer="materialsSummary.footerText || (data.length ? '库存充足' : '去配置备料')"
-          :alert="materialsSummary.dangerKinds > 0 ? 'danger' : (materialsSummary.warningKinds > 0 ? 'warning' : undefined)"
-          @click="materialsPopup = true"
-        />
-      </section>
-
-      <section v-if="warningMaterials.length" class="panel warning-panel">
-        <div class="panel-head">
-          <h2><span class="panel-mark is-danger"></span>库存预警</h2>
-          <span class="panel-count">{{ warningMaterials.length }} 项</span>
-        </div>
-        <div class="warning-list">
-          <button
-            v-for="item in warningMaterials"
-            :key="item.id"
-            class="warning-item"
-            :class="materialStatusClass(item)"
-            type="button"
-            @click="openRestock(item)"
-          >
-            <span class="warning-info">
-              <b>{{ item.name }}</b>
-              <small>库存 {{ item.num }} · {{ materialStatus(item) === "danger" ? "缺货" : "预警" }}</small>
-            </span>
-            <span class="warning-action">
-              <el-icon><Plus /></el-icon>补货
-            </span>
-          </button>
-        </div>
+        <section class="panel" aria-labelledby="materials-title">
+          <div class="panel-head">
+            <h2 id="materials-title">
+              <button class="panel-title-action" type="button" aria-label="打开备料管理" @click="materialsPopup = true">
+                <span class="panel-mark" aria-hidden="true"></span>备料
+              </button>
+            </h2>
+            <button class="popup-create-btn" type="button" aria-label="新增备料" @click="openMaterialEditor()">
+              <el-icon><Plus /></el-icon>
+              <span>备料</span>
+            </button>
+          </div>
+          <p class="materials-summary">
+            <template v-if="data.length">
+              {{ materialsSummary.totalKinds }} 种 ·
+              <span v-if="warningMaterials.length" :class="materialsSummary.dangerKinds ? 'is-danger' : 'is-warning'">
+                {{ materialsSummary.footerText }}
+              </span>
+              <template v-else>库存充足</template>
+            </template>
+            <template v-else>暂无备料</template>
+          </p>
+          <div v-if="warningMaterials.length" class="warning-list">
+            <button
+              v-for="item in warningMaterials"
+              :key="item.id"
+              class="warning-item"
+              :class="materialStatusClass(item)"
+              type="button"
+              @click="openRestock(item)"
+            >
+              <span class="warning-info">
+                <b>{{ item.name }}</b>
+                <small>库存 {{ item.num }} · {{ materialStatus(item) === "danger" ? "缺货" : "预警" }}</small>
+              </span>
+              <span class="warning-action">
+                <el-icon><Plus /></el-icon>补货
+              </span>
+            </button>
+          </div>
+        </section>
       </section>
 
       <section class="panel" aria-labelledby="products-title">
         <div class="panel-head">
           <h2 id="products-title"><span class="panel-mark"></span>货品</h2>
-          <button class="popup-create-btn" type="button" @click="openProductEditor()">
+          <button class="popup-create-btn" type="button" aria-label="新增货品" @click="openProductEditor()">
             <el-icon><Plus /></el-icon>
-            <span>新增货品</span>
+            <span>货品</span>
           </button>
         </div>
 
@@ -102,6 +109,10 @@
             <span class="panel-mark"></span>订单记录
             <span class="panel-count">{{ OrderData.length }} 条</span>
           </h2>
+          <button class="popup-create-btn" type="button" @click="openCreateOrder()">
+            <el-icon><Plus /></el-icon>
+            <span>记单</span>
+          </button>
         </div>
 
         <div class="month-filter" v-if="orderInfo.monthData.length">
@@ -188,13 +199,11 @@
     <MaterialManagePopup
       v-model:show="materialsPopup"
       description="管理库存数量和预警状态。"
-      create-text="新增备料"
       :groups="materialManageGroups"
       :material-status-class="materialStatusClass"
       :material-status-text="materialStatusText"
       :material-related-summary="materialRelatedSummary"
       :material-craftable-count="materialCraftableCount"
-      @create="openMaterialEditor"
       @toggle-group="toggleMaterialGroup"
       @edit="openMaterialEditor"
       @remove="removeMaterial"
@@ -341,7 +350,6 @@ import OrderEditorPopup from "@/components/OrderEditorPopup.vue";
 import ProductEditorPopup from "@/components/ProductEditorPopup.vue";
 import ProductList from "@/components/ProductList.vue";
 import SettingsPopup from "@/components/SettingsPopup.vue";
-import StatCard from "@/components/StatCard.vue";
 import { DEFAULT_THEME, isThemeKey, themeOptions } from "@/config/themes";
 import { useBackupActions } from "@/composables/useBackupActions";
 import { useMaterialEditor } from "@/composables/useMaterialEditor";
@@ -547,7 +555,6 @@ const materialsSummary = computed(() => {
   if (dangerKinds > 0) footer.push(`缺货 ${dangerKinds}`);
   return {
     totalKinds: data.value.length,
-    warningKinds,
     dangerKinds,
     footerText: footer.join(" · "),
   };
@@ -824,15 +831,28 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
+.panel-title-action {
+  display: inline-flex;
+  align-items: center;
+  gap: inherit;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.panel-title-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .panel-mark {
   width: 4px;
   height: 14px;
   border-radius: 4px;
   background: var(--accent);
-}
-
-.panel-mark.is-danger {
-  background: var(--danger-text);
 }
 
 .panel-count {
@@ -845,14 +865,25 @@ onUnmounted(() => {
 }
 
 /* warning */
-.warning-panel {
-  background: linear-gradient(180deg, var(--danger-bg) 0%, var(--surface) 64px);
+.materials-summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.materials-summary .is-warning {
+  color: var(--warning-text);
+}
+
+.materials-summary .is-danger {
+  color: var(--danger-text);
 }
 
 .warning-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 8px;
+  margin-top: 8px;
 }
 
 .warning-item {
@@ -1142,30 +1173,6 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-/* order add */
-.order-add-btn {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 4px;
-  padding: 7px 14px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--create-btn-bg);
-  color: #ffffff;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--create-btn-shadow);
-  transition: transform 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.order-add-btn:active {
-  transform: scale(0.95);
-}
-
 /* restock popup */
 .restock-preview {
   display: grid;
@@ -1251,10 +1258,6 @@ onUnmounted(() => {
   .page-header,
   .header-actions {
     gap: 6px;
-  }
-
-  .header-actions .order-add-btn {
-    padding-inline: 10px;
   }
 }
 

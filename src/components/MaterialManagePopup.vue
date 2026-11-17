@@ -9,10 +9,6 @@
             <p>{{ description }}</p>
           </div>
         </div>
-        <button class="popup-create-btn" type="button" @click="emit('create')">
-          <el-icon><Plus /></el-icon>
-          <span>{{ createText }}</span>
-        </button>
       </div>
 
       <el-input v-model="search" class="manage-search" placeholder="搜索备料名称" aria-label="搜索备料名称" :prefix-icon="Search" clearable />
@@ -20,10 +16,7 @@
         <div v-if="!visibleGroups.length" class="manage-empty">
           <span class="empty-icon"><el-icon><component :is="search.trim() ? Search : Box" /></el-icon></span>
           <strong>{{ search.trim() ? "没有匹配的备料" : "还没有备料" }}</strong>
-          <span v-if="!search.trim()">新增备料后，可以在货品配方里选择并计算库存。</span>
-          <button v-if="!search.trim()" class="pill-button" type="button" @click="emit('create')">
-            <el-icon><Plus /></el-icon>{{ createText }}
-          </button>
+          <span v-if="!search.trim()">点首页的「＋备料」录入。</span>
         </div>
 
         <section
@@ -86,7 +79,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import SwipeRow from "@/components/SwipeRow.vue";
-import { Box, Delete, Plus, Search, Tickets } from "@element-plus/icons-vue";
+import { Box, Delete, Search, Tickets } from "@element-plus/icons-vue";
 import type { Material, MaterialGroupKey } from "@/types/stock";
 
 interface MaterialManageGroup {
@@ -99,7 +92,6 @@ interface MaterialManageGroup {
 const props = defineProps<{
   show: boolean;
   description: string;
-  createText: string;
   groups: MaterialManageGroup[];
   materialStatusClass: (item: Material) => string;
   materialStatusText: (item: Material) => string;
@@ -109,7 +101,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   "update:show": [value: boolean];
-  create: [];
   "toggle-group": [key: MaterialGroupKey];
   edit: [item: Material];
   remove: [id: string];
