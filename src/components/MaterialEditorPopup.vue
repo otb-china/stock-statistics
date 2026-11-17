@@ -31,9 +31,12 @@
         </div>
       </div>
 
-      <div v-if="type === 'add' && products.length" class="form-stack product-links">
-        <div class="form-field">
-          <span class="form-label">关联货品 <small>选填</small></span>
+      <section v-if="type === 'add' && products.length" class="product-links">
+        <div class="form-section-head">
+          <strong>关联货品 <small v-if="productLinks.length">{{ productLinks.length }}</small></strong>
+          <span class="section-optional">选填</span>
+        </div>
+        <div class="form-stack">
           <button
             class="product-picker-trigger"
             :class="{ selected: productLinks.length }"
@@ -47,20 +50,20 @@
             <span>{{ selectedProductsText || "请选择货品" }}</span>
             <el-icon aria-hidden="true"><ArrowDown /></el-icon>
           </button>
-        </div>
-        <div v-if="productLinks.length">
-          <span class="form-label">每件用量</span>
-          <div v-for="link in productLinks" :key="link.productId" class="product-link-row">
-            <span>{{ productNames.get(link.productId) }}</span>
-            <el-input-number
-              v-model="link.quantity"
-              :min="1"
-              :max="1000"
-              :aria-label="`${productNames.get(link.productId)}每件用量`"
-            />
+          <div v-if="productLinks.length">
+            <span class="form-label">每件用量</span>
+            <div v-for="link in productLinks" :key="link.productId" class="product-link-row">
+              <span>{{ productNames.get(link.productId) }}</span>
+              <el-input-number
+                v-model="link.quantity"
+                :min="1"
+                :max="1000"
+                :aria-label="`${productNames.get(link.productId)}每件用量`"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <button v-if="type === 'edit'" class="link-row" type="button" @click="emit('history', form)">
         <el-icon><Tickets /></el-icon>
@@ -152,7 +155,18 @@ function openProductPicker() {
 
 <style lang="scss" scoped>
 .product-links {
-  margin-top: 16px;
+  margin-top: 24px;
+  padding-top: 4px;
+  border-top: 1px solid var(--divider);
+}
+
+.product-links .form-section-head {
+  margin-top: 18px;
+}
+
+.section-optional {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .product-picker-trigger {
