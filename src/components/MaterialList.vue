@@ -1,44 +1,21 @@
 <template>
-  <el-input
-    v-if="materials.length > 3 || search"
-    v-model="search"
-    class="manage-search"
-    placeholder="搜索备料名称"
-    aria-label="搜索备料名称"
-    :prefix-icon="Search"
-    clearable
-  />
-
   <p v-if="!groups.length" class="material-empty">
-    {{ query ? "没有匹配的备料" : "还没有备料，点右上角「＋」添加" }}
+    还没有备料，点右上角「＋」添加
   </p>
 
-  <component
-    :is="group.folded ? 'details' : 'div'"
-    v-for="group in groups"
-    :key="group.key"
-    class="material-group"
-    :open="group.folded && query ? true : undefined"
-  >
-    <summary v-if="group.folded" class="material-group-summary">
-      <span><i class="group-dot" :class="'dot-' + group.key"></i>{{ group.title }} · {{ group.items.length }}</span>
-      <el-icon class="summary-arrow"><ArrowDown /></el-icon>
-    </summary>
+  <div v-for="group in openGroups" :key="group.key" class="material-group">
     <div class="material-list">
       <SwipeRow
         v-for="item in group.items"
         :key="item.id"
         :label="item.name"
-        :actions="[
-          { name: '流水', icon: Tickets, callback: () => emit('history', item) },
-          { name: '删除', icon: Delete, tone: 'danger', callback: () => emit('remove', item.id) },
-        ]"
+        :actions="rowActions(item)"
       >
         <div class="material-item" :class="'is-' + group.key">
           <button class="material-main" type="button" :aria-label="'编辑' + item.name" @click="emit('edit', item)">
             <span class="material-title">
               <b>{{ item.name }}</b>
-              <em v-if="group.key === 'danger' || group.key === 'warning'" class="material-tag">{{ statusText(item) }}</em>
+              <em v-if="!group.folded" class="material-tag">{{ statusText(item) }}</em>
             </span>
             <small class="material-related">{{ relatedSummary(item.id) }}</small>
           </button>
@@ -50,12 +27,47 @@
         </div>
       </SwipeRow>
     </div>
-  </component>
+  </div>
+
+  <details v-if="foldedGroups.length" class="material-group">
+    <summary class="material-group-summary">
+      <span>其他备料 · {{ foldedCount }}</span>
+      <el-icon class="summary-arrow"><ArrowDown /></el-icon>
+    </summary>
+    <section v-for="group in foldedGroups" :key="group.key" class="material-subgroup">
+      <h4 class="material-subgroup-title">
+        <i class="group-dot" :class="'dot-' + group.key"></i>{{ group.title }} · {{ group.items.length }}
+      </h4>
+      <div class="material-list">
+        <SwipeRow
+          v-for="item in group.items"
+          :key="item.id"
+          :label="item.name"
+          :actions="rowActions(item)"
+        >
+          <div class="material-item" :class="'is-' + group.key">
+            <button class="material-main" type="button" :aria-label="'编辑' + item.name" @click="emit('edit', item)">
+              <span class="material-title">
+                <b>{{ item.name }}</b>
+                <em v-if="!group.folded" class="material-tag">{{ statusText(item) }}</em>
+              </span>
+              <small class="material-related">{{ relatedSummary(item.id) }}</small>
+            </button>
+            <span class="material-stock">
+              <strong>{{ item.num }}</strong>
+              <small>库存</small>
+            </span>
+            <button class="material-restock" type="button" :aria-label="'为' + item.name + '补货'" @click="emit('restock', item)">补货</button>
+          </div>
+        </SwipeRow>
+      </div>
+    </section>
+  </details>
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
-import { ArrowDown, Delete, Search, Tickets } from "@element-plus/icons-vue";
+import { computed } from "vue";
+import { ArrowDown, Delete, Tickets } from "@element-plus/icons-vue";
 import SwipeRow from "@/components/SwipeRow.vue";
 import type { Material, MaterialGroupKey } from "@/types/stock";
 
@@ -80,23 +92,26 @@ const emit = defineEmits<{
   history: [item: Material];
 }>();
 
-const search = ref("");
-const query = computed(() => search.value.trim().toLowerCase());
 const groups = computed(() => {
-  const visible = props.materials
-    .filter((item) => item.name.toLowerCase().includes(query.value))
+  const visible = [...props.materials]
     .sort((a, b) => a.name.localeCompare(b.name));
   return GROUPS
     .map((group) => ({ ...group, items: visible.filter((item) => props.groupKey(item) === group.key) }))
     .filter((group) => group.items.length);
 });
+const openGroups = computed(() => groups.value.filter((group) => !group.folded));
+const foldedGroups = computed(() => groups.value.filter((group) => group.folded));
+const foldedCount = computed(() => foldedGroups.value.reduce((sum, group) => sum + group.items.length, 0));
+
+function rowActions(item: Material) {
+  return [
+    { name: "流水", icon: Tickets, callback: () => emit("history", item) },
+    { name: "删除", icon: Delete, tone: "danger" as const, callback: () => emit("remove", item.id) },
+  ];
+}
 </script>
 
 <style lang="scss" scoped>
-.manage-search {
-  margin-bottom: 10px;
-}
-
 .material-group + .material-group {
   margin-top: 8px;
 }
@@ -141,8 +156,19 @@ details[open] .summary-arrow {
   transform: rotate(180deg);
 }
 
-details[open] .material-list {
+.material-subgroup {
   margin-bottom: 4px;
+}
+
+.material-subgroup + .material-subgroup {
+  margin-top: 14px;
+}
+
+.material-subgroup-title {
+  margin: 2px 4px 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .material-list {

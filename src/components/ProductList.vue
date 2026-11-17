@@ -1,16 +1,6 @@
 <template>
-  <el-input
-    v-if="showSearch"
-    v-model="search"
-    class="manage-search"
-    placeholder="搜索货品名称"
-    aria-label="搜索货品名称"
-    :prefix-icon="Search"
-    clearable
-  />
-
   <p v-if="!groups.length" class="product-empty">
-    {{ query ? "没有匹配的货品" : "还没有货品" }}
+    还没有货品
   </p>
 
   <component
@@ -18,7 +8,7 @@
     v-for="group in groups"
     :key="String(group.inactive)"
     class="product-group"
-    :open="group.inactive && query ? true : undefined"
+   
   >
     <summary v-if="group.inactive" class="product-group-summary">
       <span>停产货品 · {{ group.items.length }}</span>
@@ -59,8 +49,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from "vue";
-import { ArrowDown, Delete, RefreshLeft, Search, VideoPause } from "@element-plus/icons-vue";
+import { computed } from "vue";
+import { ArrowDown, Delete, RefreshLeft, VideoPause } from "@element-plus/icons-vue";
 import SwipeRow from "@/components/SwipeRow.vue";
 import type { Product } from "@/types/stock";
 
@@ -77,21 +67,13 @@ const emit = defineEmits<{
   remove: [id: string];
 }>();
 
-const search = ref("");
-const showSearch = computed(() => props.products.length > 10);
-
-watch(showSearch, (visible) => {
-  if (!visible) search.value = "";
-});
-
 function countClass(count: number) {
   if (count <= 0) return "is-danger";
   if (count < 2) return "is-warning";
   return "";
 }
-const query = computed(() => search.value.trim().toLowerCase());
 const groups = computed(() => {
-  const visible = props.products.filter((product) => product.name.toLowerCase().includes(query.value));
+  const visible = props.products;
   return [
     { inactive: false, items: visible.filter((product) => product.status === "active") },
     { inactive: true, items: visible.filter((product) => product.status === "inactive") },
@@ -100,10 +82,6 @@ const groups = computed(() => {
 </script>
 
 <style lang="scss" scoped>
-.manage-search {
-  margin-bottom: 10px;
-}
-
 .product-group + .product-group {
   margin-top: 12px;
 }
