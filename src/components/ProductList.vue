@@ -1,6 +1,6 @@
 <template>
   <el-input
-    v-if="products.length > 1 || search"
+    v-if="showSearch"
     v-model="search"
     class="manage-search"
     placeholder="搜索货品名称"
@@ -20,7 +20,10 @@
     class="product-group"
     :open="group.inactive && query ? true : undefined"
   >
-    <summary v-if="group.inactive" class="product-group-summary">停产货品（{{ group.items.length }}）</summary>
+    <summary v-if="group.inactive" class="product-group-summary">
+      <span>停产货品 · {{ group.items.length }}</span>
+      <el-icon class="summary-arrow"><ArrowDown /></el-icon>
+    </summary>
     <div class="product-list">
       <SwipeRow
         v-for="product in group.items"
@@ -33,20 +36,22 @@
           { name: '删除', icon: Delete, tone: 'danger', callback: () => emit('remove', product.id) },
         ]"
       >
-      <div class="record-row">
-        <button class="product-row record-edit" type="button" :aria-label="`编辑${product.name}`" @click="emit('edit', product)">
+      <div class="product-item" :class="{ inactive: group.inactive }">
+        <button class="product-main" type="button" :aria-label="`编辑${product.name}`" @click="emit('edit', product)">
           <span class="product-title">{{ product.name }}</span>
           <span class="product-prices">
-            售价 ¥{{ product.defaultValue ?? 0 }}<template v-if="product.defaultCost !== undefined"> · 成本 ¥{{ product.defaultCost }}</template>
+            <b>¥{{ product.defaultValue ?? 0 }}</b>
+            <template v-if="product.defaultCost !== undefined"><i>成本 ¥{{ product.defaultCost }}</i></template>
           </span>
           <small class="product-recipe">{{ recipePreview(product) }}</small>
         </button>
-        <span v-if="!group.inactive" class="product-count">
-          <strong>{{ craftableCountForProduct(product) }}</strong> 可制
-        </span>
-        <button v-if="!group.inactive" class="pill-button record-quick-action" type="button" :aria-label="`为${product.name}记单`" @click="emit('order', product)">
-          记单
-        </button>
+        <div v-if="!group.inactive" class="product-side">
+          <span class="product-count" :class="countClass(craftableCountForProduct(product))">
+            可制 <strong>{{ craftableCountForProduct(product) }}</strong>
+          </span>
+          <button class="product-order" type="button" :aria-label="`为${product.name}记单`" @click="emit('order', product)">记单</button>
+        </div>
+        <span v-else class="product-paused">已停产</span>
       </div>
       </SwipeRow>
     </div>
@@ -57,8 +62,8 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
-import { Delete, RefreshLeft, Search, VideoPause } from "@element-plus/icons-vue";
+import { computed, ref, watch } from "vue";
+import { ArrowDown, Delete, RefreshLeft, Search, VideoPause } from "@element-plus/icons-vue";
 import SwipeRow from "@/components/SwipeRow.vue";
 import type { Product } from "@/types/stock";
 
@@ -77,6 +82,17 @@ const emit = defineEmits<{
 }>();
 
 const search = ref("");
+const showSearch = computed(() => props.products.length > 10);
+
+watch(showSearch, (visible) => {
+  if (!visible) search.value = "";
+});
+
+function countClass(count: number) {
+  if (count <= 0) return "is-danger";
+  if (count < 2) return "is-warning";
+  return "";
+}
 const query = computed(() => search.value.trim().toLowerCase());
 const groups = computed(() => {
   const visible = props.products.filter((product) => product.name.toLowerCase().includes(query.value));
@@ -88,15 +104,35 @@ const groups = computed(() => {
 </script>
 
 <style lang="scss" scoped>
+.manage-search {
+  margin-bottom: 10px;
+}
+
 .product-group + .product-group {
   margin-top: 12px;
 }
 
 .product-group-summary {
-  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 4px;
   color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
+  list-style: none;
+}
+
+.product-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary-arrow {
+  transition: transform 0.2s ease;
+}
+
+details[open] .summary-arrow {
+  transform: rotate(180deg);
 }
 
 .product-list {
@@ -104,36 +140,59 @@ const groups = computed(() => {
   gap: 8px;
 }
 
-.product-row {
+.product-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-soft);
+}
+
+.product-item.inactive {
+  opacity: 0.72;
+}
+
+.product-main {
   display: grid;
+  flex: 1;
   gap: 4px;
-  padding: 10px 6px 10px 12px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .product-title {
+  overflow: hidden;
   color: var(--text-strong);
   font-size: 15px;
   font-weight: 700;
-}
-
-.product-prices,
-.product-count,
-.product-note,
-.product-empty {
-  font-size: 12px;
-}
-
-.product-count {
-  align-self: center;
-  flex-shrink: 0;
-  margin-right: 6px;
-  color: var(--text-muted);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.product-count strong {
+.product-prices {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.product-prices b {
   color: var(--accent-strong);
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.product-prices i {
+  color: var(--text-muted);
+  font-style: normal;
 }
 
 .product-recipe {
@@ -144,10 +203,65 @@ const groups = computed(() => {
   white-space: nowrap;
 }
 
+.product-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.product-count {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.product-count strong {
+  color: var(--accent-strong);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.product-count.is-warning strong {
+  color: var(--warning-text);
+}
+
+.product-count.is-danger strong {
+  color: var(--danger-text);
+}
+
+.product-order {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent-strong);
+  box-shadow: 0 0 0 1px var(--accent-border) inset;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.product-order:active {
+  transform: scale(0.95);
+}
+
+.product-paused {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
 .product-note,
 .product-empty {
   margin: 8px 0 0;
   color: var(--text-muted);
+  font-size: 12px;
 }
 
 .product-empty {

@@ -60,43 +60,33 @@
 
       <div class="form-section-head">
         <strong>配方 <small>{{ form.recipe.length }}</small></strong>
-        <button class="pill-button" type="button" @click="emit('add-recipe')">
-          <el-icon><Plus /></el-icon>添加备料
+        <button v-if="form.recipe.length" class="pill-button" type="button" @click="openPicker">
+          <el-icon><Plus /></el-icon>选择备料
         </button>
       </div>
 
       <div v-if="form.recipe.length" class="recipe-list">
-        <div v-for="(item, index) in form.recipe" :key="index" class="recipe-row">
-          <span class="recipe-index">{{ index + 1 }}</span>
-          <el-select
-            v-model="item.materialId"
-            placeholder="选择备料"
-            class="recipe-select"
-            @change="emit('recipe-material-change', index, $event as string)"
-          >
-            <el-option
-              v-for="material in availableMaterialsForRecipe(index)"
-              :key="material.id"
-              :label="material.name"
-              :value="material.id"
-            />
-          </el-select>
+        <div v-for="(item, index) in form.recipe" :key="item.materialId || index" class="recipe-row">
+          <span class="recipe-info">
+            <b>{{ materialName(item.materialId) }}</b>
+            <small>库存 {{ materialStock(item.materialId) }} · 每件用量</small>
+          </span>
           <el-input-number
             v-model="item.quantity"
             :min="1"
             :max="1000"
             class="recipe-quantity"
-            aria-label="每件用量"
+            :aria-label="materialName(item.materialId) + '每件用量'"
           />
-          <button class="recipe-delete" type="button" aria-label="移除该备料" @click="emit('remove-recipe', index)">
-            <el-icon><Delete /></el-icon>
+          <button class="recipe-delete" type="button" :aria-label="'移除' + materialName(item.materialId)" @click="emit('remove-recipe', index)">
+            <el-icon><Close /></el-icon>
           </button>
         </div>
       </div>
-      <button v-else class="recipe-empty" type="button" @click="emit('add-recipe')">
+      <button v-else class="recipe-empty" type="button" @click="openPicker">
         <span class="empty-icon"><el-icon><Plus /></el-icon></span>
-        <strong>还没有配方备料</strong>
-        <span>添加每做一件需要消耗的备料和数量</span>
+        <strong>选择配方备料</strong>
+        <span>勾选做一件需要用到的备料，再填写用量</span>
       </button>
 
       <el-button
@@ -110,11 +100,48 @@
       </el-button>
     </div>
   </van-popup>
+
+  <van-popup v-model:show="picker.show" position="bottom" round teleport="body" :z-index="2100">
+    <div class="popup-body picker-body">
+      <div class="picker-head">
+        <h3>选择备料</h3>
+        <span>已选 {{ picker.selected.length }}</span>
+      </div>
+      <el-input
+        v-if="materials.length > 6 || picker.search"
+        v-model="picker.search"
+        class="manage-search picker-search"
+        placeholder="搜索备料名称"
+        aria-label="搜索备料名称"
+        :prefix-icon="Search"
+        clearable
+      />
+      <div class="picker-list">
+        <button
+          v-for="material in pickerMaterials"
+          :key="material.id"
+          class="picker-item"
+          :class="{ checked: picker.selected.includes(material.id) }"
+          type="button"
+          :aria-pressed="picker.selected.includes(material.id)"
+          @click="togglePick(material.id)"
+        >
+          <span class="picker-check"><el-icon><Check /></el-icon></span>
+          <span class="picker-name">{{ material.name }}</span>
+          <small>库存 {{ material.num }}</small>
+        </button>
+        <p v-if="!pickerMaterials.length" class="picker-empty">没有匹配的备料</p>
+      </div>
+      <el-button type="primary" size="large" class="submit-button" @click="confirmPicker">
+        确定{{ picker.selected.length ? "（" + picker.selected.length + "）" : "" }}
+      </el-button>
+    </div>
+  </van-popup>
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
-import { Delete, Goods, InfoFilled, Plus } from "@element-plus/icons-vue";
+import { computed, ref } from "vue";
+import { Check, Close, Goods, InfoFilled, Plus, Search } from "@element-plus/icons-vue";
 import { isValidAmount } from "@/utils/stockData";
 import type { EditorType, Material, ProductEditorForm } from "@/types/stock";
 
@@ -124,13 +151,12 @@ const props = defineProps<{
   form: ProductEditorForm;
   limitingMaterials: string;
   sharedMaterials: string;
-  availableMaterialsForRecipe: (index: number) => Material[];
+  materials: Material[];
 }>();
 
 const emit = defineEmits<{
   "update:show": [value: boolean];
-  "add-recipe": [];
-  "recipe-material-change": [index: number, materialId: string];
+  "set-recipe-materials": [materialIds: string[]];
   "remove-recipe": [index: number];
   submit: [];
 }>();
@@ -139,6 +165,41 @@ const popupShow = computed({
   get: () => props.show,
   set: (value: boolean) => emit("update:show", value),
 });
+
+const picker = ref({ show: false, search: "", selected: [] as string[] });
+
+const pickerMaterials = computed(() => {
+  const query = picker.value.search.trim().toLowerCase();
+  return props.materials.filter((material) => material.name.toLowerCase().includes(query));
+});
+
+function materialName(id: string) {
+  return props.materials.find((material) => material.id === id)?.name ?? "未知备料";
+}
+
+function materialStock(id: string) {
+  return props.materials.find((material) => material.id === id)?.num ?? 0;
+}
+
+function openPicker() {
+  picker.value = {
+    show: true,
+    search: "",
+    selected: props.form.recipe.map((item) => item.materialId).filter(Boolean),
+  };
+}
+
+function togglePick(id: string) {
+  const selected = picker.value.selected;
+  const index = selected.indexOf(id);
+  if (index >= 0) selected.splice(index, 1);
+  else selected.push(id);
+}
+
+function confirmPicker() {
+  emit("set-recipe-materials", [...picker.value.selected]);
+  picker.value.show = false;
+}
 
 const canSubmit = computed(() => {
   const { name, recipe, defaultValue, defaultCost } = props.form;
@@ -154,59 +215,89 @@ const canSubmit = computed(() => {
 }
 
 .recipe-row {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 128px 34px;
-  gap: 8px;
+  display: flex;
   align-items: center;
-  padding: 8px;
+  gap: 8px;
+  padding: 10px 6px 10px 14px;
   border-radius: 14px;
   background: var(--surface-soft);
 }
 
-.recipe-index {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--header-icon-bg);
-  color: var(--accent-strong);
-  font-size: 12px;
-  font-weight: 700;
+.recipe-info {
+  flex: 1;
+  min-width: 0;
 }
 
-.recipe-row :deep(.el-select__wrapper),
+.recipe-info b,
+.recipe-info small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipe-info b {
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.recipe-info small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.popup-body .recipe-row .recipe-quantity {
+  flex: 0 0 116px;
+  width: 116px;
+  height: 40px;
+  line-height: 40px;
+}
+
 .recipe-row :deep(.el-input__wrapper) {
   background: var(--surface);
 }
 
+.recipe-row :deep(.el-input-number .el-input__wrapper) {
+  padding: 0 38px;
+}
+
 .recipe-row :deep(.el-input-number__decrease),
 .recipe-row :deep(.el-input-number__increase) {
+  top: 4px;
+  bottom: 4px;
+  width: 30px;
   background: var(--surface-soft);
   box-shadow: none;
 }
 
-.recipe-row :deep(.el-input-number .el-input__wrapper) {
-  padding: 0 40px;
+.recipe-row :deep(.el-input-number__decrease) {
+  left: 4px;
+}
+
+.recipe-row :deep(.el-input-number__increase) {
+  right: 4px;
 }
 
 .recipe-delete {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 50%;
   background: transparent;
-  color: var(--danger-text);
-  font-size: 16px;
+  color: var(--text-subtle);
+  font-size: 15px;
   cursor: pointer;
 }
 
 .recipe-delete:active {
   background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .recipe-empty {
@@ -215,7 +306,7 @@ const canSubmit = computed(() => {
   gap: 6px;
   width: 100%;
   padding: 22px 12px;
-  border: 1.5px dashed var(--divider);
+  border: 1.5px dashed var(--accent-border);
   border-radius: 16px;
   background: var(--surface-soft);
   font: inherit;
@@ -240,13 +331,112 @@ const canSubmit = computed(() => {
   font-size: 12px;
 }
 
-@media (max-width: 400px) {
-  .recipe-row {
-    grid-template-columns: minmax(0, 1fr) 116px 30px;
-  }
+.picker-body {
+  display: flex;
+  flex-direction: column;
+  max-height: 78vh;
+  overflow: hidden;
+}
 
-  .recipe-index {
-    display: none;
-  }
+.picker-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.picker-head h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 18px;
+}
+
+.picker-head span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.picker-search {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
+.picker-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+.picker-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  padding: 10px 12px;
+  border: 1.5px solid transparent;
+  border-radius: 14px;
+  background: var(--surface-soft);
+  color: var(--text-main);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.picker-item small {
+  grid-column: 2;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.picker-check {
+  display: inline-flex;
+  grid-row: span 2;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--divider);
+  border-radius: 50%;
+  background: var(--surface);
+  color: transparent;
+  font-size: 12px;
+}
+
+.picker-name {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-item.checked {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.picker-item.checked .picker-check {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.picker-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 16px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.picker-body .submit-button {
+  flex-shrink: 0;
+  margin-top: 14px;
 }
 </style>

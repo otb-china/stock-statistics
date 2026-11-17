@@ -37,17 +37,12 @@ export function useProductEditor(
     productEditor.value.show = true;
   }
 
-  function addRecipeItem() {
-    const selectedIds = productEditor.value.form.recipe.map((item) => item.materialId).filter(Boolean);
-    const nextMaterial = materials.value.find((material) => !selectedIds.includes(material.id));
-    if (!nextMaterial) {
-      showToast("没有可选的备料了");
-      return;
-    }
-    productEditor.value.form.recipe.push({
-      materialId: nextMaterial.id,
-      quantity: 1,
-    });
+  function setRecipeMaterials(materialIds: string[]) {
+    const current = new Map(productEditor.value.form.recipe.map((item) => [item.materialId, item.quantity]));
+    productEditor.value.form.recipe = materialIds.map((materialId) => ({
+      materialId,
+      quantity: current.get(materialId) ?? 1,
+    }));
   }
 
   function toggleProductStatus(product: Product) {
@@ -56,27 +51,6 @@ export function useProductEditor(
     const nextProducts = products.value.map((item) => item.id === product.id ? { ...item, status: nextStatus } : item);
     if (!commit({ products: nextProducts })) return;
     showToast(nextStatus === "active" ? "货品已设为正常" : "货品已设为停产");
-  }
-
-  function availableMaterialsForRecipe(index: number) {
-    const selectedIds = productEditor.value.form.recipe
-      .map((item, currentIndex) => currentIndex === index ? "" : item.materialId)
-      .filter(Boolean);
-
-    return materials.value.filter((material) => {
-      return !selectedIds.includes(material.id) || material.id === productEditor.value.form.recipe[index]?.materialId;
-    });
-  }
-
-  function onRecipeMaterialChange(index: number, materialId: string) {
-    const duplicated = productEditor.value.form.recipe.some((item, currentIndex) => {
-      return currentIndex !== index && item.materialId === materialId;
-    });
-
-    if (duplicated) {
-      showToast("该备料已经选择过了");
-      productEditor.value.form.recipe[index].materialId = "";
-    }
   }
 
   function removeRecipeItem(index: number) {
@@ -154,10 +128,8 @@ export function useProductEditor(
   return {
     productEditor,
     openProductEditor,
-    addRecipeItem,
+    setRecipeMaterials,
     toggleProductStatus,
-    availableMaterialsForRecipe,
-    onRecipeMaterialChange,
     removeRecipeItem,
     submitProductEditor,
     removeProduct,

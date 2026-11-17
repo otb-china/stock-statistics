@@ -19,77 +19,82 @@
     </header>
 
     <main class="page-main">
-      <section class="overview">
-        <div class="income-card">
-          <div class="income-metrics">
-            <div>
-              <span class="income-label">本月流水</span>
-              <strong class="income-value"><small>¥</small>{{ currentMonthTotals.revenue }}</strong>
-            </div>
-            <div>
-              <span class="income-label">本月净收入</span>
-              <strong class="income-value"><small>¥</small>{{ currentMonthTotals.netIncome }}</strong>
-            </div>
-          </div>
-          <span class="income-meta">
-            <span>累计流水 ¥{{ orderTotals.revenue }}</span>
-            <span>累计净收入 ¥{{ orderTotals.netIncome }}</span>
-            <span>共 {{ orderInfo.data.length }} 单</span>
-          </span>
-          <span class="income-deco" aria-hidden="true"></span>
+      <section class="stats-card" aria-label="收入统计">
+        <div class="stats-top">
+          <span class="stats-month">{{ currentMonthLabel }}</span>
+          <span class="stats-orders">共 {{ orderInfo.data.length }} 单</span>
         </div>
-
-        <section class="panel" aria-labelledby="materials-title">
-          <div class="panel-head">
-            <h2 id="materials-title">
-              <button class="panel-title-action" type="button" aria-label="打开备料管理" @click="materialsPopup = true">
-                <span class="panel-mark" aria-hidden="true"></span>备料
-              </button>
-            </h2>
-            <button class="popup-create-btn" type="button" aria-label="新增备料" @click="openMaterialEditor()">
-              <el-icon><Plus /></el-icon>
-              <span>备料</span>
-            </button>
+        <div class="stats-main">
+          <div class="stats-primary">
+            <span class="stats-label">本月净收入</span>
+            <strong class="stats-value"><small>¥</small>{{ currentMonthTotals.netIncome }}</strong>
           </div>
-          <p class="materials-summary">
-            <template v-if="data.length">
-              {{ materialsSummary.totalKinds }} 种 ·
-              <span v-if="warningMaterials.length" :class="materialsSummary.dangerKinds ? 'is-danger' : 'is-warning'">
-                {{ materialsSummary.footerText }}
-              </span>
-              <template v-else>库存充足</template>
-            </template>
-            <template v-else>暂无备料</template>
-          </p>
-          <div v-if="warningMaterials.length" class="warning-list">
-            <button
-              v-for="item in warningMaterials"
-              :key="item.id"
-              class="warning-item"
-              :class="materialStatusClass(item)"
-              type="button"
-              @click="openRestock(item)"
-            >
-              <span class="warning-info">
-                <b>{{ item.name }}</b>
-                <small>库存 {{ item.num }} · {{ materialStatus(item) === "danger" ? "缺货" : "预警" }}</small>
-              </span>
-              <span class="warning-action">
-                <el-icon><Plus /></el-icon>补货
-              </span>
-            </button>
+          <div class="stats-secondary">
+            <span class="stats-label">本月流水</span>
+            <strong><small>¥</small>{{ currentMonthTotals.revenue }}</strong>
           </div>
-        </section>
+        </div>
+        <div class="stats-foot">
+          <div>
+            <span>累计净收入</span>
+            <strong>¥{{ orderTotals.netIncome }}</strong>
+          </div>
+          <div>
+            <span>累计流水</span>
+            <strong>¥{{ orderTotals.revenue }}</strong>
+          </div>
+        </div>
+        <span class="stats-deco" aria-hidden="true"></span>
       </section>
 
-      <section class="panel" aria-labelledby="products-title">
-        <div class="panel-head">
-          <h2 id="products-title"><span class="panel-mark"></span>货品</h2>
-          <button class="popup-create-btn" type="button" aria-label="新增货品" @click="openProductEditor()">
+      <section class="block" aria-labelledby="materials-title">
+        <header class="block-head">
+          <div class="block-title">
+            <span class="block-icon materials"><el-icon><Box /></el-icon></span>
+            <span class="block-text">
+              <h2 id="materials-title">备料</h2>
+              <small>
+                <template v-if="data.length">
+                  {{ materialsSummary.totalKinds }} 种
+                  <template v-if="warningMaterials.length">
+                    · <b :class="materialsSummary.dangerKinds ? 'is-danger' : 'is-warning'">{{ materialsSummary.footerText }}</b>
+                  </template>
+                  <template v-else> · 库存充足</template>
+                </template>
+                <template v-else>暂无备料</template>
+              </small>
+            </span>
+          </div>
+          <button class="block-add" type="button" aria-label="新增备料" @click="openMaterialEditor()">
             <el-icon><Plus /></el-icon>
-            <span>货品</span>
           </button>
-        </div>
+        </header>
+
+        <MaterialList
+          :materials="data"
+          :group-key="materialGroupKey"
+          :status-text="materialStatusText"
+          :related-summary="materialRelatedSummary"
+          @edit="openMaterialEditor"
+          @remove="removeMaterial"
+          @restock="openRestock"
+          @history="openStockHistory"
+        />
+      </section>
+
+      <section class="block" aria-labelledby="products-title">
+        <header class="block-head">
+          <div class="block-title">
+            <span class="block-icon products"><el-icon><Goods /></el-icon></span>
+            <span class="block-text">
+              <h2 id="products-title">货品</h2>
+              <small>{{ activeProductsCount }} 款在售<template v-if="products.length > activeProductsCount"> · {{ products.length - activeProductsCount }} 款停产</template></small>
+            </span>
+          </div>
+          <button class="block-add" type="button" aria-label="新增货品" @click="openProductEditor()">
+            <el-icon><Plus /></el-icon>
+          </button>
+        </header>
 
         <ProductList
           :products="productsList"
@@ -103,17 +108,22 @@
         />
       </section>
 
-      <section class="panel" aria-labelledby="orders-title">
-        <div class="panel-head">
-          <h2 id="orders-title">
-            <span class="panel-mark"></span>订单记录
-            <span class="panel-count">{{ OrderData.length }} 条</span>
-          </h2>
-          <button class="popup-create-btn" type="button" @click="openCreateOrder()">
+      <section class="block" aria-labelledby="orders-title">
+        <header class="block-head">
+          <div class="block-title">
+            <span class="block-icon orders"><el-icon><Tickets /></el-icon></span>
+            <span class="block-text">
+              <h2 id="orders-title">订单</h2>
+              <small>
+                <template v-if="orderInfo.checkedMonth || orderSearch.trim()">筛选出 {{ OrderData.length }} 单</template>
+                <template v-else>共 {{ orderInfo.data.length }} 单</template>
+              </small>
+            </span>
+          </div>
+          <button class="block-add" type="button" aria-label="记单" @click="openCreateOrder()">
             <el-icon><Plus /></el-icon>
-            <span>记单</span>
           </button>
-        </div>
+        </header>
 
         <div class="month-filter" v-if="orderInfo.monthData.length">
           <button
@@ -124,7 +134,7 @@
             @click="monthChange('')"
           >
             <span>全部</span>
-            <strong>收入 ¥{{ orderTotals.netIncome }}</strong>
+            <strong>¥{{ orderTotals.netIncome }}</strong>
           </button>
           <button
             v-for="item in orderInfo.monthData"
@@ -136,12 +146,12 @@
             @click="monthChange(item.month)"
           >
             <span>{{ formatMonth(item.month) }}</span>
-            <strong>收入 ¥{{ item.netIncome }}</strong>
+            <strong>¥{{ item.netIncome }}</strong>
           </button>
         </div>
 
         <el-input
-          v-if="orderInfo.data.length"
+          v-if="orderInfo.data.length > 3 || orderSearch"
           v-model="orderSearch"
           class="order-search"
           placeholder="按货品名称筛选订单"
@@ -158,16 +168,17 @@
             :label="item.title + '订单'"
             :actions="[{ name: '删除', icon: Delete, tone: 'danger', callback: () => del(item) }]"
           >
-          <div class="order-row record-row">
-            <button class="order-edit record-edit" type="button" @click="beforeUpd(item)">
+            <button class="order-edit" type="button" @click="beforeUpd(item)">
               <span class="order-avatar" aria-hidden="true">{{ item.title.slice(0, 1) }}</span>
               <span class="order-info">
-                <strong>{{ item.title }}<em>× {{ item.quantity }}</em></strong>
-                <small>{{ item.orderDate }}</small>
+                <strong>{{ item.title }}</strong>
+                <small>{{ formatOrderDate(item.orderDate) }} · {{ item.quantity }} 件</small>
               </span>
-              <span class="order-amount">收入 {{ formatOrderIncome(item) }}</span>
+              <span class="order-amount">
+                <strong>{{ formatOrderIncome(item) }}</strong>
+                <small>收入</small>
+              </span>
             </button>
-          </div>
           </SwipeRow>
 
           <button
@@ -195,21 +206,6 @@
         </div>
       </section>
     </main>
-
-    <MaterialManagePopup
-      v-model:show="materialsPopup"
-      description="管理库存数量和预警状态。"
-      :groups="materialManageGroups"
-      :material-status-class="materialStatusClass"
-      :material-status-text="materialStatusText"
-      :material-related-summary="materialRelatedSummary"
-      :material-craftable-count="materialCraftableCount"
-      @toggle-group="toggleMaterialGroup"
-      @edit="openMaterialEditor"
-      @remove="removeMaterial"
-      @restock="openRestock"
-      @history="openStockHistory"
-    />
 
     <MaterialEditorPopup
       v-model:show="materialEditor.show"
@@ -268,9 +264,8 @@
       :form="productEditor.form"
       :limiting-materials="limitingMaterials(productEditor.form)"
       :shared-materials="sharedMaterials(productEditor.form)"
-      :available-materials-for-recipe="availableMaterialsForRecipe"
-      @add-recipe="addRecipeItem"
-      @recipe-material-change="onRecipeMaterialChange"
+      :materials="data"
+      @set-recipe-materials="setRecipeMaterials"
       @remove-recipe="removeRecipeItem"
       @submit="submitProductEditor"
     />
@@ -345,7 +340,7 @@ import { LStorage } from "@/utils/localStorage.ts";
 import { orderNetIncomeCents, summarizeOrders } from "@/utils/stockData";
 import ImportDataPopup from "@/components/ImportDataPopup.vue";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
-import MaterialManagePopup from "@/components/MaterialManagePopup.vue";
+import MaterialList from "@/components/MaterialList.vue";
 import OrderEditorPopup from "@/components/OrderEditorPopup.vue";
 import ProductEditorPopup from "@/components/ProductEditorPopup.vue";
 import ProductList from "@/components/ProductList.vue";
@@ -361,26 +356,12 @@ import type {
   Material,
   MaterialGroupKey,
 } from "@/types/stock";
-import { ArrowDown, Delete, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
+import { ArrowDown, Box, Delete, Goods, Plus, Right, Search, Setting, Tickets, Top } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const SCROLL_TOP_THRESHOLD = 240;
 const ORDER_PREVIEW_LIMIT = 10;
-
-const MATERIAL_GROUP_META = [
-  { key: "danger", title: "缺货" },
-  { key: "warning", title: "预警" },
-  { key: "safe", title: "正常" },
-  { key: "unlinked", title: "未关联" },
-] as const satisfies { key: MaterialGroupKey; title: string }[];
-
-const MATERIAL_GROUP_RANK: Record<MaterialGroupKey, number> = {
-  danger: 0,
-  warning: 1,
-  safe: 2,
-  unlinked: 3,
-};
 
 const showScrollTop = ref(false);
 const isScrolled = ref(false);
@@ -401,13 +382,6 @@ function openStockHistory(item: Material) {
   history.value = { show: true, materialId: item.id };
 }
 const settingsPopup = ref(false);
-const materialsPopup = ref(false);
-const materialGroupCollapsed = ref<Record<MaterialGroupKey, boolean>>({
-  danger: false,
-  warning: false,
-  safe: false,
-  unlinked: true,
-});
 
 const themeStorage = LStorage.new("stockStatisticsTheme");
 const currentThemeOption = computed(() => {
@@ -427,14 +401,11 @@ const setTheme = (theme: ThemeKey) => {
 const {
   activeProducts,
   craftableCountForProduct,
-  materialCraftableCount,
   limitingMaterials,
   sharedMaterials,
-  materialStatus,
   materialGroupKey,
   materialRelatedSummary,
   materialStatusText,
-  materialStatusClass,
   recipePreview,
 } = useMaterialStatus(data, products);
 
@@ -513,10 +484,8 @@ const {
 const {
   productEditor,
   openProductEditor,
-  addRecipeItem,
+  setRecipeMaterials,
   toggleProductStatus,
-  availableMaterialsForRecipe,
-  onRecipeMaterialChange,
   removeRecipeItem,
   submitProductEditor,
   removeProduct,
@@ -526,24 +495,6 @@ const {
 
 const productsList = computed(() => {
   return [...products.value].sort((a, b) => craftableCountForProduct(b) - craftableCountForProduct(a));
-});
-
-const materialsList = computed(() => {
-  return [...data.value].sort((a, b) => {
-    const statusDiff = MATERIAL_GROUP_RANK[materialGroupKey(a)] - MATERIAL_GROUP_RANK[materialGroupKey(b)];
-    if (statusDiff !== 0) return statusDiff;
-    return a.name.localeCompare(b.name);
-  });
-});
-
-const materialManageGroups = computed(() => {
-  return MATERIAL_GROUP_META
-    .map((group) => ({
-      ...group,
-      collapsed: materialGroupCollapsed.value[group.key],
-      items: materialsList.value.filter((item) => materialGroupKey(item) === group.key),
-    }))
-    .filter((group) => group.items.length > 0);
 });
 
 const materialsSummary = computed(() => {
@@ -568,6 +519,17 @@ function formatOrderIncome(order: Parameters<typeof orderNetIncomeCents>[0]) {
   return cents === undefined ? "—" : `¥${cents / 100}`;
 }
 
+const currentMonthLabel = dayjs().format("YYYY年M月");
+const activeProductsCount = computed(() => products.value.filter((item) => item.status === "active").length);
+
+function formatOrderDate(date: string) {
+  const value = dayjs(date);
+  if (!value.isValid()) return date;
+  if (value.isSame(dayjs(), "day")) return "今天";
+  if (value.isSame(dayjs().subtract(1, "day"), "day")) return "昨天";
+  return value.isSame(dayjs(), "year") ? value.format("M月D日") : value.format("YYYY年M月D日");
+}
+
 const todayText = dayjs().format("M月D日") + " · " + ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dayjs().day()];
 
 function formatMonth(month: string) {
@@ -576,7 +538,7 @@ function formatMonth(month: string) {
 }
 
 const warningMaterials = computed(() => {
-  return materialsList.value.filter((item) => {
+  return data.value.filter((item) => {
     const status = materialGroupKey(item);
     return status === "warning" || status === "danger";
   });
@@ -592,10 +554,6 @@ function countMaterialsByGroup() {
     safe: 0,
     unlinked: 0,
   });
-}
-
-function toggleMaterialGroup(key: MaterialGroupKey) {
-  materialGroupCollapsed.value[key] = !materialGroupCollapsed.value[key];
 }
 
 const scrollToTop = () => {
@@ -630,7 +588,7 @@ onUnmounted(() => {
   position: relative;
   min-height: 100vh;
   overflow-x: clip;
-  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  padding-bottom: calc(14px + env(safe-area-inset-bottom));
   background: var(--page-bg);
   color: var(--text-main);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
@@ -722,241 +680,247 @@ onUnmounted(() => {
   transform: scale(0.94);
 }
 
-/* overview */
-.overview {
-  display: grid;
-  gap: 10px;
-}
-
-.income-card {
+/* stats */
+.stats-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
   overflow: hidden;
-  padding: 18px 18px 16px;
-  border-radius: 20px;
+  padding: 18px 18px 14px;
+  border-radius: 24px;
   background: var(--stat-income-bg);
   color: var(--stat-income-text);
   box-shadow: var(--submit-btn-shadow);
 }
 
-
-.income-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  width: 100%;
-}
-
-.income-label {
-  font-size: 13px;
-  opacity: 0.82;
-}
-
-.income-value {
-  display: block;
-  margin-top: 8px;
-  overflow-wrap: anywhere;
-  font-size: clamp(24px, 7vw, 36px);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-
-.income-value small {
-  margin-right: 3px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.income-meta {
+.stats-top {
+  position: relative;
+  z-index: 1;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 14px;
-  padding: 5px 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.16);
+  justify-content: space-between;
   font-size: 12px;
 }
 
-.income-deco {
+.stats-month {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-weight: 600;
+}
+
+.stats-orders {
+  opacity: 0.8;
+}
+
+.stats-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.stats-label {
+  display: block;
+  font-size: 12px;
+  opacity: 0.78;
+}
+
+.stats-value {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(32px, 10vw, 42px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.stats-value small,
+.stats-secondary small {
+  margin-right: 2px;
+  font-size: 0.5em;
+  font-weight: 600;
+}
+
+.stats-secondary {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.stats-secondary strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-foot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.stats-foot > div + div {
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.stats-foot span {
+  display: block;
+  font-size: 11px;
+  opacity: 0.72;
+}
+
+.stats-foot strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-deco {
   position: absolute;
-  top: -40px;
-  right: -30px;
-  width: 150px;
-  height: 150px;
+  top: -60px;
+  right: -50px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
   pointer-events: none;
 }
 
-.income-deco::after {
-  content: "";
-  position: absolute;
-  right: 40px;
-  bottom: -70px;
-  width: 90px;
-  height: 90px;
-  border: 14px solid rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-}
-
-/* panels */
-.panel {
-  padding: 16px;
-  border-radius: 18px;
+/* blocks */
+.block {
+  padding: 14px 14px 16px;
+  border-radius: 22px;
   background: var(--surface);
   box-shadow: var(--shadow);
 }
 
-.panel-head {
+.block-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
-.panel-head h2 {
+.block-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: var(--text-strong);
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.panel-title-action {
-  display: inline-flex;
-  align-items: center;
-  gap: inherit;
-  padding: 6px 0;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
+  text-align: left;
+}
+
+button.block-title {
   cursor: pointer;
 }
 
-.panel-title-action:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+.block-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 19px;
 }
 
-.panel-mark {
-  width: 4px;
-  height: 14px;
-  border-radius: 4px;
-  background: var(--accent);
+.block-icon.materials {
+  background: #e8f1fd;
+  color: #2f6fd0;
 }
 
-.panel-count {
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--surface-muted);
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
+.block-icon.products {
+  background: #fdf1e4;
+  color: #d9822b;
 }
 
-/* warning */
-.materials-summary {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 12px;
+.block-icon.orders {
+  background: #e7f6ef;
+  color: #23955f;
 }
 
-.materials-summary .is-warning {
-  color: var(--warning-text);
+.block-text {
+  min-width: 0;
 }
 
-.materials-summary .is-danger {
-  color: var(--danger-text);
-}
-
-.warning-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.warning-item {
+.block-text h2 {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-  padding: 10px 10px 10px 12px;
-  border: 1px solid var(--divider);
-  border-left: 3px solid var(--warning-text);
-  border-radius: 12px;
-  background: var(--surface);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.15s ease;
+  gap: 2px;
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
-.warning-item.status-danger {
-  border-left-color: var(--danger-text);
-}
-
-.warning-item:active {
-  transform: scale(0.98);
-}
-
-.warning-info {
-  min-width: 0;
-}
-
-.warning-info b,
-.warning-info small {
+.block-text small {
   display: block;
+  margin-top: 2px;
   overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.warning-info b {
-  color: var(--text-strong);
-  font-size: 14px;
+.block-text b {
+  font-weight: 600;
 }
 
-.warning-info small {
-  margin-top: 3px;
+.block-text .is-warning {
   color: var(--warning-text);
-  font-size: 12px;
 }
 
-.warning-item.status-danger .warning-info small {
+.block-text .is-danger {
   color: var(--danger-text);
 }
 
-.warning-action {
+.block-add {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
   flex-shrink: 0;
-  padding: 5px 8px;
-  border-radius: 999px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
   background: var(--header-icon-bg);
   color: var(--accent-strong);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 18px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.block-add:active {
+  transform: scale(0.95);
 }
 
 /* orders */
 .month-filter {
   display: flex;
   gap: 8px;
-  margin: 0 -16px 12px;
-  padding: 0 16px 2px;
+  margin: 0 -14px 10px;
+  padding: 0 14px 2px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -968,16 +932,16 @@ onUnmounted(() => {
 
 .month-chip {
   flex: 0 0 auto;
-  min-width: 84px;
-  padding: 9px 12px;
-  border: 1px solid var(--divider);
-  border-radius: 14px;
-  background: var(--surface);
+  min-width: 76px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-muted);
   color: var(--text-main);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .month-chip span,
@@ -991,16 +955,14 @@ onUnmounted(() => {
 }
 
 .month-chip strong {
-  margin-top: 3px;
-  font-size: 15px;
+  margin-top: 2px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
 .month-chip.active {
-  border-color: transparent;
   background: var(--accent);
   color: #ffffff;
-  box-shadow: 0 6px 14px var(--accent-ring);
 }
 
 .month-chip.active span {
@@ -1008,7 +970,7 @@ onUnmounted(() => {
 }
 
 .order-search {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .order-search :deep(.el-input__wrapper) {
@@ -1026,11 +988,6 @@ onUnmounted(() => {
   flex-direction: column;
 }
 
-.order-row {
-  border-radius: 0;
-  background: transparent;
-}
-
 .order-swipe {
   border-radius: 0;
 }
@@ -1043,7 +1000,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 0;
+  width: 100%;
+  padding: 12px 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .order-avatar {
@@ -1051,9 +1015,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   background: var(--header-icon-bg);
   color: var(--accent-strong);
   font-size: 15px;
@@ -1075,14 +1039,6 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.order-info em {
-  margin-left: 6px;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-style: normal;
-  font-weight: 500;
-}
-
 .order-info small {
   display: block;
   margin-top: 3px;
@@ -1092,11 +1048,22 @@ onUnmounted(() => {
 
 .order-amount {
   flex-shrink: 0;
+  text-align: right;
+}
+
+.order-amount strong {
+  display: block;
   color: var(--text-strong);
   font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-align: right;
+}
+
+.order-amount small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-subtle);
+  font-size: 11px;
 }
 
 .orders-toggle-btn {
@@ -1258,12 +1225,6 @@ onUnmounted(() => {
   .page-header,
   .header-actions {
     gap: 6px;
-  }
-}
-
-@media (min-width: 640px) {
-  .overview {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   }
 }
 </style>
