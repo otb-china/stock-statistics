@@ -39,6 +39,14 @@ body {
   overflow: auto;
 }
 
+.van-popup--bottom > .van-picker > .van-picker__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: inherit;
+  touch-action: none;
+}
+
 .van-popup--bottom.van-popup--round > .popup-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -281,9 +289,11 @@ body {
   position: sticky;
   top: -8px;
   z-index: 6;
+  flex-shrink: 0;
   margin: -8px -18px 18px;
   padding: 8px 18px 12px;
   background: var(--surface, #ffffff);
+  touch-action: none;
 }
 
 .van-popup--bottom.van-popup--round > .popup-body > .popup-head.MB12 {

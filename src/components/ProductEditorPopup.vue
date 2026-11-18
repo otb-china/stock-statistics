@@ -110,7 +110,7 @@
 
   <van-popup v-model:show="picker.show" position="bottom" round teleport="body" :z-index="2100">
     <div class="popup-body picker-body">
-      <div class="picker-head">
+      <div class="popup-head picker-head MB12">
         <h3>选择备料</h3>
         <span>已选 {{ picker.selected.length }}</span>
       </div>

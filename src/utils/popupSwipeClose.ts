@@ -1,4 +1,5 @@
 const POPUP_SELECTOR = ".van-popup--bottom"
+const HEADER_SELECTOR = ":scope > .popup-body > .popup-head, :scope > .van-picker > .van-picker__toolbar"
 const CLOSE_DISTANCE = 110
 const CLOSE_VELOCITY = 0.6
 const DECIDE_DISTANCE = 8
@@ -37,12 +38,19 @@ function cancelDrag() {
 function onTouchStart(event: TouchEvent) {
   cancelDrag()
   if (event.touches.length !== 1) return
-  const popup = event.target
-  if (!(popup instanceof HTMLElement) || !popup.matches(POPUP_SELECTOR)) return
+  const target = event.target
+  if (!(target instanceof Element)) return
+  const popup = target.closest<HTMLElement>(POPUP_SELECTOR)
+  if (!popup) return
+
   const touch = event.touches[0]
-  const top = touch.clientY - popup.getBoundingClientRect().top
-  const handleHeight = parseFloat(getComputedStyle(popup).paddingTop)
-  if (top < 0 || top >= handleHeight) return
+  if (target === popup) {
+    const top = touch.clientY - popup.getBoundingClientRect().top
+    const handleHeight = parseFloat(getComputedStyle(popup).paddingTop)
+    if (top < 0 || top >= handleHeight) return
+  } else if (!popup.querySelector(HEADER_SELECTOR)?.contains(target)) {
+    return
+  }
 
   drag = {
     popup,
