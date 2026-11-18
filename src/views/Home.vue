@@ -98,6 +98,7 @@
 
         <ProductList
           :products="productsList"
+          :materials="data"
           :craftable-count-for-product="craftableCountForProduct"
           @edit="openProductEditor"
           @order="openCreateOrder"

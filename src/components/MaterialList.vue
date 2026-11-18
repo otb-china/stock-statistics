@@ -17,7 +17,10 @@
               <b>{{ item.name }}</b>
               <em v-if="!group.folded" class="material-tag">{{ statusText(item) }}</em>
             </span>
-            <small class="material-related">{{ relatedSummary(item.id) }}</small>
+            <span class="material-meta">
+                <b v-if="item.unitCost !== undefined" class="material-cost">成本 ¥{{ item.unitCost.toFixed(2) }}</b>
+                <small class="material-related">{{ relatedSummary(item.id) }}</small>
+              </span>
           </button>
           <span class="material-stock">
             <strong>{{ item.num }}</strong>
@@ -51,7 +54,10 @@
                 <b>{{ item.name }}</b>
                 <em v-if="!group.folded" class="material-tag">{{ statusText(item) }}</em>
               </span>
-              <small class="material-related">{{ relatedSummary(item.id) }}</small>
+              <span class="material-meta">
+                <b v-if="item.unitCost !== undefined" class="material-cost">成本 ¥{{ item.unitCost.toFixed(2) }}</b>
+                <small class="material-related">{{ relatedSummary(item.id) }}</small>
+              </span>
             </button>
             <span class="material-stock">
               <strong>{{ item.num }}</strong>
@@ -244,12 +250,35 @@ details[open] .summary-arrow {
   color: var(--warning-text);
 }
 
+.material-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .material-related {
   overflow: hidden;
   color: var(--text-subtle);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.material-cost {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(32, 55, 71, 0.06);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+
+.material-item:not(.is-safe):not(.is-unlinked) .material-cost {
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .material-stock {

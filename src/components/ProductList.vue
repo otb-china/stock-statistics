@@ -29,7 +29,14 @@
       <div class="product-item" :class="{ inactive: group.inactive }">
         <button class="product-main" type="button" :aria-label="'编辑' + product.name" @click="emit('edit', product)">
           <span class="product-title">{{ product.name }}</span>
-          <small class="product-meta">{{ product.recipe.length ? "关联 " + product.recipe.length + " 种备料" : "未配置备料" }}</small>
+          <span class="product-meta">
+            <b
+              v-if="productProfit(product) !== undefined"
+              class="product-profit"
+              :class="{ 'is-loss': productProfit(product)! < 0 }"
+            >利润 {{ formatMoney(productProfit(product)!) }}</b>
+            <small>{{ product.recipe.length ? product.recipe.length + " 种备料" : "未配置备料" }}</small>
+          </span>
         </button>
         <template v-if="!group.inactive">
           <span class="product-count" :class="'is-' + craftableStatus(craftableCountForProduct(product), product.warningThreshold)">
@@ -49,11 +56,12 @@
 import { computed } from "vue";
 import { ArrowDown, Delete, RefreshLeft, VideoPause } from "@element-plus/icons-vue";
 import SwipeRow from "@/components/SwipeRow.vue";
-import { craftableStatus } from "@/utils/stockData";
-import type { Product } from "@/types/stock";
+import { craftableStatus, orderNetIncomeCents, recipeUnitCost } from "@/utils/stockData";
+import type { Material, Product } from "@/types/stock";
 
 const props = defineProps<{
   products: Product[];
+  materials: Material[];
   craftableCountForProduct: (product: Product) => number;
 }>();
 
@@ -63,6 +71,18 @@ const emit = defineEmits<{
   "toggle-status": [product: Product];
   remove: [id: string];
 }>();
+
+function productProfit(product: Product) {
+  const cost = recipeUnitCost(product.recipe, props.materials);
+  if (cost === undefined) return undefined;
+  const shippingFee = product.freeShipping === false ? undefined : product.shippingFee;
+  const cents = orderNetIncomeCents({ value: product.defaultValue, cost, shippingFee });
+  return cents === undefined ? undefined : cents / 100;
+}
+
+function formatMoney(value: number) {
+  return (value < 0 ? "-¥" : "¥") + Math.abs(value).toFixed(2);
+}
 
 const groups = computed(() => {
   const visible = props.products;
@@ -144,8 +164,35 @@ details[open] .summary-arrow {
 }
 
 .product-meta {
-  color: var(--text-muted);
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+
+  small {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.product-profit {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(34, 160, 107, 0.1);
+  color: #23885a;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+
+  &.is-loss {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+  }
 }
 
 .product-count {
