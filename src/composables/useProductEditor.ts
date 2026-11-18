@@ -32,6 +32,8 @@ export function useProductEditor(
     productEditor.value.form = product
       ? {
         ...product,
+        freeShipping: product.freeShipping ?? true,
+        shippingFee: product.freeShipping === false ? 0 : product.shippingFee ?? 0,
         warningThreshold: product.warningThreshold ?? DEFAULT_WARNING_THRESHOLD,
         recipe: product.recipe.map((item) => ({ ...item })),
       }
@@ -90,7 +92,7 @@ export function useProductEditor(
       return;
     }
 
-    const { defaultValue, warningThreshold } = productEditor.value.form;
+    const { defaultValue, warningThreshold, freeShipping, shippingFee } = productEditor.value.form;
     const isNew = productEditor.value.type === "add";
     if (!isValidAmount(defaultValue)) {
       toastError("请输入有效的售价");
@@ -100,11 +102,21 @@ export function useProductEditor(
       toastError("预警阈值请输入大于或等于 0 的整数");
       return;
     }
+    let savedShippingFee: number | undefined;
+    if (freeShipping) {
+      if (!isValidAmount(shippingFee)) {
+        toastError("请输入有效的运费");
+        return;
+      }
+      savedShippingFee = moneyCents(shippingFee) / 100;
+    }
 
     const productPayload: Product = {
       id: productEditor.value.form.id || createId("product"),
       name,
       defaultValue: moneyCents(defaultValue) / 100,
+      freeShipping,
+      shippingFee: savedShippingFee,
       warningThreshold,
       status: productEditor.value.form.status,
       recipe: validRecipe,

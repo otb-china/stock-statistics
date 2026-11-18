@@ -84,7 +84,11 @@
           </label>
         </div>
 
-        <div class="order-net" aria-live="polite">
+        <div v-if="form.shippingFee !== undefined" class="order-amount">
+          <span>运费</span>
+          <strong>¥{{ form.shippingFee.toFixed(2) }}</strong>
+        </div>
+        <div class="order-amount" aria-live="polite">
           <span>净收入</span>
           <strong>{{ netIncome === undefined ? '待计算' : `¥${netIncome}` }}</strong>
         </div>
@@ -255,7 +259,7 @@ const netIncome = computed(() => {
   margin-top: 18px;
 }
 
-.order-net {
+.order-amount {
   display: flex;
   justify-content: space-between;
   gap: 12px;

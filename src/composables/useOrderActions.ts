@@ -117,6 +117,10 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     return options.products.value.find((item) => item.name === name);
   }
 
+  function productShippingFee(product: Product) {
+    return product.freeShipping === false ? undefined : product.shippingFee;
+  }
+
   function initOrderMonthData() {
     const months = new Map<string, Order[]>();
 
@@ -154,6 +158,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       orderInfo.value.form.title = product.name;
       unitPrice.value = product.defaultValue || 0;
       unitCost.value = recipeUnitCost(product.recipe, options.materials.value);
+      orderInfo.value.form.shippingFee = productShippingFee(product);
       updateOrderAmounts(orderInfo.value.form.quantity);
       calculation.value = canSyncCalculation.value;
     }
@@ -219,6 +224,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       title: selectedProduct.name,
       value: unitPrice.value,
       cost: unitCost.value,
+      shippingFee: productShippingFee(selectedProduct),
       quantity: 1,
       orderDate: dayjs(new Date()).format(options.dateFormat),
     };

@@ -39,6 +39,8 @@ export function createEmptyProductForm(): ProductEditorForm {
     id: "",
     name: "",
     status: "active",
+    freeShipping: true,
+    shippingFee: 0,
     warningThreshold: DEFAULT_WARNING_THRESHOLD,
     recipe: [],
   };
@@ -87,10 +89,10 @@ export function recipeUnitCost(recipe: ProductRecipe[], materials: Material[]) {
   return isValidAmount(total) ? moneyCents(total) / 100 : undefined;
 }
 
-export function orderNetIncomeCents({ value, cost }: Pick<Order, "value" | "cost">) {
+export function orderNetIncomeCents({ value, cost, shippingFee = 0 }: Pick<Order, "value" | "cost" | "shippingFee">) {
   const orderCost = cost ?? 0;
-  if (!isValidAmount(value) || !isValidAmount(orderCost)) return undefined;
-  return moneyCents(value) - moneyCents(orderCost);
+  if (!isValidAmount(value) || !isValidAmount(orderCost) || !isValidAmount(shippingFee)) return undefined;
+  return moneyCents(value) - moneyCents(orderCost) - moneyCents(shippingFee);
 }
 
 export function summarizeOrders(orders: Order[]) {
@@ -117,10 +119,13 @@ export function normalizeProducts(list: RSA[] | undefined): Product[] {
   const source = Array.isArray(list) ? list : [];
   return source.map((item): Product => {
     const status: Product["status"] = item.status === "inactive" ? "inactive" : "active";
+    const freeShipping = item.freeShipping !== false;
     return {
       id: String(item.id || createId("product")),
       name: String(item.name || ""),
       defaultValue: Number(item.defaultValue ?? item.value ?? 0),
+      freeShipping,
+      shippingFee: freeShipping && isValidAmount(item.shippingFee) ? moneyCents(item.shippingFee) / 100 : undefined,
       warningThreshold: isValidWarningThreshold(item.warningThreshold) ? item.warningThreshold : DEFAULT_WARNING_THRESHOLD,
       status,
       recipe: Array.isArray(item.recipe)
@@ -142,6 +147,7 @@ export function normalizeOrders(list: RSA[] | undefined): Order[] {
     title: String(item.title || ""),
     value: Number(item.value || 0),
     cost: isValidAmount(item.cost) ? moneyCents(item.cost) / 100 : 0,
+    shippingFee: isValidAmount(item.shippingFee) ? moneyCents(item.shippingFee) / 100 : undefined,
     orderDate: String(item.orderDate || ""),
     quantity: Number.isSafeInteger(item.quantity) && item.quantity > 0 ? item.quantity : 1,
     deductedMaterials: isValidDeduction(item.deductedMaterials) ? item.deductedMaterials : undefined,
@@ -204,6 +210,10 @@ export function assertValidBackupData({ materials, products, orders }: ResolvedB
   if (materials.some((material) => material?.unitCost != null && !isValidAmount(material.unitCost))
     || orders.some((order) => order?.cost != null && !isValidAmount(order.cost))) {
     throw new Error("成本金额无效");
+  }
+  if (products.some((product) => product?.freeShipping !== undefined && typeof product.freeShipping !== "boolean")
+    || [...products, ...orders].some((item) => item?.shippingFee !== undefined && !isValidAmount(item.shippingFee))) {
+    throw new Error("运费配置无效");
   }
   if (orders.some((order) => order?.deductedMaterials !== undefined && !isValidDeduction(order.deductedMaterials))) {
     throw new Error("订单扣料明细无效");

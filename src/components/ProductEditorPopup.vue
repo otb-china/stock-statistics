@@ -17,31 +17,53 @@
           <el-input v-model="form.name" placeholder="例如：珍珠手链" maxlength="30" clearable />
         </label>
 
-        <div class="form-row">
-          <label class="form-field">
-            <span class="form-label">单件售价</span>
+        <label class="form-field">
+          <span class="form-label">单件售价</span>
+          <el-input-number
+            :model-value="form.defaultValue"
+            :min="0"
+            :max="100000"
+            :precision="2"
+            :controls="false"
+            placeholder="输入售价"
+            aria-label="单件售价"
+            @update:model-value="form.defaultValue = $event ?? undefined"
+          >
+            <template #prefix>¥</template>
+          </el-input-number>
+        </label>
+        <div class="form-field">
+          <span class="form-label">运费 <small>{{ form.freeShipping ? "按每笔订单扣除" : "无需填写" }}</small></span>
+          <div class="shipping-field" :class="{ 'is-off': !form.freeShipping }">
             <el-input-number
-              :model-value="form.defaultValue"
+              :model-value="form.freeShipping ? form.shippingFee : 0"
               :min="0"
-              :max="100000"
-              :precision="2"
               :controls="false"
-              placeholder="输入售价"
-              aria-label="单件售价"
-              @update:model-value="form.defaultValue = $event ?? undefined"
+              :disabled="!form.freeShipping"
+              :placeholder="form.freeShipping ? '输入运费' : '无运费'"
+              aria-label="运费"
+              @update:model-value="form.shippingFee = $event ?? undefined"
             >
               <template #prefix>¥</template>
             </el-input-number>
-          </label>
-          <label class="form-field">
-            <span class="form-label">单件成本</span>
-            <el-input
-              :model-value="unitCost === undefined ? '' : `¥${unitCost.toFixed(2)}`"
-              :placeholder="form.recipe.length ? '请检查配方' : '添加配方后计算'"
-              aria-label="单件成本"
-              readonly
-            />
-          </label>
+            <div class="shipping-segment" role="radiogroup" aria-label="是否有运费">
+              <span class="shipping-thumb" aria-hidden="true" />
+              <button
+                type="button"
+                role="radio"
+                :aria-checked="form.freeShipping"
+                :class="{ active: form.freeShipping }"
+                @click="form.freeShipping = true"
+              >有</button>
+              <button
+                type="button"
+                role="radio"
+                :aria-checked="!form.freeShipping"
+                :class="{ active: !form.freeShipping }"
+                @click="disableShipping"
+              >无</button>
+            </div>
+          </div>
         </div>
         <div class="form-field">
           <span class="form-label">预警阈值 <small>可制件数小于或等于此值时预警</small></span>
@@ -64,7 +86,11 @@
       </div>
 
       <div class="form-section-head">
-        <strong>配方 <small>{{ form.recipe.length }}</small></strong>
+        <div class="recipe-summary">
+          <strong>配方 <small>{{ form.recipe.length }}</small></strong>
+          <span v-if="unitCost !== undefined" class="recipe-cost">单件成本 ¥{{ unitCost.toFixed(2) }}</span>
+          <span v-else-if="form.recipe.length" class="recipe-cost">请检查配方</span>
+        </div>
         <button v-if="form.recipe.length" class="pill-button" type="button" @click="openPicker">
           <el-icon><Plus /></el-icon>选择备料
         </button>
@@ -177,6 +203,11 @@ const popupShow = computed({
 
 const picker = ref({ show: false, search: "", selected: [] as string[] });
 
+function disableShipping() {
+  props.form.freeShipping = false;
+  props.form.shippingFee = 0;
+}
+
 const pickerMaterials = computed(() => {
   const query = picker.value.search.trim().toLowerCase();
   return props.materials.filter((material) => material.name.toLowerCase().includes(query));
@@ -213,12 +244,119 @@ function confirmPicker() {
 const unitCost = computed(() => recipeUnitCost(props.form.recipe, props.materials));
 
 const canSubmit = computed(() => {
-  const { name, defaultValue, warningThreshold } = props.form;
-  return Boolean(name.trim() && unitCost.value !== undefined && isValidAmount(defaultValue) && isValidWarningThreshold(warningThreshold));
+  const { name, defaultValue, warningThreshold, freeShipping, shippingFee } = props.form;
+  return Boolean(name.trim()
+    && unitCost.value !== undefined
+    && isValidAmount(defaultValue)
+    && isValidWarningThreshold(warningThreshold)
+    && (!freeShipping || isValidAmount(shippingFee)));
 });
 </script>
 
 <style lang="scss" scoped>
+.shipping-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+  padding-right: 5px;
+  border-radius: 12px;
+  background: var(--field-bg);
+  box-shadow: 0 0 0 1px transparent inset;
+  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 0 0 1px var(--divider) inset;
+  }
+
+  &:has(.el-input__wrapper.is-focus) {
+    background: var(--surface);
+    box-shadow: 0 0 0 1.5px var(--accent) inset, 0 0 0 4px var(--accent-ring);
+  }
+
+  .el-input-number {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :deep(.el-input__wrapper),
+  :deep(.el-input__wrapper:hover),
+  :deep(.el-input__wrapper.is-focus),
+  :deep(.el-input.is-disabled .el-input__wrapper) {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  :deep(.el-input.is-disabled .el-input__inner) {
+    cursor: default;
+  }
+
+  &.is-off :deep(.el-input__prefix) {
+    opacity: 0.4;
+  }
+}
+
+.shipping-segment {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex-shrink: 0;
+  width: 96px;
+  height: 36px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(20, 40, 60, 0.06);
+
+  button {
+    position: relative;
+    z-index: 1;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease;
+
+    &.active {
+      color: var(--accent-strong);
+    }
+  }
+}
+
+.shipping-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(20, 40, 60, 0.12);
+  transition: transform 0.22s cubic-bezier(0.3, 0.7, 0.4, 1);
+
+  .is-off & {
+    transform: translateX(100%);
+  }
+}
+
+.recipe-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.recipe-cost {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.form-section-head .pill-button {
+  flex-shrink: 0;
+}
+
 .recipe-list {
   display: grid;
   gap: 8px;
