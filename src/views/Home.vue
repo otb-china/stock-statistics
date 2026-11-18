@@ -27,21 +27,21 @@
         <div class="stats-main">
           <div class="stats-primary">
             <span class="stats-label">本月净收入</span>
-            <strong class="stats-value"><small>¥</small>{{ currentMonthTotals.netIncome }}</strong>
+            <strong class="stats-value"><small>¥</small>{{ formatMoney(currentMonthTotals.netIncome, "") }}</strong>
           </div>
           <div class="stats-secondary">
             <span class="stats-label">本月流水</span>
-            <strong><small>¥</small>{{ currentMonthTotals.revenue }}</strong>
+            <strong><small>¥</small>{{ formatMoney(currentMonthTotals.revenue, "") }}</strong>
           </div>
         </div>
         <div class="stats-foot">
           <div>
             <span>累计净收入</span>
-            <strong>¥{{ orderTotals.netIncome }}</strong>
+            <strong>{{ formatMoney(orderTotals.netIncome) }}</strong>
           </div>
           <div>
             <span>累计流水</span>
-            <strong>¥{{ orderTotals.revenue }}</strong>
+            <strong>{{ formatMoney(orderTotals.revenue) }}</strong>
           </div>
         </div>
         <span class="stats-deco" aria-hidden="true"></span>
@@ -73,7 +73,6 @@
         <MaterialList
           :materials="data"
           :group-key="materialGroupKey"
-          :status-text="materialStatusText"
           :related-summary="materialRelatedSummary"
           @edit="openMaterialEditor"
           @remove="removeMaterial"
@@ -133,7 +132,7 @@
             @click="monthChange('')"
           >
             <span>全部</span>
-            <strong>¥{{ orderTotals.netIncome }}</strong>
+            <strong>{{ formatMoney(orderTotals.netIncome) }}</strong>
           </button>
           <button
             v-for="item in orderInfo.monthData"
@@ -145,7 +144,7 @@
             @click="monthChange(item.month)"
           >
             <span>{{ formatMonth(item.month) }}</span>
-            <strong>¥{{ item.netIncome }}</strong>
+            <strong>{{ formatMoney(item.netIncome) }}</strong>
           </button>
         </div>
 
@@ -284,6 +283,7 @@
       :type="orderInfo.type"
       :form="orderInfo.form"
       :show-product-picker="orderInfo.showProductPicker"
+      :requires-manual-cost="requiresManualCost"
       :products="activeOrderProducts"
       :can-sync-calculation="canSyncCalculation"
       :deduction-message="deductionMessage"
@@ -320,7 +320,7 @@ import SwipeRow from "@/components/SwipeRow.vue";
 import StockHistoryPopup from "@/components/StockHistoryPopup.vue";
 import { useStockRecords } from "@/composables/useStockRecords";
 import { LStorage } from "@/utils/localStorage.ts";
-import { orderNetIncomeCents, summarizeOrders } from "@/utils/stockData";
+import { formatMoney, orderNetIncomeCents, summarizeOrders } from "@/utils/stockData";
 import ImportDataPopup from "@/components/ImportDataPopup.vue";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
 import MaterialList from "@/components/MaterialList.vue";
@@ -387,7 +387,6 @@ const {
   sharedMaterials,
   materialGroupKey,
   materialRelatedSummary,
-  materialStatusText,
 } = useMaterialStatus(data, products);
 
 const {
@@ -396,6 +395,7 @@ const {
   OrderData,
   orderTotals,
   activeOrderProducts,
+  requiresManualCost,
   canSyncCalculation,
   deductionMessage,
   deletingOrder,
@@ -486,30 +486,39 @@ const materialsSummary = computed(() => {
   };
 });
 
-const currentMonth = dayjs().format("YYYY-MM");
-const currentMonthTotals = computed(() => orderInfo.value.monthData.find((item) => item.month === currentMonth) ?? summarizeOrders([]));
+const today = ref(dayjs().startOf("day"));
+let dateRefreshTimer: number | undefined;
+const currentMonth = computed(() => today.value.format("YYYY-MM"));
+const currentMonthTotals = computed(() => orderInfo.value.monthData.find((item) => item.month === currentMonth.value) ?? summarizeOrders([]));
+
+function refreshToday() {
+  const now = dayjs();
+  if (!today.value.isSame(now, "day")) today.value = now.startOf("day");
+  window.clearTimeout(dateRefreshTimer);
+  dateRefreshTimer = window.setTimeout(refreshToday, now.add(1, "day").startOf("day").diff(now));
+}
 
 function formatOrderIncome(order: Parameters<typeof orderNetIncomeCents>[0]) {
   const cents = orderNetIncomeCents(order);
-  return cents === undefined ? "—" : `¥${cents / 100}`;
+  return cents === undefined ? "—" : formatMoney(cents / 100);
 }
 
-const currentMonthLabel = dayjs().format("YYYY年M月");
+const currentMonthLabel = computed(() => today.value.format("YYYY年M月"));
 const activeProductsCount = computed(() => products.value.filter((item) => item.status === "active").length);
 
 function formatOrderDate(date: string) {
   const value = dayjs(date);
   if (!value.isValid()) return date;
-  if (value.isSame(dayjs(), "day")) return "今天";
-  if (value.isSame(dayjs().subtract(1, "day"), "day")) return "昨天";
-  return value.isSame(dayjs(), "year") ? value.format("M月D日") : value.format("YYYY年M月D日");
+  if (value.isSame(today.value, "day")) return "今天";
+  if (value.isSame(today.value.subtract(1, "day"), "day")) return "昨天";
+  return value.isSame(today.value, "year") ? value.format("M月D日") : value.format("YYYY年M月D日");
 }
 
-const todayText = dayjs().format("M月D日") + " · " + ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][dayjs().day()];
+const todayText = computed(() => today.value.format("M月D日") + " · " + ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][today.value.day()]);
 
 function formatMonth(month: string) {
   const [year, value] = month.split("-");
-  return year === dayjs().format("YYYY") ? `${Number(value)}月` : `${year}.${value}`;
+  return year === today.value.format("YYYY") ? `${Number(value)}月` : `${year}.${value}`;
 }
 
 const warningMaterials = computed(() => {
@@ -551,11 +560,15 @@ watch(() => orderInfo.value.checkedMonth, () => {
 });
 
 onMounted(() => {
+  refreshToday();
+  document.addEventListener("visibilitychange", refreshToday);
   updateScrollTopVisibility();
   window.addEventListener("scroll", updateScrollTopVisibility, { passive: true });
 });
 
 onUnmounted(() => {
+  window.clearTimeout(dateRefreshTimer);
+  document.removeEventListener("visibilitychange", refreshToday);
   window.removeEventListener("scroll", updateScrollTopVisibility);
 });
 </script>

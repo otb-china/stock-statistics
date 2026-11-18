@@ -27,7 +27,7 @@
           >
             <span class="product-check"><el-icon><Check /></el-icon></span>
             <strong>{{ product.name }}</strong>
-            <em>¥{{ product.defaultValue || 0 }} · 可制 {{ craftableCountForProduct(product) }}</em>
+            <em>{{ formatMoney(product.defaultValue || 0) }} · 可制 {{ craftableCountForProduct(product) }}</em>
           </button>
         </div>
       </template>
@@ -74,7 +74,7 @@
             <van-field
               :model-value="Number.isFinite(form.cost) ? form.cost : ''"
               type="number"
-              placeholder="留空按 0 元"
+              :placeholder="requiresManualCost ? '请输入成本，无成本填 0' : '留空按 0 元'"
               aria-label="总成本"
               clearable
               @update:model-value="emit('cost-change', $event)"
@@ -86,11 +86,11 @@
 
         <div v-if="form.shippingFee !== undefined" class="order-amount">
           <span>运费</span>
-          <strong>¥{{ form.shippingFee.toFixed(2) }}</strong>
+          <strong>{{ formatMoney(form.shippingFee) }}</strong>
         </div>
         <div class="order-amount" aria-live="polite">
           <span>净收入</span>
-          <strong>{{ netIncome === undefined ? '待计算' : `¥${netIncome}` }}</strong>
+          <strong>{{ netIncome === undefined ? '待计算' : formatMoney(netIncome) }}</strong>
         </div>
       </div>
 
@@ -103,7 +103,7 @@
       </div>
       <div v-else-if="form.deductedMaterials?.length" class="info-tip">
         <el-icon><InfoFilled /></el-icon>
-        <p>修改件数时，会按原扣料明细补扣或返还备料。</p>
+        <p>已扣料的订单无法更换货品。修改件数时，会按原扣料明细补扣或返还备料。</p>
       </div>
       <div v-else-if="form.deductedMaterials === undefined" class="info-tip warning">
         <el-icon><WarningFilled /></el-icon>
@@ -115,7 +115,7 @@
           type="primary"
           size="large"
           class="submit-button"
-          :disabled="!form.title || !isValidAmount(form.value) || (form.cost !== undefined && !isValidAmount(form.cost)) || !Number.isSafeInteger(form.quantity) || form.quantity < 1 || !form.orderDate"
+          :disabled="!form.title || !isValidAmount(form.value) || !hasValidCost || !Number.isSafeInteger(form.quantity) || form.quantity < 1 || !form.orderDate"
           @click="emit('submit')"
         >
           {{ type === "upd" ? "保存修改" : (calculationModel ? "记单并扣料" : "仅记订单") }}
@@ -129,7 +129,7 @@
 import { computed } from "vue";
 import DatePicker from "@/components/Date.vue";
 import { Check, InfoFilled, Tickets, WarningFilled } from "@element-plus/icons-vue";
-import { isValidAmount, orderNetIncomeCents } from "@/utils/stockData";
+import { formatMoney, isValidAmount, orderNetIncomeCents } from "@/utils/stockData";
 import type { Order, OrderEditorType, Product } from "@/types/stock";
 
 const props = defineProps<{
@@ -137,6 +137,7 @@ const props = defineProps<{
   type: OrderEditorType;
   form: Order;
   showProductPicker: boolean;
+  requiresManualCost: boolean;
   products: Product[];
   calculation: boolean;
   canSyncCalculation: boolean;
@@ -161,11 +162,14 @@ const popupShow = computed({
 });
 
 const calculationModel = computed({
-  get: () => props.canSyncCalculation && props.calculation,
+  get: () => props.calculation,
   set: (value: boolean) => emit("update:calculation", value),
 });
 
+const hasValidCost = computed(() => props.form.cost === undefined ? !props.requiresManualCost : isValidAmount(props.form.cost));
+
 const netIncome = computed(() => {
+  if (!hasValidCost.value) return undefined;
   const cents = orderNetIncomeCents(props.form);
   return cents === undefined ? undefined : cents / 100;
 });

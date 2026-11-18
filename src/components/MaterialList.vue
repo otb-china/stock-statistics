@@ -15,12 +15,10 @@
           <button class="material-main" type="button" :aria-label="'编辑' + item.name" @click="emit('edit', item)">
             <span class="material-title">
               <b>{{ item.name }}</b>
-              <em v-if="!group.folded" class="material-tag">{{ statusText(item) }}</em>
+              <span v-if="item.unitCost !== undefined" class="material-cost">{{ formatMoney(item.unitCost) }}</span>
+              <em class="material-tag">{{ group.title }}</em>
             </span>
-            <span class="material-meta">
-                <b v-if="item.unitCost !== undefined" class="material-cost">成本 ¥{{ item.unitCost.toFixed(2) }}</b>
-                <small class="material-related">{{ relatedSummary(item.id) }}</small>
-              </span>
+            <small class="material-related">{{ relatedSummary(item.id) }}</small>
           </button>
           <span class="material-stock">
             <strong>{{ item.num }}</strong>
@@ -52,12 +50,9 @@
             <button class="material-main" type="button" :aria-label="'编辑' + item.name" @click="emit('edit', item)">
               <span class="material-title">
                 <b>{{ item.name }}</b>
-                <em v-if="!group.folded" class="material-tag">{{ statusText(item) }}</em>
+                <span v-if="item.unitCost !== undefined" class="material-cost">{{ formatMoney(item.unitCost) }}</span>
               </span>
-              <span class="material-meta">
-                <b v-if="item.unitCost !== undefined" class="material-cost">成本 ¥{{ item.unitCost.toFixed(2) }}</b>
-                <small class="material-related">{{ relatedSummary(item.id) }}</small>
-              </span>
+              <small class="material-related">{{ relatedSummary(item.id) }}</small>
             </button>
             <span class="material-stock">
               <strong>{{ item.num }}</strong>
@@ -75,6 +70,7 @@
 import { computed } from "vue";
 import { ArrowDown, Delete, Tickets } from "@element-plus/icons-vue";
 import SwipeRow from "@/components/SwipeRow.vue";
+import { formatMoney } from "@/utils/stockData";
 import type { Material, MaterialGroupKey } from "@/types/stock";
 
 const GROUPS = [
@@ -87,7 +83,6 @@ const GROUPS = [
 const props = defineProps<{
   materials: Material[];
   groupKey: (item: Material) => MaterialGroupKey;
-  statusText: (item: Material) => string;
   relatedSummary: (materialId: string) => string;
 }>();
 
@@ -192,14 +187,6 @@ details[open] .summary-arrow {
   background: var(--surface-soft);
 }
 
-.material-item.is-danger {
-  background: var(--danger-bg);
-}
-
-.material-item.is-warning {
-  background: var(--warning-bg);
-}
-
 .material-main {
   display: grid;
   flex: 1;
@@ -234,27 +221,24 @@ details[open] .summary-arrow {
   flex-shrink: 0;
   padding: 1px 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface);
   font-size: 11px;
   font-style: normal;
   font-weight: 600;
 }
 
-.is-danger .material-tag,
-.is-danger .material-stock strong {
+.is-danger .material-tag {
+  background: var(--danger-bg);
   color: var(--danger-text);
 }
 
-.is-warning .material-tag,
-.is-warning .material-stock strong {
+.is-warning .material-tag {
+  background: var(--warning-bg);
   color: var(--warning-text);
 }
 
-.material-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+.is-danger .material-stock strong {
+  color: var(--danger-text);
 }
 
 .material-related {
@@ -277,16 +261,12 @@ details[open] .summary-arrow {
   line-height: 18px;
 }
 
-.material-item:not(.is-safe):not(.is-unlinked) .material-cost {
-  background: rgba(255, 255, 255, 0.7);
-}
-
 .material-stock {
   display: flex;
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
-  min-width: 40px;
+  min-width: 32px;
   line-height: 1.1;
 }
 
@@ -305,15 +285,15 @@ details[open] .summary-arrow {
 
 .material-restock {
   flex-shrink: 0;
-  height: 34px;
-  padding: 0 14px;
+  height: 30px;
+  padding: 0 12px;
   border: 0;
   border-radius: 999px;
   background: var(--surface);
   color: var(--accent-strong);
   box-shadow: 0 0 0 1px var(--accent-border) inset;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }

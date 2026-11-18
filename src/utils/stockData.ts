@@ -25,6 +25,10 @@ export function recipeQuantities(recipe: ProductRecipe[]) {
   return quantities;
 }
 
+export function requiredMaterialQuantity(perItem: number, count: number) {
+  return Number((perItem * count).toPrecision(15));
+}
+
 export function createEmptyMaterialForm(): Material {
   return {
     id: "",
@@ -71,6 +75,12 @@ export function moneyCents(value: number) {
   return Math.round(Number((value * 100).toPrecision(15)));
 }
 
+export function formatMoney(value: number, symbol = "¥") {
+  const cents = moneyCents(Math.abs(value));
+  const amount = (cents / 100).toFixed(2).replace(/\.00$/, "");
+  return (value < 0 && cents > 0 ? "-" : "") + symbol + amount;
+}
+
 export function isValidAmount(value: unknown): value is number {
   return typeof value === "number" && value >= 0 && Number.isSafeInteger(moneyCents(value));
 }
@@ -86,7 +96,8 @@ export function recipeUnitCost(recipe: ProductRecipe[], materials: Material[]) {
     if (!material) return undefined;
     total += (material.unitCost ?? 0) * quantity;
   }
-  return isValidAmount(total) ? moneyCents(total) / 100 : undefined;
+  // Keep the fractional cents until the caller has the total for all units.
+  return isValidAmount(total) ? total : undefined;
 }
 
 export function orderNetIncomeCents({ value, cost, shippingFee = 0 }: Pick<Order, "value" | "cost" | "shippingFee">) {
@@ -203,7 +214,34 @@ function isStockMovement(value: unknown): value is StockMovement {
     && (item.orderTitle === undefined || typeof item.orderTitle === "string");
 }
 
+function backupNumber(value: unknown) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim()) return Number(value);
+  return Number.NaN;
+}
+
+function isValidOrderDate(value: unknown) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 export function assertValidBackupData({ materials, products, orders }: ResolvedBackupData) {
+  if (materials.some((material) => {
+    const quantity = backupNumber(material?.num ?? 0);
+    return !Number.isFinite(quantity) || quantity < 0;
+  })) {
+    throw new Error("备料库存数量无效");
+  }
+  if (orders.some((order) => !isValidAmount(backupNumber(order?.value)))) {
+    throw new Error("订单售价无效");
+  }
+  if (orders.some((order) => !isValidOrderDate(order?.orderDate))) {
+    throw new Error("订单日期无效");
+  }
+  if (products.some((product) => !isValidAmount(backupNumber(product?.defaultValue ?? product?.value ?? 0)))) {
+    throw new Error("货品默认售价无效");
+  }
   if (products.some((product) => product?.warningThreshold !== undefined && !isValidWarningThreshold(product.warningThreshold))) {
     throw new Error("货品预警阈值无效");
   }
@@ -234,6 +272,12 @@ export function assertValidBackupData({ materials, products, orders }: ResolvedB
   }
 
   const materialIds = new Set(normalizedMaterials.map((item) => item.id));
+  const productIds = new Set(normalizedProducts.map((item) => item.id));
+  const orderIds = new Set(normalizedOrders.map((item) => item.id));
+  if (materialIds.size !== normalizedMaterials.length || productIds.size !== normalizedProducts.length
+    || orderIds.size !== normalizedOrders.length) {
+    throw new Error("备料、货品或订单中存在重复 ID");
+  }
   const hasInvalidRecipe = normalizedProducts.some((product) => {
     return product.recipe.some((recipe) => !materialIds.has(recipe.materialId));
   });

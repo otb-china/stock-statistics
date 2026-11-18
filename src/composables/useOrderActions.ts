@@ -2,7 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from "vue";
 import dayjs from "dayjs";
 import { toastSuccess, toastError } from "@/utils/toast";
 import type { useStockRecords } from "./useStockRecords";
-import { createEmptyOrderForm, createId, isValidAmount, moneyCents, recipeQuantities, recipeUnitCost, summarizeOrders } from "@/utils/stockData.ts";
+import { createEmptyOrderForm, createId, isValidAmount, moneyCents, recipeQuantities, recipeUnitCost, requiredMaterialQuantity, summarizeOrders } from "@/utils/stockData.ts";
 import type { Material, Order, OrderEditorType, Product, ProductRecipe } from "@/types/stock";
 
 interface UseOrderActionsOptions {
@@ -17,9 +17,10 @@ interface UseOrderActionsOptions {
 }
 
 export function useOrderActions(options: UseOrderActionsOptions) {
-  const calculation = ref(false);
+  const deductStock = ref(true);
   const unitPrice = ref(0);
   const unitCost = ref<number>();
+  const requiresManualCost = ref(false);
   const deletingOrderId = ref("");
   const orderInfo = ref({
     type: "add" as OrderEditorType,
@@ -50,6 +51,10 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   const canSyncCalculation = computed(() =>
     orderDeduction.value.items.length > 0 && orderDeduction.value.shortages.length === 0,
   );
+  const calculation = computed({
+    get: () => deductStock.value && canSyncCalculation.value,
+    set: (value: boolean) => { deductStock.value = value; },
+  });
   const deductionMessage = computed(() => {
     if (!Number.isSafeInteger(orderInfo.value.form.quantity) || orderInfo.value.form.quantity < 1) return "请输入有效件数。";
     if (!orderDeduction.value.items.length) return "该货品缺少有效配方，可以仅记录订单。";
@@ -101,7 +106,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     const items: ProductRecipe[] = [];
     const shortages: string[] = [];
     for (const [materialId, perItem] of quantities) {
-      const quantity = Number((perItem * count).toPrecision(15));
+      const quantity = requiredMaterialQuantity(perItem, count);
       const material = options.materials.value.find((entry) => entry.id === materialId);
       items.push({ materialId, quantity });
       if (!material || !Number.isFinite(material.num) || !Number.isFinite(quantity)) {
@@ -153,14 +158,15 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   }
 
   function onProductChange(productName: string) {
+    if (!orderInfo.value.showProductPicker) return;
     const product = productByName(productName);
     if (product && product.name !== orderInfo.value.form.title) {
       orderInfo.value.form.title = product.name;
       unitPrice.value = product.defaultValue || 0;
       unitCost.value = recipeUnitCost(product.recipe, options.materials.value);
+      requiresManualCost.value = unitCost.value === undefined;
       orderInfo.value.form.shippingFee = productShippingFee(product);
       updateOrderAmounts(orderInfo.value.form.quantity);
-      calculation.value = canSyncCalculation.value;
     }
     if (!orderInfo.value.form.orderDate) {
       orderInfo.value.form.orderDate = dayjs(new Date()).format(options.dateFormat);
@@ -174,12 +180,8 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   }
 
   function setOrderQuantity(quantity: number) {
-    const couldDeduct = canSyncCalculation.value;
     orderInfo.value.form.quantity = quantity;
     updateOrderAmounts(quantity);
-    if (orderInfo.value.type === "add" && (!couldDeduct || !canSyncCalculation.value)) {
-      calculation.value = canSyncCalculation.value;
-    }
   }
 
   function setOrderValue(value: string) {
@@ -219,16 +221,17 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo.value.showProductPicker = product === undefined;
     unitPrice.value = selectedProduct.defaultValue || 0;
     unitCost.value = recipeUnitCost(selectedProduct.recipe, options.materials.value);
+    requiresManualCost.value = unitCost.value === undefined;
     orderInfo.value.form = {
       id: "",
       title: selectedProduct.name,
-      value: unitPrice.value,
-      cost: unitCost.value,
+      value: 0,
       shippingFee: productShippingFee(selectedProduct),
       quantity: 1,
       orderDate: dayjs(new Date()).format(options.dateFormat),
     };
-    calculation.value = canSyncCalculation.value;
+    updateOrderAmounts(1);
+    deductStock.value = true;
     orderInfo.value.show = true;
   }
 
@@ -244,7 +247,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       toastError("请填写有效的金额和日期");
       return;
     }
-    if (cost !== undefined && !isValidAmount(cost)) {
+    if ((requiresManualCost.value || cost !== undefined) && !isValidAmount(cost)) {
       toastError("请输入有效的订单成本");
       return;
     }
@@ -254,11 +257,6 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     let changes: ProductRecipe[] = [];
     let savedOrder: Order;
     if (type === "add") {
-      if (calculation.value && !canSyncCalculation.value) {
-        calculation.value = false;
-        toastError("库存无法扣减，请确认后仅记录订单");
-        return;
-      }
       const deduction = calculation.value ? orderDeduction.value.items : [];
       changes = deduction.map((item) => ({ ...item, quantity: -item.quantity }));
       savedOrder = { ...form, ...amounts, id: createId("order"), deductedMaterials: deduction };
@@ -268,6 +266,10 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       if (index < 0) return;
       const previous = data[index];
       let deduction = previous.deductedMaterials;
+      if (deduction?.length && form.title !== previous.title) {
+        toastError("已扣料的订单无法更换货品");
+        return;
+      }
       if (deduction?.length && form.quantity !== previous.quantity) {
         const previousDeduction = deduction;
         const nextDeduction = previousDeduction.map((item) => ({
@@ -296,12 +298,12 @@ export function useOrderActions(options: UseOrderActionsOptions) {
 
   function beforeUpd(item: Order) {
     orderInfo.value.type = "upd";
-    orderInfo.value.showProductPicker = true;
+    orderInfo.value.showProductPicker = !item.deductedMaterials?.length;
     orderInfo.value.editingId = item.id;
     orderInfo.value.form = { ...item };
     unitPrice.value = item.value / item.quantity;
     unitCost.value = item.cost === undefined ? undefined : item.cost / item.quantity;
-    calculation.value = false;
+    requiresManualCost.value = false;
     orderInfo.value.show = true;
   }
 
@@ -350,6 +352,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     OrderData,
     orderTotals,
     activeOrderProducts,
+    requiresManualCost,
     canSyncCalculation,
     deductionMessage,
     deletingOrder,

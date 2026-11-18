@@ -1,6 +1,6 @@
 import { computed, type Ref } from "vue";
 import type { Material, MaterialGroupKey, Product } from "@/types/stock";
-import { craftableStatus, recipeQuantities } from "@/utils/stockData";
+import { craftableStatus, recipeQuantities, requiredMaterialQuantity } from "@/utils/stockData";
 
 type ProductWithRecipe = Pick<Product, "id" | "recipe">;
 
@@ -16,7 +16,12 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
   function materialCapacity(materialId: string, quantity: number) {
     const material = materialsMap.value.get(materialId);
     if (!material || !Number.isFinite(material.num) || !Number.isFinite(quantity) || quantity <= 0) return 0;
-    return Math.max(0, Math.floor(Number((material.num / quantity).toPrecision(15))));
+    const maxCount = Number.MAX_SAFE_INTEGER;
+    let count = Math.min(maxCount, Math.max(0, Math.floor(material.num / quantity)));
+    // Check the rounded material requirement used when an order is submitted.
+    while (count > 0 && requiredMaterialQuantity(quantity, count) > material.num) count--;
+    while (count < maxCount && requiredMaterialQuantity(quantity, count + 1) <= material.num) count++;
+    return count;
   }
 
   function productCapacity(product: ProductWithRecipe) {
@@ -46,16 +51,6 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     return activeProducts.value.filter((product) => product.recipe.some((item) => item.materialId === materialId));
   }
 
-  function materialCraftableCount(materialId: string) {
-    const material = materialsMap.value.get(materialId);
-    const list = activeRelatedProducts(materialId);
-    if (!material || !list.length) return 0;
-    const counts = list.map((product) => {
-      return materialCapacity(materialId, recipeQuantities(product.recipe).get(materialId) ?? 0);
-    });
-    return Math.min(...counts);
-  }
-
   function materialStatus(item: Material) {
     if (Number(item.num) <= 0) return "danger";
     let status: "warning" | "safe" = "safe";
@@ -80,13 +75,6 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     return product ? `关联 ${product.name}` : "未关联货品";
   }
 
-  function materialStatusText(item: Material) {
-    const status = materialGroupKey(item);
-    if (status === "unlinked") return "未关联";
-    if (status === "danger") return "缺货";
-    return `可制 ${materialCraftableCount(item.id)}`;
-  }
-
   function materialStatusClass(item: Material) {
     return `status-${materialGroupKey(item)}`;
   }
@@ -105,11 +93,9 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
     limitingMaterials,
     sharedMaterials,
     activeRelatedProducts,
-    materialCraftableCount,
     materialStatus,
     materialGroupKey,
     materialRelatedSummary,
-    materialStatusText,
     materialStatusClass,
     recipePreview,
   };

@@ -99,7 +99,7 @@
           </button>
         </strong>
         <span v-if="form.recipe.length" class="recipe-total" :class="{ 'is-invalid': unitCost === undefined }">
-          <template v-if="unitCost !== undefined">合计成本 <b><i>¥</i>{{ unitCost.toFixed(2) }}</b></template>
+          <template v-if="unitCost !== undefined">合计成本 <b><i>¥</i>{{ formatMoney(unitCost, "") }}</b></template>
           <template v-else>请检查配方</template>
         </span>
       </div>
@@ -192,7 +192,7 @@
 import { computed, ref } from "vue";
 import { Check, Delete, EditPen, Goods, InfoFilled, Plus, Search } from "@element-plus/icons-vue";
 import SwipeRow from "@/components/SwipeRow.vue";
-import { isValidAmount, isValidWarningThreshold, recipeUnitCost } from "@/utils/stockData";
+import { formatMoney, isValidAmount, isValidWarningThreshold, recipeUnitCost } from "@/utils/stockData";
 import type { EditorType, Material, ProductEditorForm } from "@/types/stock";
 
 const props = defineProps<{
