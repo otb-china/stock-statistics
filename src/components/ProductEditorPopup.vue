@@ -86,33 +86,47 @@
       </div>
 
       <div class="form-section-head">
-        <div class="recipe-summary">
-          <strong>配方 <small>{{ form.recipe.length }}</small></strong>
-          <span v-if="unitCost !== undefined" class="recipe-cost">单件成本 ¥{{ unitCost.toFixed(2) }}</span>
-          <span v-else-if="form.recipe.length" class="recipe-cost">请检查配方</span>
-        </div>
-        <button v-if="form.recipe.length" class="pill-button" type="button" @click="openPicker">
-          <el-icon><Plus /></el-icon>选择备料
-        </button>
+        <strong class="recipe-title">
+          配方
+          <button
+            v-if="form.recipe.length"
+            class="recipe-count"
+            type="button"
+            :aria-label="'编辑配方备料，当前 ' + form.recipe.length + ' 种'"
+            @click="openPicker"
+          >
+            {{ form.recipe.length }} 种<el-icon><EditPen /></el-icon>
+          </button>
+        </strong>
+        <span v-if="form.recipe.length" class="recipe-total" :class="{ 'is-invalid': unitCost === undefined }">
+          <template v-if="unitCost !== undefined">合计成本 <b><i>¥</i>{{ unitCost.toFixed(2) }}</b></template>
+          <template v-else>请检查配方</template>
+        </span>
       </div>
 
       <div v-if="form.recipe.length" class="recipe-list">
-        <div v-for="(item, index) in form.recipe" :key="item.materialId || index" class="recipe-row">
-          <span class="recipe-info">
-            <b>{{ materialName(item.materialId) }}</b>
-            <small>库存 {{ materialStock(item.materialId) }} · 每件用量</small>
-          </span>
-          <el-input-number
-            v-model="item.quantity"
-            :min="1"
-            :max="1000"
-            class="recipe-quantity"
-            :aria-label="materialName(item.materialId) + '每件用量'"
-          />
-          <button class="recipe-delete" type="button" :aria-label="'移除' + materialName(item.materialId)" @click="emit('remove-recipe', index)">
-            <el-icon><Close /></el-icon>
-          </button>
-        </div>
+        <SwipeRow
+          v-for="(item, index) in form.recipe"
+          :key="item.materialId || index"
+          class="recipe-swipe"
+          :label="materialName(item.materialId)"
+          :actions="[{ name: '删除', icon: Delete, tone: 'danger', callback: () => emit('remove-recipe', index) }]"
+          swipe-to-trigger
+        >
+          <div class="recipe-row">
+            <span class="recipe-info">
+              <b>{{ materialName(item.materialId) }}</b>
+              <small>库存 {{ materialStock(item.materialId) }} · 每件用量</small>
+            </span>
+            <el-input-number
+              v-model="item.quantity"
+              :min="1"
+              :max="1000"
+              class="recipe-quantity"
+              :aria-label="materialName(item.materialId) + '每件用量'"
+            />
+          </div>
+        </SwipeRow>
       </div>
       <button v-else class="recipe-empty" type="button" @click="openPicker">
         <span class="empty-icon"><el-icon><Plus /></el-icon></span>
@@ -176,7 +190,8 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import { Check, Close, Goods, InfoFilled, Plus, Search } from "@element-plus/icons-vue";
+import { Check, Delete, EditPen, Goods, InfoFilled, Plus, Search } from "@element-plus/icons-vue";
+import SwipeRow from "@/components/SwipeRow.vue";
 import { isValidAmount, isValidWarningThreshold, recipeUnitCost } from "@/utils/stockData";
 import type { EditorType, Material, ProductEditorForm } from "@/types/stock";
 
@@ -340,21 +355,60 @@ const canSubmit = computed(() => {
   }
 }
 
-.recipe-summary {
-  display: flex;
-  flex-wrap: wrap;
+.recipe-count {
+  display: inline-flex;
   align-items: center;
-  gap: 4px 8px;
+  gap: 3px;
+  height: 24px;
+  padding: 0 8px 0 9px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+
+  .el-icon {
+    font-size: 12px;
+  }
+
+  &:active {
+    background: var(--surface-soft);
+    transform: scale(0.96);
+  }
 }
 
-.recipe-cost {
+.recipe-total {
+  display: inline-flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
   color: var(--text-muted);
   font-size: 12px;
   white-space: nowrap;
-}
 
-.form-section-head .pill-button {
-  flex-shrink: 0;
+  b {
+    color: var(--accent-strong);
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+
+    i {
+      margin-right: 1px;
+      font-size: 12px;
+      font-style: normal;
+    }
+  }
+
+  &.is-invalid {
+    color: var(--danger-text);
+    font-weight: 600;
+  }
 }
 
 .recipe-list {
@@ -366,8 +420,7 @@ const canSubmit = computed(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 6px 10px 14px;
-  border-radius: 14px;
+  padding: 10px 10px 10px 14px;
   background: var(--surface-soft);
 }
 
@@ -397,55 +450,59 @@ const canSubmit = computed(() => {
 }
 
 .popup-body .recipe-row .recipe-quantity {
-  flex: 0 0 116px;
-  width: 116px;
-  height: 40px;
-  line-height: 40px;
+  flex: 0 0 108px;
+  width: 108px;
+  height: 36px;
+  line-height: 36px;
 }
 
-.recipe-row :deep(.el-input__wrapper) {
+.recipe-row :deep(.recipe-quantity .el-input__wrapper) {
+  min-height: 36px;
+  padding: 0 34px;
+  border-radius: 10px;
   background: var(--surface);
+  box-shadow: 0 0 0 1px var(--divider) inset;
 }
 
-.recipe-row :deep(.el-input-number .el-input__wrapper) {
-  padding: 0 38px;
+.recipe-row :deep(.recipe-quantity .el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1.5px var(--accent) inset, 0 0 0 3px var(--accent-ring);
+}
+
+.recipe-row :deep(.recipe-quantity .el-input__inner) {
+  font-size: 15px;
 }
 
 .recipe-row :deep(.el-input-number__decrease),
 .recipe-row :deep(.el-input-number__increase) {
-  top: 4px;
-  bottom: 4px;
+  top: 3px;
+  bottom: 3px;
   width: 30px;
-  background: var(--surface-soft);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent-strong);
+  font-size: 13px;
   box-shadow: none;
+  transition: background-color 0.15s ease;
+}
+
+.recipe-row :deep(.el-input-number__decrease:not(.is-disabled):active),
+.recipe-row :deep(.el-input-number__increase:not(.is-disabled):active) {
+  background: var(--surface-soft);
+}
+
+.recipe-row :deep(.el-input-number__decrease.is-disabled),
+.recipe-row :deep(.el-input-number__increase.is-disabled) {
+  background: transparent;
+  color: var(--text-subtle);
+  opacity: 0.5;
 }
 
 .recipe-row :deep(.el-input-number__decrease) {
-  left: 4px;
+  left: 3px;
 }
 
 .recipe-row :deep(.el-input-number__increase) {
-  right: 4px;
-}
-
-.recipe-delete {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-subtle);
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.recipe-delete:active {
-  background: var(--danger-bg);
-  color: var(--danger-text);
+  right: 3px;
 }
 
 .recipe-empty {

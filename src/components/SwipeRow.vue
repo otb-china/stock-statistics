@@ -1,14 +1,19 @@
 <template>
   <div
     class="swipe-row"
-    :class="{ open: offset !== 0, dragging }"
+    :class="{ open: offset !== 0, dragging, armed }"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
     @click.capture="onClickCapture"
   >
-    <div ref="actionsRef" class="swipe-actions" :aria-hidden="offset === 0">
+    <div
+      ref="actionsRef"
+      class="swipe-actions"
+      :style="triggerMode && offset < 0 ? { minWidth: `${-offset}px` } : undefined"
+      :aria-hidden="offset === 0"
+    >
       <button
         v-for="action in actions"
         :key="action.name"
@@ -30,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, type Component } from "vue";
+import { computed, onBeforeUnmount, ref, type Component } from "vue";
 
 export interface SwipeAction {
   name: string;
@@ -50,6 +55,8 @@ const DECIDE_DISTANCE = 8;
 const actionsRef = ref<HTMLElement>();
 const offset = ref(0);
 const dragging = ref(false);
+const armed = ref(false);
+const triggerMode = computed(() => props.swipeToTrigger && props.actions.length === 1);
 
 let startX = 0;
 let startY = 0;
@@ -59,11 +66,17 @@ let tracking = false;
 let horizontal = false;
 let moved = false;
 let pointerId = -1;
+let lastX = 0;
+let movingRight = false;
 
 let activeClose: (() => void) | null = null;
 
 function actionsWidth() {
   return actionsRef.value?.offsetWidth ?? 0;
+}
+
+function rowWidth() {
+  return actionsRef.value?.parentElement?.offsetWidth ?? 0;
 }
 
 function close() {
@@ -111,12 +124,26 @@ function onPointerMove(event: PointerEvent) {
     moved = true;
     dragging.value = true;
     startX = event.clientX;
+    lastX = event.clientX;
+    movingRight = false;
     (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
   }
 
-  const width = actionsWidth();
+  if (event.clientX !== lastX) movingRight = event.clientX > lastX;
+  lastX = event.clientX;
+
   let next = startOffset + (event.clientX - startX);
   if (next > 0) next = next * 0.25;
+
+  if (triggerMode.value) {
+    const width = rowWidth();
+    next = Math.max(next, -width);
+    offset.value = next;
+    armed.value = !movingRight && next < -width / 2;
+    return;
+  }
+
+  const width = actionsWidth();
   if (next < -width) next = -width + (next + width) * 0.25;
   offset.value = next;
 }
@@ -127,11 +154,18 @@ function onPointerUp(event: PointerEvent) {
   if (!horizontal) return;
   dragging.value = false;
 
+  if (triggerMode.value) {
+    const shouldTrigger = armed.value;
+    armed.value = false;
+    if (shouldTrigger) runAction(props.actions[0]);
+    else close();
+    return;
+  }
+
   const width = actionsWidth();
   const velocity = (offset.value - startOffset) / Math.max(1, Date.now() - startTime);
   const shouldOpen = velocity < -0.4 || (velocity <= 0.4 && offset.value < -width / 2);
-  if (shouldOpen && props.swipeToTrigger && props.actions.length === 1) runAction(props.actions[0]);
-  else if (shouldOpen) open();
+  if (shouldOpen) open();
   else close();
 }
 
@@ -192,6 +226,23 @@ onBeforeUnmount(close);
   cursor: pointer;
   transition: transform 0.15s ease, filter 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+.swipe-actions .swipe-action {
+  flex: 1;
+  transition: transform 0.15s ease, filter 0.15s ease, background-color 0.15s ease;
+}
+
+.armed .swipe-action {
+  filter: brightness(0.9);
+}
+
+.armed .swipe-action .el-icon {
+  transform: scale(1.15);
+}
+
+.swipe-action .el-icon {
+  transition: transform 0.15s ease;
 }
 
 .swipe-action:active {
