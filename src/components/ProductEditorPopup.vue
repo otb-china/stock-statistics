@@ -115,7 +115,10 @@
         >
           <div class="recipe-row">
             <span class="recipe-info">
-              <b>{{ materialName(item.materialId) }}</b>
+              <span class="recipe-material-title">
+                <b>{{ materialName(item.materialId) }}</b>
+                <span class="recipe-price">{{ materialPrice(item.materialId) }}</span>
+              </span>
               <small>库存 {{ materialStock(item.materialId) }} · 每件用量</small>
             </span>
             <el-input-number
@@ -234,6 +237,11 @@ function materialName(id: string) {
 
 function materialStock(id: string) {
   return props.materials.find((material) => material.id === id)?.num ?? 0;
+}
+
+function materialPrice(id: string) {
+  const unitCost = props.materials.find((material) => material.id === id)?.unitCost;
+  return unitCost === undefined ? "" : formatMoney(unitCost);
 }
 
 function openPicker() {
@@ -427,6 +435,29 @@ const canSubmit = computed(() => {
 .recipe-info {
   flex: 1;
   min-width: 0;
+}
+
+.recipe-material-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recipe-price {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(32, 55, 71, 0.06);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.recipe-price:empty {
+  display: none;
 }
 
 .recipe-info b,

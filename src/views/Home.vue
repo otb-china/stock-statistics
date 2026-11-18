@@ -225,7 +225,7 @@
           <el-input-number id="restock-quantity" v-model="restock.quantity" :min="0" aria-label="本次补货数量" />
         </div>
         <div class="restock-steps">
-          <button v-for="step in [5, 10, 20, 50]" :key="step" type="button" @click="restock.quantity = (restock.quantity || 0) + step">+{{ step }}</button>
+          <button v-for="step in [2, 5, 10]" :key="step" type="button" @click="restock.quantity = (restock.quantity || 0) + step">+{{ step }}</button>
         </div>
         <div class="popup-footer">
           <el-button class="submit-button" type="primary" native-type="submit" :disabled="restockTotal === null">确认补库存</el-button>
