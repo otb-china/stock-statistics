@@ -16,13 +16,12 @@
             <span class="material-title">
               <b>{{ item.name }}</b>
               <span v-if="item.unitCost !== undefined" class="material-cost">{{ formatMoney(item.unitCost) }}</span>
-              <em class="material-tag">{{ group.title }}</em>
             </span>
             <small class="material-related">{{ relatedSummary(item.id) }}</small>
           </button>
           <span class="material-stock">
             <strong>{{ item.num }}</strong>
-            <small>库存</small>
+            <small>{{ group.title }}</small>
           </span>
           <button class="material-restock" type="button" :aria-label="'为' + item.name + '补货'" @click="emit('restock', item)">补货</button>
         </div>
@@ -217,28 +216,19 @@ details[open] .summary-arrow {
   white-space: nowrap;
 }
 
-.material-tag {
-  flex-shrink: 0;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--surface);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 600;
-}
-
-.is-danger .material-tag {
-  background: var(--danger-bg);
-  color: var(--danger-text);
-}
-
-.is-warning .material-tag {
-  background: var(--warning-bg);
+.is-warning .material-stock strong,
+.is-warning .material-stock small {
   color: var(--warning-text);
 }
 
-.is-danger .material-stock strong {
+.is-danger .material-stock strong,
+.is-danger .material-stock small {
   color: var(--danger-text);
+}
+
+.is-warning .material-stock small,
+.is-danger .material-stock small {
+  font-weight: 600;
 }
 
 .material-related {
