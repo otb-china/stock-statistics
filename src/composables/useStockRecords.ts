@@ -20,7 +20,7 @@ const storageKey = "stockStatisticsRecords";
 function withDefaultCosts<T extends StockData>(data: T): T {
   return {
     ...data,
-    products: data.products.map((product) => product.defaultCost == null ? { ...product, defaultCost: 0 } : product),
+    products: data.products.map(({ defaultCost: _legacyCost, ...product }) => product),
     orders: data.orders.map((order) => order.cost == null ? { ...order, cost: 0 } : order),
   };
 }

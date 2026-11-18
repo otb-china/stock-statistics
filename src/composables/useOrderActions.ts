@@ -2,7 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from "vue";
 import dayjs from "dayjs";
 import { toastSuccess, toastError } from "@/utils/toast";
 import type { useStockRecords } from "./useStockRecords";
-import { createEmptyOrderForm, createId, isValidAmount, moneyCents, recipeQuantities, summarizeOrders } from "@/utils/stockData.ts";
+import { createEmptyOrderForm, createId, isValidAmount, moneyCents, recipeQuantities, recipeUnitCost, summarizeOrders } from "@/utils/stockData.ts";
 import type { Material, Order, OrderEditorType, Product, ProductRecipe } from "@/types/stock";
 
 interface UseOrderActionsOptions {
@@ -153,7 +153,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     if (product && product.name !== orderInfo.value.form.title) {
       orderInfo.value.form.title = product.name;
       unitPrice.value = product.defaultValue || 0;
-      unitCost.value = product.defaultCost;
+      unitCost.value = recipeUnitCost(product.recipe, options.materials.value);
       updateOrderAmounts(orderInfo.value.form.quantity);
       calculation.value = canSyncCalculation.value;
     }
@@ -213,7 +213,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo.value.type = "add";
     orderInfo.value.showProductPicker = product === undefined;
     unitPrice.value = selectedProduct.defaultValue || 0;
-    unitCost.value = selectedProduct.defaultCost;
+    unitCost.value = recipeUnitCost(selectedProduct.recipe, options.materials.value);
     orderInfo.value.form = {
       id: "",
       title: selectedProduct.name,

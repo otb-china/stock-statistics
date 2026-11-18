@@ -18,6 +18,19 @@
             <el-input v-model="form.name" placeholder="例如：珍珠、包装盒" maxlength="30" clearable />
           </label>
 
+          <label class="form-field">
+            <span class="form-label">单位成本 <small>按 1 个库存计量单位填写</small></span>
+            <el-input-number
+              :model-value="form.unitCost"
+              :min="0"
+              :controls="false"
+              aria-label="单位成本"
+              @update:model-value="form.unitCost = $event ?? undefined"
+            >
+              <template #prefix>¥</template>
+            </el-input-number>
+          </label>
+
           <div class="form-field">
             <span class="form-label">
               库存数量
@@ -78,7 +91,7 @@
           type="primary"
           size="large"
           class="submit-button"
-          :disabled="!form.name.trim()"
+          :disabled="!form.name.trim() || !isValidAmount(form.unitCost)"
           @click="emit('submit')"
         >
           {{ type === "add" ? "添加备料" : "保存修改" }}
@@ -107,6 +120,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from "vue";
 import { ArrowDown, ArrowRight, Box, Tickets } from "@element-plus/icons-vue";
+import { isValidAmount } from "@/utils/stockData";
 import type { EditorType, Material, MaterialProductLink, Product } from "@/types/stock";
 
 const props = defineProps<{

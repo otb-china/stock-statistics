@@ -90,10 +90,10 @@ export function useProductEditor(
       return;
     }
 
-    const { defaultValue, defaultCost, warningThreshold } = productEditor.value.form;
+    const { defaultValue, warningThreshold } = productEditor.value.form;
     const isNew = productEditor.value.type === "add";
-    if (!isValidAmount(defaultValue) || ((isNew || defaultCost !== undefined) && !isValidAmount(defaultCost))) {
-      toastError("请输入有效的售价和成本");
+    if (!isValidAmount(defaultValue)) {
+      toastError("请输入有效的售价");
       return;
     }
     if (!isValidWarningThreshold(warningThreshold)) {
@@ -105,7 +105,6 @@ export function useProductEditor(
       id: productEditor.value.form.id || createId("product"),
       name,
       defaultValue: moneyCents(defaultValue) / 100,
-      defaultCost: moneyCents(defaultCost ?? 0) / 100,
       warningThreshold,
       status: productEditor.value.form.status,
       recipe: validRecipe,

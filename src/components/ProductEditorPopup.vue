@@ -6,7 +6,7 @@
           <span class="popup-icon"><el-icon><Goods /></el-icon></span>
           <div>
             <h3>{{ type === "add" ? "新增货品" : "编辑货品" }}</h3>
-            <p>单件售价和成本会自动带入新订单。</p>
+            <p>单件成本按配方用量计算，售价和成本会自动带入新订单。</p>
           </div>
         </div>
       </div>
@@ -35,17 +35,12 @@
           </label>
           <label class="form-field">
             <span class="form-label">单件成本</span>
-            <el-input-number
-              :model-value="form.defaultCost"
-              :min="0"
-              :precision="2"
-              :controls="false"
-              placeholder="输入成本"
+            <el-input
+              :model-value="unitCost === undefined ? '' : `¥${unitCost.toFixed(2)}`"
+              :placeholder="form.recipe.length ? '请检查配方' : '添加配方后计算'"
               aria-label="单件成本"
-              @update:model-value="form.defaultCost = $event ?? undefined"
-            >
-              <template #prefix>¥</template>
-            </el-input-number>
+              readonly
+            />
           </label>
         </div>
         <div class="form-field">
@@ -156,7 +151,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import { Check, Close, Goods, InfoFilled, Plus, Search } from "@element-plus/icons-vue";
-import { isValidAmount, isValidWarningThreshold } from "@/utils/stockData";
+import { isValidAmount, isValidWarningThreshold, recipeUnitCost } from "@/utils/stockData";
 import type { EditorType, Material, ProductEditorForm } from "@/types/stock";
 
 const props = defineProps<{
@@ -215,10 +210,11 @@ function confirmPicker() {
   picker.value.show = false;
 }
 
+const unitCost = computed(() => recipeUnitCost(props.form.recipe, props.materials));
+
 const canSubmit = computed(() => {
-  const { name, recipe, defaultValue, defaultCost, warningThreshold } = props.form;
-  return Boolean(name.trim() && recipe.length && isValidAmount(defaultValue) && isValidWarningThreshold(warningThreshold)
-    && (props.type === "edit" && defaultCost === undefined || isValidAmount(defaultCost)));
+  const { name, defaultValue, warningThreshold } = props.form;
+  return Boolean(name.trim() && unitCost.value !== undefined && isValidAmount(defaultValue) && isValidWarningThreshold(warningThreshold));
 });
 </script>
 

@@ -2,7 +2,7 @@ import { computed, ref, type Ref } from "vue";
 import { showConfirmDialog } from "vant";
 import { toastSuccess, toastError } from "@/utils/toast";
 import type { useStockRecords } from "./useStockRecords";
-import { createEmptyMaterialForm, createId } from "@/utils/stockData.ts";
+import { createEmptyMaterialForm, createId, isValidAmount } from "@/utils/stockData.ts";
 import type { EditorType, Material, MaterialProductLink, Product } from "@/types/stock";
 
 export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Product[]>, commit: ReturnType<typeof useStockRecords>["commit"]) {
@@ -42,7 +42,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
   function openMaterialEditor(item?: Material) {
     materialEditor.value.type = item ? "edit" : "add";
     materialEditor.value.form = item
-      ? { ...item }
+      ? { ...item, unitCost: item.unitCost ?? 0 }
       : createEmptyMaterialForm();
     materialEditor.value.productLinks = [];
     materialEditor.value.show = true;
@@ -75,12 +75,17 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
       toastError("请输入有效库存");
       return;
     }
+    const { unitCost } = form;
+    if (!isValidAmount(unitCost)) {
+      toastError("请输入有效的单位成本");
+      return;
+    }
     const isNew = materialEditor.value.type === "add";
     if (!isNew && !materials.value.some((item) => item.id === form.id)) return;
     const materialId = isNew ? createId("material") : form.id;
     const nextMaterials = isNew
-      ? [...materials.value, { id: materialId, name, num }]
-      : materials.value.map((item) => item.id === form.id ? { ...item, name, num } : item);
+      ? [...materials.value, { id: materialId, name, num, unitCost }]
+      : materials.value.map((item) => item.id === form.id ? { ...item, name, num, unitCost } : item);
 
     const quantities = new Map<string, number>();
     for (const { productId, quantity } of isNew ? materialEditor.value.productLinks : []) {

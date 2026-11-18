@@ -22,13 +22,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.van-popup--bottom.van-popup--round {
+.van-popup--bottom {
   display: flex;
   flex-direction: column;
-  max-height: 88vh;
   padding-top: 20px;
   overflow: hidden;
+}
+
+.van-popup--bottom.van-popup--round {
+  max-height: 88vh;
   border-radius: 22px 22px 0 0;
+}
+
+.van-popup--bottom > .van-picker {
+  min-height: 0;
+  overflow: auto;
 }
 
 .van-popup--bottom.van-popup--round > .popup-body {
@@ -38,7 +46,7 @@ body {
   padding-top: 8px;
 }
 
-.van-popup--bottom.van-popup--round::before {
+.van-popup--bottom::before {
   content: "";
   position: absolute;
   top: 8px;

@@ -8,6 +8,7 @@ export interface Material extends RSA {
   id: string;
   name: string;
   num: number;
+  unitCost?: number;
 }
 
 export interface ProductRecipe extends RSA {
@@ -24,13 +25,12 @@ export interface Product extends RSA {
   id: string;
   name: string;
   defaultValue: number;
-  defaultCost?: number;
   warningThreshold?: number;
   status: "active" | "inactive";
   recipe: ProductRecipe[];
 }
 
-export type ProductEditorForm = Pick<Product, "id" | "name" | "status" | "recipe" | "defaultCost" | "warningThreshold"> & { defaultValue?: number };
+export type ProductEditorForm = Pick<Product, "id" | "name" | "status" | "recipe" | "warningThreshold"> & { defaultValue?: number };
 
 export interface Order extends RSA {
   id: string;

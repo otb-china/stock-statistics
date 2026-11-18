@@ -30,6 +30,7 @@ export function createEmptyMaterialForm(): Material {
     id: "",
     name: "",
     num: 0,
+    unitCost: 0,
   };
 }
 
@@ -72,6 +73,20 @@ export function isValidAmount(value: unknown): value is number {
   return typeof value === "number" && value >= 0 && Number.isSafeInteger(moneyCents(value));
 }
 
+export function recipeUnitCost(recipe: ProductRecipe[], materials: Material[]) {
+  const quantities = recipeQuantities(recipe);
+  if (!quantities.size) return undefined;
+
+  const materialsById = new Map(materials.map((material) => [material.id, material]));
+  let total = 0;
+  for (const [materialId, quantity] of quantities) {
+    const material = materialsById.get(materialId);
+    if (!material) return undefined;
+    total += (material.unitCost ?? 0) * quantity;
+  }
+  return isValidAmount(total) ? moneyCents(total) / 100 : undefined;
+}
+
 export function orderNetIncomeCents({ value, cost }: Pick<Order, "value" | "cost">) {
   const orderCost = cost ?? 0;
   if (!isValidAmount(value) || !isValidAmount(orderCost)) return undefined;
@@ -94,6 +109,7 @@ export function normalizeMaterials(list: RSA[] | undefined): Material[] {
     id: String(item.id || legacyMaterialId(String(item.name || ""))),
     name: String(item.name || ""),
     num: Number(item.num || 0),
+    unitCost: isValidAmount(item.unitCost) ? item.unitCost : 0,
   })).filter((item) => item.name);
 }
 
@@ -105,7 +121,6 @@ export function normalizeProducts(list: RSA[] | undefined): Product[] {
       id: String(item.id || createId("product")),
       name: String(item.name || ""),
       defaultValue: Number(item.defaultValue ?? item.value ?? 0),
-      defaultCost: isValidAmount(item.defaultCost) ? moneyCents(item.defaultCost) / 100 : 0,
       warningThreshold: isValidWarningThreshold(item.warningThreshold) ? item.warningThreshold : DEFAULT_WARNING_THRESHOLD,
       status,
       recipe: Array.isArray(item.recipe)
@@ -186,7 +201,7 @@ export function assertValidBackupData({ materials, products, orders }: ResolvedB
   if (products.some((product) => product?.warningThreshold !== undefined && !isValidWarningThreshold(product.warningThreshold))) {
     throw new Error("货品预警阈值无效");
   }
-  if (products.some((product) => product?.defaultCost != null && !isValidAmount(product.defaultCost))
+  if (materials.some((material) => material?.unitCost != null && !isValidAmount(material.unitCost))
     || orders.some((order) => order?.cost != null && !isValidAmount(order.cost))) {
     throw new Error("成本金额无效");
   }

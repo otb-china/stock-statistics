@@ -1,5 +1,4 @@
 const POPUP_SELECTOR = ".van-popup--bottom"
-const IGNORE_SELECTOR = ".van-picker__columns, input, textarea, .el-slider, [data-no-swipe-close]"
 const CLOSE_DISTANCE = 110
 const CLOSE_VELOCITY = 0.6
 const DECIDE_DISTANCE = 8
@@ -16,19 +15,6 @@ interface DragState {
 
 let drag: DragState | null = null
 
-function hasScrolledAncestor(target: HTMLElement, popup: HTMLElement) {
-  let node: HTMLElement | null = target
-  while (node && node !== popup.parentElement) {
-    const { overflowY } = getComputedStyle(node)
-    if ((overflowY === "auto" || overflowY === "scroll") && node.scrollHeight > node.clientHeight && node.scrollTop > 0) {
-      return true
-    }
-    if (node === popup) break
-    node = node.parentElement
-  }
-  return false
-}
-
 function findOverlay(popup: HTMLElement) {
   let node = popup.previousElementSibling
   while (node) {
@@ -43,13 +29,21 @@ function resetPopup(popup: HTMLElement) {
   popup.style.transform = ""
 }
 
+function cancelDrag() {
+  if (drag?.active) resetPopup(drag.popup)
+  drag = null
+}
+
 function onTouchStart(event: TouchEvent) {
+  cancelDrag()
   if (event.touches.length !== 1) return
-  const target = event.target as HTMLElement | null
-  const popup = target?.closest<HTMLElement>(POPUP_SELECTOR)
-  if (!target || !popup || target.closest(IGNORE_SELECTOR)) return
-  if (hasScrolledAncestor(target, popup)) return
+  const popup = event.target
+  if (!(popup instanceof HTMLElement) || !popup.matches(POPUP_SELECTOR)) return
   const touch = event.touches[0]
+  const top = touch.clientY - popup.getBoundingClientRect().top
+  const handleHeight = parseFloat(getComputedStyle(popup).paddingTop)
+  if (top < 0 || top >= handleHeight) return
+
   drag = {
     popup,
     startX: touch.clientX,
@@ -114,5 +108,5 @@ export function setupPopupSwipeClose() {
   document.addEventListener("touchstart", onTouchStart, { passive: true })
   document.addEventListener("touchmove", onTouchMove, { passive: false })
   document.addEventListener("touchend", onTouchEnd)
-  document.addEventListener("touchcancel", onTouchEnd)
+  document.addEventListener("touchcancel", cancelDrag)
 }
