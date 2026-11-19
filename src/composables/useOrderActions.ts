@@ -235,7 +235,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo.value.show = true;
   }
 
-  function orderSubmit() {
+  async function orderSubmit() {
     if (!orderInfo.value.show) return;
     const { type, form, editingId, data } = orderInfo.value;
     const { value, cost } = form;
@@ -287,7 +287,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     }
 
     nextOrders.sort((a, b) => b.orderDate.localeCompare(a.orderDate));
-    if (!persistOrderChange(nextOrders, changes, savedOrder)) return;
+    if (!await persistOrderChange(nextOrders, changes, savedOrder)) return;
     orderInfo.value.show = false;
     orderInfo.value.form = createEmptyOrderForm();
     const savedMonth = form.orderDate.substring(0, 7);
@@ -307,7 +307,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     orderInfo.value.show = true;
   }
 
-  function deleteOrder(returnMaterials: boolean) {
+  async function deleteOrder(returnMaterials: boolean) {
     const order = deletingOrder.value;
     if (!order) return;
     const items = returnMaterials ? returnableMaterials.value : [];
@@ -316,7 +316,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       return;
     }
     const nextOrders = orderInfo.value.data.filter((item) => item.id !== order.id);
-    if (!persistOrderChange(nextOrders, items, order)) return;
+    if (!await persistOrderChange(nextOrders, items, order)) return;
     deletingOrderId.value = "";
     initOrderMonthData();
     toastSuccess(returnMaterials ? "订单已删除，备料已返还" : "订单已删除");

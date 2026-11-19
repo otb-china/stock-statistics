@@ -26,7 +26,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     restock.value = { show: true, materialId: item.id, quantity: 0 };
   }
 
-  function submitRestock() {
+  async function submitRestock() {
     const material = restockMaterial.value;
     const total = restockTotal.value;
     if (!restock.value.show || !material || total === null) return;
@@ -34,7 +34,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     const nextMaterials = materials.value.map((item) =>
       item.id === material.id ? { ...item, num: total } : item,
     );
-    if (!commit({ materials: nextMaterials }, { reason: "restock" })) return;
+    if (!await commit({ materials: nextMaterials }, { reason: "restock" })) return;
     restock.value.show = false;
     toastSuccess(`已补库存，${material.name}当前库存 ${total}`);
   }
@@ -55,7 +55,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     );
   }
 
-  function submitMaterialEditor() {
+  async function submitMaterialEditor() {
     if (!materialEditor.value.show) return;
     const name = materialEditor.value.form.name.trim();
     if (!name) {
@@ -106,7 +106,7 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
       return { ...product, recipe: [...product.recipe, { materialId, quantity }] };
     }) : undefined;
     const changes = nextProducts ? { materials: nextMaterials, products: nextProducts } : { materials: nextMaterials };
-    if (!commit(changes, { reason: isNew ? "initial" : "adjustment" })) return;
+    if (!await commit(changes, { reason: isNew ? "initial" : "adjustment" })) return;
     materialEditor.value.show = false;
     if (quantities.size) toastSuccess(`已添加备料并关联 ${quantities.size} 款货品`);
   }
@@ -117,13 +117,13 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
       message: "删除后，相关货品配方也会移除该备料，确认继续吗？",
       confirmButtonText: "删除",
       className: "danger-dialog",
-    }).then(() => {
+    }).then(async () => {
       const nextMaterials = materials.value.filter((item) => item.id !== id);
       const nextProducts = products.value.map((product) => ({
         ...product,
         recipe: product.recipe.filter((item) => item.materialId !== id),
       }));
-      if (!commit({ materials: nextMaterials, products: nextProducts }, { reason: "removal" })) return;
+      if (!await commit({ materials: nextMaterials, products: nextProducts }, { reason: "removal" })) return;
       toastSuccess("备料已删除");
     }).catch(() => {
     });

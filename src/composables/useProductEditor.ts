@@ -49,11 +49,11 @@ export function useProductEditor(
     }));
   }
 
-  function toggleProductStatus(product: Product) {
+  async function toggleProductStatus(product: Product) {
     const nextStatus: Product["status"] = product.status === "active" ? "inactive" : "active";
     if (!products.value.some((item) => item.id === product.id)) return;
     const nextProducts = products.value.map((item) => item.id === product.id ? { ...item, status: nextStatus } : item);
-    if (!commit({ products: nextProducts })) return;
+    if (!await commit({ products: nextProducts })) return;
     toastSuccess(nextStatus === "active" ? "货品已设为正常" : "货品已设为停产");
   }
 
@@ -61,7 +61,7 @@ export function useProductEditor(
     productEditor.value.form.recipe.splice(index, 1);
   }
 
-  function submitProductEditor() {
+  async function submitProductEditor() {
     const name = productEditor.value.form.name.trim();
     if (!name) {
       toastError("请输入货品名称");
@@ -126,7 +126,7 @@ export function useProductEditor(
     const nextProducts = isNew
       ? [...products.value, productPayload]
       : products.value.map((item) => item.id === productPayload.id ? productPayload : item);
-    if (!commit({ products: nextProducts })) return;
+    if (!await commit({ products: nextProducts })) return;
     productEditor.value.show = false;
   }
 
@@ -136,8 +136,8 @@ export function useProductEditor(
       message: "删除后无法恢复，确认删除这个货品吗？",
       confirmButtonText: "删除",
       className: "danger-dialog",
-    }).then(() => {
-      if (!commit({ products: products.value.filter((item) => item.id !== id) })) return;
+    }).then(async () => {
+      if (!await commit({ products: products.value.filter((item) => item.id !== id) })) return;
       toastSuccess("货品已删除");
     }).catch(() => {
     });

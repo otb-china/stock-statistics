@@ -44,7 +44,7 @@ export function useBackupActions(
     importShow.value = true;
   }
 
-  function exportAllData() {
+  async function exportAllData() {
     const backup = storage.snapshot();
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -55,7 +55,7 @@ export function useBackupActions(
     link.click();
     link.remove();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    if (storage.recordExport(backup.createdAt)) toastSuccess("已发起备份下载");
+    if (await storage.recordExport(backup.createdAt)) toastSuccess("已发起备份下载");
   }
 
   function onImportFileError(error: string) {
@@ -85,8 +85,8 @@ export function useBackupActions(
     }
   }
 
-  function replace(data: StockData, message: string) {
-    if (!storage.replaceData(data)) return;
+  async function replace(data: StockData, message: string) {
+    if (!await storage.replaceData(data)) return;
     onDataReplaced();
     settingsPopup.value = false;
     importShow.value = false;

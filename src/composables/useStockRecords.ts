@@ -1,5 +1,6 @@
 import { ref } from "vue";
 import { toastError } from "@/utils/toast";
+import { readStoredValue, StorageConflictError, storageKeys, writeStoredValues } from "@/utils/toolStorage";
 import { LStorage } from "@/utils/localStorage";
 import { createId, normalizeMaterials, normalizeOrders, normalizeProducts } from "@/utils/stockData";
 import type { Order, StockBackup, StockData, StockMovement, StockMovementReason } from "@/types/stock";
@@ -15,7 +16,7 @@ interface MovementContext {
   order?: Order;
 }
 
-const storageKey = "stockStatisticsRecords";
+const storageKey = storageKeys.records;
 
 function withDefaultCosts<T extends StockData>(data: T): T {
   return {
@@ -26,7 +27,8 @@ function withDefaultCosts<T extends StockData>(data: T): T {
 }
 
 export function useStockRecords() {
-  let storedValue = localStorage.getItem(storageKey);
+  const storedValue = readStoredValue(storageKey);
+  let saving = false;
   const storedRecords: StoredRecords | undefined = storedValue ? JSON.parse(storedValue) : undefined;
   const records = ref<StoredRecords>(storedRecords ? {
     ...storedRecords,
@@ -41,20 +43,22 @@ export function useStockRecords() {
     },
   });
 
-  function save(next: StoredRecords) {
+  async function save(next: StoredRecords) {
+    if (saving) return false;
+    saving = true;
     try {
-      if (localStorage.getItem(storageKey) !== storedValue) {
-        toastError("数据已在其他页面更新，请刷新后重试");
-        return false;
-      }
-      const serialized = JSON.stringify(next);
-      localStorage.setItem(storageKey, serialized);
-      storedValue = serialized;
+      await writeStoredValues({ [storageKey]: JSON.stringify(next) });
       records.value = next;
       return true;
-    } catch {
-      toastError("数据保存失败，请检查浏览器存储空间后重试");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "QuotaExceededError") {
+        toastError("站点存储空间不足，本次改动未保存。请先备份已保存的数据");
+      } else {
+        toastError(error instanceof StorageConflictError ? error.message : "数据保存失败，请检查浏览器存储空间后重试");
+      }
       return false;
+    } finally {
+      saving = false;
     }
   }
 

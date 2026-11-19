@@ -319,7 +319,8 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import SwipeRow from "@/components/SwipeRow.vue";
 import StockHistoryPopup from "@/components/StockHistoryPopup.vue";
 import { useStockRecords } from "@/composables/useStockRecords";
-import { LStorage } from "@/utils/localStorage.ts";
+import { storageKeys } from "@/utils/toolStorage";
+import { LStorage, reportSaveError } from "@/utils/localStorage.ts";
 import { formatMoney, orderNetIncomeCents, summarizeOrders } from "@/utils/stockData";
 import ImportDataPopup from "@/components/ImportDataPopup.vue";
 import MaterialEditorPopup from "@/components/MaterialEditorPopup.vue";
@@ -365,7 +366,7 @@ function openStockHistory(item: Material) {
 }
 const settingsPopup = ref(false);
 
-const themeStorage = LStorage.new("stockStatisticsTheme");
+const themeStorage = LStorage.new(storageKeys.theme);
 const currentThemeOption = computed(() => {
   return themeOptions.find((theme) => theme.key === currentTheme.value) || themeOptions[0];
 });
@@ -377,7 +378,7 @@ watch(themeStyle, (variables) => {
 }, { immediate: true });
 const setTheme = (theme: ThemeKey) => {
   currentTheme.value = theme;
-  themeStorage.setter(theme);
+  void themeStorage.setter(theme).catch(reportSaveError);
 };
 
 const {
