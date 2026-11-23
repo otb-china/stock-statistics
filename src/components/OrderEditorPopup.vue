@@ -9,6 +9,7 @@
             <p v-if="!showProductPicker">{{ form.title }}</p>
           </div>
         </div>
+        <el-button v-if="type === 'upd'" size="small" round :icon="Refresh" aria-label="同步订单金额" @click="emit('sync-amounts')">同步</el-button>
       </div>
 
       <template v-if="showProductPicker">
@@ -128,7 +129,7 @@
 <script lang="ts" setup>
 import { computed } from "vue";
 import DatePicker from "@/components/Date.vue";
-import { Check, InfoFilled, Tickets, WarningFilled } from "@element-plus/icons-vue";
+import { Check, InfoFilled, Refresh, Tickets, WarningFilled } from "@element-plus/icons-vue";
 import { formatMoney, isValidAmount, orderNetIncomeCents } from "@/utils/stockData";
 import type { Order, OrderEditorType, Product } from "@/types/stock";
 
@@ -153,6 +154,7 @@ const emit = defineEmits<{
   "quantity-change": [quantity: number];
   "value-change": [value: string];
   "cost-change": [value: string];
+  "sync-amounts": [];
   submit: [];
 }>();
 

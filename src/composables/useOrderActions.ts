@@ -162,15 +162,28 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     const product = productByName(productName);
     if (product && product.name !== orderInfo.value.form.title) {
       orderInfo.value.form.title = product.name;
-      unitPrice.value = product.defaultValue || 0;
-      unitCost.value = recipeUnitCost(product.recipe, options.materials.value);
-      requiresManualCost.value = unitCost.value === undefined;
-      orderInfo.value.form.shippingFee = productShippingFee(product);
-      updateOrderAmounts(orderInfo.value.form.quantity);
+      applyProductAmounts(product);
     }
     if (!orderInfo.value.form.orderDate) {
       orderInfo.value.form.orderDate = dayjs(new Date()).format(options.dateFormat);
     }
+  }
+
+  function applyProductAmounts(product: Product) {
+    unitPrice.value = product.defaultValue || 0;
+    unitCost.value = recipeUnitCost(product.recipe, options.materials.value);
+    requiresManualCost.value = unitCost.value === undefined;
+    orderInfo.value.form.shippingFee = productShippingFee(product);
+    updateOrderAmounts(orderInfo.value.form.quantity);
+  }
+
+  function syncOrderAmounts() {
+    const product = selectedOrderProduct.value;
+    if (!product) return toastError("找不到订单对应的货品");
+    const { quantity } = orderInfo.value.form;
+    if (!Number.isSafeInteger(quantity) || quantity < 1) return toastError("请输入有效件数");
+    applyProductAmounts(product);
+    toastSuccess(requiresManualCost.value ? "售价和运费已同步，请手动填写成本" : "订单金额已同步");
   }
 
   function updateOrderAmounts(quantity: number) {
@@ -366,6 +379,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     setOrderValue,
     setOrderCost,
     onProductChange,
+    syncOrderAmounts,
     openCreateOrder,
     orderSubmit,
     beforeUpd,

@@ -289,6 +289,7 @@
       :deduction-message="deductionMessage"
       :craftable-count-for-product="craftableCountForProduct"
       @product-change="onProductChange"
+      @sync-amounts="syncOrderAmounts"
       @date-change="setOrderDate"
       @quantity-change="setOrderQuantity"
       @value-change="setOrderValue"
@@ -410,6 +411,7 @@ const {
   setOrderValue,
   setOrderCost,
   onProductChange,
+  syncOrderAmounts,
   openCreateOrder,
   orderSubmit,
   beforeUpd,
