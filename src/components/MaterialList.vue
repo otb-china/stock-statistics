@@ -19,11 +19,11 @@
             </span>
             <small class="material-related">{{ relatedSummary(item.id) }}</small>
           </button>
-          <span class="material-stock">
+          <span v-if="!item.untracked" class="material-stock">
             <strong>{{ item.num }}</strong>
             <small>{{ group.title }}</small>
           </span>
-          <button class="material-restock" type="button" :aria-label="'为' + item.name + '补货'" @click="emit('restock', item)">补货</button>
+          <button v-if="!item.untracked" class="material-restock" type="button" :aria-label="'为' + item.name + '补货'" @click="emit('restock', item)">补货</button>
         </div>
       </SwipeRow>
     </div>
@@ -53,11 +53,11 @@
               </span>
               <small class="material-related">{{ relatedSummary(item.id) }}</small>
             </button>
-            <span class="material-stock">
+            <span v-if="!item.untracked" class="material-stock">
               <strong>{{ item.num }}</strong>
               <small>库存</small>
             </span>
-            <button class="material-restock" type="button" :aria-label="'为' + item.name + '补货'" @click="emit('restock', item)">补货</button>
+            <button v-if="!item.untracked" class="material-restock" type="button" :aria-label="'为' + item.name + '补货'" @click="emit('restock', item)">补货</button>
           </div>
         </SwipeRow>
       </div>
@@ -76,6 +76,7 @@ const GROUPS = [
   { key: "danger", title: "缺货", folded: false },
   { key: "warning", title: "预警", folded: false },
   { key: "safe", title: "库存正常", folded: true },
+  { key: "untracked", title: "不记库存", folded: true },
   { key: "unlinked", title: "未关联货品", folded: true },
 ] as const satisfies { key: MaterialGroupKey; title: string; folded: boolean }[];
 
@@ -105,7 +106,7 @@ const foldedCount = computed(() => foldedGroups.value.reduce((sum, group) => sum
 
 function rowActions(item: Material) {
   return [
-    { name: "流水", icon: Tickets, callback: () => emit("history", item) },
+    ...(item.untracked ? [] : [{ name: "流水", icon: Tickets, callback: () => emit("history", item) }]),
     { name: "删除", icon: Delete, tone: "danger" as const, callback: () => emit("remove", item.id) },
   ];
 }
@@ -146,6 +147,11 @@ function rowActions(item: Material) {
 
 .dot-unlinked {
   background: var(--text-subtle);
+}
+
+.dot-untracked {
+  box-sizing: border-box;
+  border: 1.5px solid var(--text-subtle);
 }
 
 .summary-arrow {

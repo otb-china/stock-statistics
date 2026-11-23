@@ -6,7 +6,7 @@
           <span class="popup-icon"><el-icon><Box /></el-icon></span>
           <div>
             <h3>{{ type === "add" ? "新增备料" : "编辑备料" }}</h3>
-            <p>{{ type === "add" ? "录入备料名称和当前库存。" : "修改库存会记录为盘点调整。" }}</p>
+            <p v-if="!form.untracked">{{ type === "add" ? "录入备料名称和当前库存。" : "修改库存会记录为盘点调整。" }}</p>
           </div>
         </div>
       </div>
@@ -19,7 +19,7 @@
           </label>
 
           <label class="form-field">
-            <span class="form-label">单位成本 <small>按 1 个库存计量单位填写</small></span>
+            <span class="form-label">单位成本</span>
             <el-input-number
               :model-value="form.unitCost"
               :min="0"
@@ -32,16 +32,24 @@
           </label>
 
           <div class="form-field">
-            <span class="form-label">
-              库存数量
-              <small v-if="type === 'edit' && originalNum !== null && form.num !== originalNum">
-                原库存 {{ originalNum }} → {{ form.num }}
-              </small>
-            </span>
-            <el-input-number v-model="form.num" :min="0" :max="100000" aria-label="库存数量" />
-            <div class="quick-steps">
-              <button v-for="step in quickSteps" :key="step" type="button" @click="addStock(step)">+{{ step }}</button>
+            <div class="form-label" :class="{ 'stock-label-collapsed': form.untracked }">
+              <span>
+                库存数量
+                <small v-if="!form.untracked && type === 'edit' && originalNum !== null && form.num !== originalNum">
+                  原库存 {{ originalNum }} → {{ form.num }}
+                </small>
+              </span>
+              <span class="untracked-toggle">
+                <small>不记库存</small>
+                <el-switch v-model="form.untracked" size="small" aria-label="不记库存" />
+              </span>
             </div>
+            <template v-if="!form.untracked">
+              <el-input-number v-model="form.num" :min="0" :max="100000" aria-label="库存数量" />
+              <div class="quick-steps">
+                <button v-for="step in quickSteps" :key="step" type="button" @click="addStock(step)">+{{ step }}</button>
+              </div>
+            </template>
           </div>
         </div>
       </section>
@@ -80,7 +88,7 @@
         </div>
       </section>
 
-      <button v-if="type === 'edit'" class="link-row" type="button" @click="emit('history', form)">
+      <button v-if="type === 'edit' && !form.untracked" class="link-row" type="button" @click="emit('history', form)">
         <el-icon><Tickets /></el-icon>
         <span>查看库存流水</span>
         <el-icon><ArrowRight /></el-icon>
@@ -259,6 +267,17 @@ function openProductPicker() {
   color: var(--text-main);
   font-size: 14px;
   overflow-wrap: anywhere;
+}
+
+.stock-label-collapsed {
+  margin-bottom: 0;
+}
+
+.untracked-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
 }
 
 .quick-steps {

@@ -17,12 +17,13 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
   const restockTotal = computed(() => {
     const material = restockMaterial.value;
     const quantity = restock.value.quantity;
-    if (!material || !Number.isFinite(quantity) || quantity <= 0) return null;
+    if (!material || material.untracked || !Number.isFinite(quantity) || quantity <= 0) return null;
     const total = Number((material.num + quantity).toPrecision(15));
     return Number.isFinite(total) && total > material.num ? total : null;
   });
 
   function openRestock(item: Material) {
+    if (item.untracked) return;
     restock.value = { show: true, materialId: item.id, quantity: 0 };
   }
 
@@ -70,7 +71,8 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     }
 
     const form = materialEditor.value.form;
-    const num = Number(form.num ?? 0);
+    const untracked = form.untracked === true;
+    const num = untracked ? materials.value.find((item) => item.id === form.id)?.num ?? 0 : Number(form.num ?? 0);
     if (!Number.isFinite(num) || num < 0) {
       toastError("请输入有效库存");
       return;
@@ -84,8 +86,8 @@ export function useMaterialEditor(materials: Ref<Material[]>, products: Ref<Prod
     if (!isNew && !materials.value.some((item) => item.id === form.id)) return;
     const materialId = isNew ? createId("material") : form.id;
     const nextMaterials = isNew
-      ? [...materials.value, { id: materialId, name, num, unitCost }]
-      : materials.value.map((item) => item.id === form.id ? { ...item, name, num, unitCost } : item);
+      ? [...materials.value, { id: materialId, name, num, unitCost, untracked }]
+      : materials.value.map((item) => item.id === form.id ? { ...item, name, num, unitCost, untracked } : item);
 
     const quantities = new Map<string, number>();
     for (const { productId, quantity } of isNew ? materialEditor.value.productLinks : []) {

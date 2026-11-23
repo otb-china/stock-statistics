@@ -119,7 +119,7 @@
                 <b>{{ materialName(item.materialId) }}</b>
                 <span class="recipe-price">{{ materialPrice(item.materialId) }}</span>
               </span>
-              <small>库存 {{ materialStock(item.materialId) }} · 每件用量</small>
+              <small>{{ materialStock(item.materialId) }} · 每件用量</small>
             </span>
             <el-input-number
               v-model="item.quantity"
@@ -178,7 +178,7 @@
         >
           <span class="picker-check"><el-icon><Check /></el-icon></span>
           <span class="picker-name">{{ material.name }}</span>
-          <small>库存 {{ material.num }}</small>
+          <small v-if="!material.untracked">库存 {{ material.num }}</small>
         </button>
         <p v-if="!pickerMaterials.length" class="picker-empty">没有匹配的备料</p>
       </div>
@@ -236,7 +236,8 @@ function materialName(id: string) {
 }
 
 function materialStock(id: string) {
-  return props.materials.find((material) => material.id === id)?.num ?? 0;
+  const material = props.materials.find((item) => item.id === id);
+  return material?.untracked ? "不记库存" : `库存 ${material?.num ?? 0}`;
 }
 
 function materialPrice(id: string) {

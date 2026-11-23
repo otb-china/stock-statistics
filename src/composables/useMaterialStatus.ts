@@ -25,12 +25,14 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
   }
 
   function productCapacity(product: ProductWithRecipe) {
-    const details = Array.from(recipeQuantities(product.recipe), ([materialId, quantity]) => ({
+    const quantities = recipeQuantities(product.recipe);
+    const tracked = [...quantities].filter(([id]) => !materialsMap.value.get(id)?.untracked);
+    const details = Array.from(tracked, ([materialId, quantity]) => ({
       name: materialsMap.value.get(materialId)?.name ?? "缺失备料",
       count: materialCapacity(materialId, quantity),
       shared: activeRelatedProducts(materialId).some((item) => item.id !== product.id),
     }));
-    const maxCount = details.length ? Math.min(...details.map((item) => item.count)) : 0;
+    const maxCount = details.length ? Math.min(...details.map((item) => item.count)) : quantities.size ? Infinity : 0;
     return { details, maxCount };
   }
 
@@ -52,6 +54,7 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
   }
 
   function materialStatus(item: Material) {
+    if (item.untracked) return "safe";
     if (Number(item.num) <= 0) return "danger";
     let status: "warning" | "safe" = "safe";
     for (const product of activeRelatedProducts(item.id)) {
@@ -64,6 +67,7 @@ export function useMaterialStatus(materials: Ref<Material[]>, products: Ref<Prod
   }
 
   function materialGroupKey(item: Material): MaterialGroupKey {
+    if (item.untracked) return "untracked";
     if (!activeRelatedProducts(item.id).length) return "unlinked";
     return materialStatus(item);
   }

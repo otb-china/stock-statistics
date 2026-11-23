@@ -540,6 +540,7 @@ function countMaterialsByGroup() {
     warning: 0,
     safe: 0,
     unlinked: 0,
+    untracked: 0,
   });
 }
 

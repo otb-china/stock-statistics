@@ -10,6 +10,8 @@ IndexedDB 库名为 `stock-statistics`。库版本为 2，使用对象仓库 `da
 | `stock-statistics:legacy-products` | `productData` | 旧版货品，仅在新版记录缺失时读取 |
 | `stock-statistics:legacy-orders` | `orderData` | 旧版订单，仅在新版记录缺失时读取 |
 
+备料字段 `untracked` 为布尔值，缺省或为 false 时按原规则记库存。为 true 时保留原库存数量，暂停补货和订单库存变动，单位成本仍参与配方成本计算。关闭开关后从保留的数量继续记库存。
+
 ## 迁移与备份
 
 优先读取新快照。新快照不存在时，先从旧 IndexedDB 的 `snapshot` 迁移。没有旧快照时，才从同来源的 `localStorage` 读取表中的键。事务成功后只更新新键，旧键保留用于过渡。新版工具保存的数据以 IndexedDB 为准。迁移要求在原浏览器或 QuickOpen 的原 WebView 中打开同一站点。跨设备时使用工具页内的 JSON 导出与导入。

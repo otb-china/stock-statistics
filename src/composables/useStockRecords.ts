@@ -73,6 +73,7 @@ export function useStockRecords() {
       for (const id of new Set([...before.keys(), ...after.keys()])) {
         const previous = before.get(id);
         const next = after.get(id);
+        if ((next ?? previous)?.untracked) continue;
         const balance = next?.num ?? 0;
         const delta = Number((balance - (previous?.num ?? 0)).toPrecision(15));
         if (!delta) continue;

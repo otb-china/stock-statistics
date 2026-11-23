@@ -57,6 +57,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
   });
   const deductionMessage = computed(() => {
     if (!Number.isSafeInteger(orderInfo.value.form.quantity) || orderInfo.value.form.quantity < 1) return "请输入有效件数。";
+    if (selectedOrderProduct.value?.recipe.length && selectedOrderProduct.value.recipe.every((item) => isUntracked(item.materialId))) return "该货品的备料均不记库存。";
     if (!orderDeduction.value.items.length) return "该货品缺少有效配方，可以仅记录订单。";
     if (orderDeduction.value.shortages.length) return orderDeduction.value.shortages.join("、");
     const preview = orderDeduction.value.items.map(({ materialId, quantity }) => {
@@ -74,7 +75,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     },
   });
   const returnableMaterials = computed(() => {
-    const items = deletingOrder.value?.deductedMaterials;
+    const items = deletingOrder.value?.deductedMaterials?.filter((item) => !isUntracked(item.materialId));
     if (!items?.length) return [];
     const allAvailable = items.every((item) => options.materials.value.some((material) =>
       material.id === item.materialId && Number.isFinite(material.num + item.quantity),
@@ -86,6 +87,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     if (!order) return "";
     if (order.deductedMaterials === undefined) return "历史订单缺少扣料明细。如需补回备料，请核实后手动调整库存。";
     if (!order.deductedMaterials.length) return "该订单没有扣减备料。";
+    if (order.deductedMaterials.every((item) => isUntracked(item.materialId))) return "这些备料当前不记库存，可直接删除订单。";
     if (!returnableMaterials.value.length) return "扣料明细中的备料已无法完整返还，请核实后手动调整库存。";
     return `可返还 ${returnableMaterials.value.map((item) => {
       const material = options.materials.value.find((entry) => entry.id === item.materialId);
@@ -100,6 +102,10 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     return actions;
   });
 
+  function isUntracked(materialId: string) {
+    return options.materials.value.find((item) => item.id === materialId)?.untracked === true;
+  }
+
   function getOrderDeduction(product: Product | undefined, count: number) {
     if (!Number.isSafeInteger(count) || count < 1) return { items: [], shortages: [] };
     const quantities = recipeQuantities(product?.recipe ?? []);
@@ -108,6 +114,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
     for (const [materialId, perItem] of quantities) {
       const quantity = requiredMaterialQuantity(perItem, count);
       const material = options.materials.value.find((entry) => entry.id === materialId);
+      if (material?.untracked) continue;
       items.push({ materialId, quantity });
       if (!material || !Number.isFinite(material.num) || !Number.isFinite(quantity)) {
         shortages.push(`${material?.name ?? "配方备料"}不可用`);
@@ -285,7 +292,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
       }
       if (deduction?.length && form.quantity !== previous.quantity) {
         const previousDeduction = deduction;
-        const nextDeduction = previousDeduction.map((item) => ({
+        const nextDeduction = previousDeduction.map((item) => isUntracked(item.materialId) ? item : ({
           ...item,
           quantity: Number((item.quantity / previous.quantity * form.quantity).toPrecision(15)),
         }));
@@ -293,6 +300,7 @@ export function useOrderActions(options: UseOrderActionsOptions) {
           materialId: item.materialId,
           quantity: Number((item.quantity - nextDeduction[index].quantity).toPrecision(15)),
         }));
+        changes = changes.filter((item) => item.quantity !== 0);
         deduction = nextDeduction;
       }
       savedOrder = { ...form, ...amounts, id: previous.id, deductedMaterials: deduction };

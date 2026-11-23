@@ -40,7 +40,7 @@
           <small class="product-meta">{{ product.recipe.length ? product.recipe.length + " 种备料" : "未配置备料" }}</small>
         </button>
         <template v-if="!group.inactive">
-          <span class="product-count" :class="'is-' + craftableStatus(craftableCountForProduct(product), product.warningThreshold)">
+          <span v-if="Number.isFinite(craftableCountForProduct(product))" class="product-count" :class="'is-' + craftableStatus(craftableCountForProduct(product), product.warningThreshold)">
             <strong>{{ craftableCountForProduct(product) }}</strong>
             <small>可制</small>
           </span>

@@ -121,6 +121,7 @@ export function normalizeMaterials(list: RSA[] | undefined): Material[] {
   return source.map((item) => ({
     id: String(item.id || legacyMaterialId(String(item.name || ""))),
     name: String(item.name || ""),
+    untracked: item.untracked === true,
     num: Number(item.num || 0),
     unitCost: isValidAmount(item.unitCost) ? item.unitCost : 0,
   })).filter((item) => item.name);

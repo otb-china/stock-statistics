@@ -1,10 +1,11 @@
 import type { RSA } from "otb-toolkit/src/types";
 
-export type MaterialGroupKey = "danger" | "warning" | "safe" | "unlinked";
+export type MaterialGroupKey = "danger" | "warning" | "safe" | "unlinked" | "untracked";
 export type EditorType = "add" | "edit";
 export type OrderEditorType = "add" | "upd";
 
 export interface Material extends RSA {
+  untracked?: boolean;
   id: string;
   name: string;
   num: number;

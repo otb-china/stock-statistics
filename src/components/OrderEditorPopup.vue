@@ -28,7 +28,7 @@
           >
             <span class="product-check"><el-icon><Check /></el-icon></span>
             <strong>{{ product.name }}</strong>
-            <em>{{ formatMoney(product.defaultValue || 0) }} · 可制 {{ craftableCountForProduct(product) }}</em>
+            <em>{{ formatMoney(product.defaultValue || 0) }}<template v-if="Number.isFinite(craftableCountForProduct(product))"> · 可制 {{ craftableCountForProduct(product) }}</template></em>
           </button>
         </div>
       </template>
